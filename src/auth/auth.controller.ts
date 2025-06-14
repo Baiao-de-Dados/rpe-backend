@@ -10,7 +10,7 @@ export class AuthController {
         try {
             return await this.authService.login(body.email, body.password);
         } catch {
-            throw new UnauthorizedException('Credenciais inválidas');
+            throw new UnauthorizedException('Invalid credentials');
         }
     }
 
