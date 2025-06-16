@@ -7,13 +7,16 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Exemplo de model
 model User {
   id        Int      @id @default(autoincrement())
   email     String   @unique
   name      String?
+  password  String 
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("users")
 }
+
+// Entidades de Usuário -> Person, Employer, Manager, Leader, RH, Commitee, Admin, Developer
