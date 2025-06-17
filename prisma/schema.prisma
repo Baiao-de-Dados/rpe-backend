@@ -7,16 +7,27 @@ datasource db {
     url      = env("DATABASE_URL")
 }
 
-model User {
-    id           Int        @id @default(autoincrement())
-    email        String     @unique
-    password     String     @map("password_hash")
-    name         String? 
-    createdAt    DateTime   @default(now()) @map("created_at")
-    updatedAt    DateTime   @updatedAt @map("updated_at")
+enum UserRoleEnum {
+    EMPLOYER
+    MANAGER
+    LEADER
+    MENTOR
+    RH
+    COMMITTEE
+    ADMIN
+    DEVELOPER
+}
 
+model User {
+    id           Int          @id @default(autoincrement())
+    email        String       @unique
+    password     String       @map("password_hash")
+    name         String? 
+    createdAt    DateTime     @default(now()) @map("created_at")
+    updatedAt    DateTime     @updatedAt @map("updated_at")
+    roleType     UserRoleEnum @default(EMPLOYER)
+    evaluations  Evaluation[]
     userRoles    UserRole[]
-    evaluations Evaluation[]
 
     mentoringAsEvaluator   Mentoring[]    @relation("Mentor")
     mentoringAsEvaluated   Mentoring[]    @relation("Mentored")
