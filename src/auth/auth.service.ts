@@ -11,7 +11,7 @@ import { User } from '@prisma/client';
 
 type UserPublic = Omit<User, 'password'>;
 
-interface LoginResponse {
+export interface LoginResponse {
     access_token: string;
     user: UserPublic;
 }
@@ -36,6 +36,7 @@ export class AuthService {
                 typeof user.password === 'string' &&
                 (await bcrypt.compare(password, user.password))
             ) {
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
                 const { password: _password, ...result } = user;
                 return result;
             }
@@ -89,6 +90,7 @@ export class AuthService {
                 },
             });
 
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const { password: _password, ...result } = user;
             return result;
         } catch (error) {

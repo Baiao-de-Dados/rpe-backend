@@ -1,8 +1,11 @@
 import { Controller, Post, Body, UnauthorizedException } from '@nestjs/common';
 import { AuthService } from './auth.service';
+import { User } from '@prisma/client';
 
-interface LoginResponse {
-    ace;
+type UserPublic = Omit<User, 'password'>;
+export interface LoginResponse {
+    acess_token: string;
+    user: UserPublic;
 }
 @Controller('auth')
 export class AuthController {
