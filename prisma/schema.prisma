@@ -7,85 +7,37 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Entidades de Usuário -> User, Employer, Manager, Leader, RH, Commitee, Admin, Developer
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  name      String?
-  password  String
+  id           Int        @id @default(autoincrement())
+  email        String     @unique
+  password     String     @map("password_hash")
+  name         String? 
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
 
-  role      UserRole
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  userRoles    UserRole[]
 
-  // Relacionamentos
-  employer  Employer?
-  manager   Manager?
-  leader    Leader?
-  rh        RH?
-  committee Committee?
-  admin     Admin?
-  developer Developer?
-  
   @@map("users")
 }
 
-enum UserRole {
-  EMPLOYER
-  MANAGER
-  LEADER
-  RH
-  COMMITTEE
-  ADMIN
-  DEVELOPER
+model Role {
+  id          Int        @id @default(autoincrement())
+  name        String     @unique
+  description String?
+
+  userRoles   UserRole[]
+
+  @@map("roles")
 }
 
-model Employer {
-  id Int @id @default(autoincrement())
-  userId Int @unique
-  user User @relation(fields: [userId], references: [id])  
+model UserRole {
+  userId     Int
+  roleId     Int
+  assignedAt DateTime   @default(now()) @map("assigned_at")
 
-}
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
-model Manager {
-  id Int @id @default(autoincrement())
-  userId Int @unique
-  user User @relation(fields: [userId], references: [id])
-
-}
-
-model Leader {
-  id Int @id @default(autoincrement())
-  userId Int @unique
-  user User @relation(fields: [userId], references: [id])
-
-}
-
-model RH {
-  id Int @id @default(autoincrement())
-  userId Int @unique
-  user User @relation(fields: [userId], references: [id])
-
-}
-
-
-model Committee {
-  id Int @id @default(autoincrement())
-  userId Int @unique
-  user User @relation(fields: [userId], references: [id])
-
-}
-
-model Admin {
-  id Int @id @default(autoincrement())
-  userId Int @unique
-  user User @relation(fields: [userId], references: [id])
-
-}
-
-model Developer {
-  id Int @id @default(autoincrement())
-  userId Int @unique
-  user User @relation(fields: [userId], references: [id])
-
+  @@id([userId, roleId])
+  @@map("user_roles")
 }
