@@ -1,18 +1,13 @@
 import { Controller, Post, Body, UnauthorizedException } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { User } from '@prisma/client';
+import { LoginResponse } from './interfaces/login-response.interface';
 
-type UserPublic = Omit<User, 'password'>;
-export interface LoginResponse {
-    acess_token: string;
-    user: UserPublic;
-}
 @Controller('auth')
 export class AuthController {
     constructor(private authService: AuthService) {}
 
     @Post('login')
-    async login(@Body() body: { email: string; password: string }) {
+    async login(@Body() body: { email: string; password: string }): Promise<LoginResponse> {
         try {
             return await this.authService.login(body.email, body.password);
         } catch {
