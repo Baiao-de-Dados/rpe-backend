@@ -1,18 +1,18 @@
-import { User as PrismaUser, UserRole as PrismaUserRole } from '@prisma/client';
+import { User as PrismaUser } from '@prisma/client';
 
 export class UserResponseDTO {
     id: number;
     email: string;
     name?: string;
-    role: PrismaUserRole;
+    role: string;
     createdAt: Date;
     updatedAt: Date;
 
-    constructor(user: PrismaUser & { role: PrismaUserRole }) {
+    constructor(user: PrismaUser) {
         this.id = user.id;
         this.email = user.email;
         this.name = user.name ?? undefined;
-        this.role = user.role;
+        this.role = user.roleType;
         this.createdAt = user.createdAt;
         this.updatedAt = user.updatedAt;
     }
