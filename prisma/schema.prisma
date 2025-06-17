@@ -64,7 +64,7 @@ model UserRole {
 
 model Evaluation {
     id             Int              @id @default(autoincrement())
-    period         String
+    cycle         String
     createdAt      DateTime         @default(now())
     grade          Float?
 
