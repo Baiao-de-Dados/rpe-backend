@@ -27,7 +27,6 @@ model User {
     evaluation360AsEvaluator  Evaluation360[] @relation("Evaluation360Evaluator")
     evaluation360AsEvaluated  Evaluation360[] @relation("Evaluation360Evaluated")
 
-    autoEvaluations        AutoEvaluation[]
 }
 
 model Role {
@@ -72,7 +71,7 @@ model Mentoring {
     evaluationId  Int        @unique
     evaluatorId   Int
     evaluatedId   Int
-    Justification String?
+    justification String?
 
     evaluation    Evaluation @relation(fields: [evaluationId], references: [id])
     evaluator     User       @relation("Mentor", fields: [evaluatorId], references: [id])
@@ -81,15 +80,13 @@ model Mentoring {
 }
 
 model AutoEvaluation {
-    id                 Int                   @id @default(autoincrement())
-    evaluationId       Int                   @unique
-    userId             Int
-    justification      String?
+    id                  Int                   @id @default(autoincrement())
+    evaluationId        Int                   @unique
+    justification       String?
 
-    evaluation         Evaluation            @relation(fields: [evaluationId], references: [id])
-    user               User                  @relation(fields: [userId], references: [id])
-
+    evaluation          Evaluation            @relation(fields: [evaluationId], references: [id])
     criteriaAssignments CriteriaAssignment[]
+
 }
 
 model Evaluation360 {
