@@ -3,7 +3,12 @@ import * as crypto from 'crypto';
 
 const ALGORITHM = 'aes-256-cbc';
 const IV_LENGTH = 16;
-const KEY = Buffer.from(process.env.ENCRYPTION_KEY ?? '12345678901234567890123456789012');
+
+const SECRET = process.env.ENCRYPTION_KEY;
+if (!SECRET) {
+    throw new Error('ENCRYPTION_KEY environment variable is not set');
+}
+const KEY = crypto.createHash('sha256').update(SECRET).digest();
 
 @Injectable()
 export class EncryptionService {
