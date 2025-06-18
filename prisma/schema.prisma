@@ -9,9 +9,9 @@ datasource db {
 
 enum UserRoleEnum {
     EMPLOYER
-    MANAGER
-    LEADER
     MENTOR
+    LEADER
+    MANAGER
     RH
     COMMITTEE
     ADMIN
@@ -19,166 +19,35 @@ enum UserRoleEnum {
 }
 
 model User {
-    id           Int          @id @default(autoincrement())
-    email        String       @unique
-    password     String       @map("password_hash")
-    name         String? 
-    createdAt    DateTime     @default(now()) @map("created_at")
-    updatedAt    DateTime     @updatedAt @map("updated_at")
-    roleType     UserRoleEnum @default(EMPLOYER)
-    evaluations  Evaluation[]
-    userRoles    UserRole[]
+    id        Int      @id @default(autoincrement())
+    email     String   @unique
+    password  String   @map("password_hash")
+    name      String?
+    createdAt DateTime @default(now()) @map("created_at")
+    updatedAt DateTime @updatedAt @map("updated_at")
 
-    mentoringAsEvaluator   Mentoring[]    @relation("Mentor")
-    mentoringAsEvaluated   Mentoring[]    @relation("Mentored")
+    // Relacionamento com múltiplas roles
+    userRoles UserRole[]
 
-    referenceAsEvaluator   Reference[]    @relation("ReferenceEvaluator")
-    referenceAsEvaluated   Reference[]    @relation("ReferenceEvaluated")
+    // Roles atribuídas por este usuário (auditoria)
+    assignedRoles UserRole[] @relation("RoleAssigner")
 
-    evaluation360AsEvaluator  Evaluation360[] @relation("Evaluation360Evaluator")
-    evaluation360AsEvaluated  Evaluation360[] @relation("Evaluation360Evaluated")
-
-    autoEvaluations        AutoEvaluation[]
-}
-
-model Role {
-    id          Int        @id @default(autoincrement())
-    name        String     @unique
-    description String?
-
-    userRoles   UserRole[]
-
-    @@map("roles")
+    @@map("users")
 }
 
 model UserRole {
-    userId     Int
-    roleId     Int
-    assignedAt DateTime   @default(now()) @map("assigned_at")
+    id         Int          @id @default(autoincrement())
+    userId     Int          @map("user_id")
+    role       UserRoleEnum
+    assignedAt DateTime     @default(now()) @map("assigned_at")
+    assignedBy Int?         @map("assigned_by")
+    isActive   Boolean      @default(true)
 
-    user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-    role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+    // Relacionamentos
+    user         User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+    assignedByUser User? @relation("RoleAssigner", fields: [assignedBy], references: [id])
 
-    @@id([userId, roleId])
+    // Prevenir roles duplicadas
+    @@unique([userId, role])
     @@map("user_roles")
-}
-
-model Evaluation {
-    id             Int              @id @default(autoincrement())
-    period         String
-    createdAt      DateTime         @default(now())
-    grade          Float?
-
-    userId         Int
-    user           User             @relation(fields: [userId], references: [id])
-
-    mentoring      Mentoring?
-    autoEvaluation AutoEvaluation?
-    evaluation360  Evaluation360?
-
-}
-
-model Mentoring {
-    id            Int        @id @default(autoincrement())
-    evaluationId  Int        @unique
-    evaluatorId   Int
-    evaluatedId   Int
-    Justification String?
-
-    evaluation    Evaluation @relation(fields: [evaluationId], references: [id])
-    evaluator     User       @relation("Mentor", fields: [evaluatorId], references: [id])
-    evaluated     User       @relation("Mentored", fields: [evaluatedId], references: [id])
-
-}
-
-model AutoEvaluation {
-    id                 Int                   @id @default(autoincrement())
-    evaluationId       Int                   @unique
-    userId             Int
-    justification      String?
-
-    evaluation         Evaluation            @relation(fields: [evaluationId], references: [id])
-    user               User                  @relation(fields: [userId], references: [id])
-
-    criteriaAssignments CriteriaAssignment[]
-}
-
-model Evaluation360 {
-    id            Int         @id @default(autoincrement())
-    evaluationId  Int         @unique
-    evaluatorId   Int
-    evaluatedId   Int
-    strengths     String?
-    improvements  String?
-
-    evaluation    Evaluation  @relation(fields: [evaluationId], references: [id])
-    evaluator     User        @relation("Evaluation360Evaluator", fields: [evaluatorId], references: [id])
-    evaluated     User        @relation("Evaluation360Evaluated", fields: [evaluatedId], references: [id])
-
-}
-
-model Pillar {
-    id         Int       @id @default(autoincrement())
-    name       String
-    createdAt  DateTime  @default(now())
-    updatedAt  DateTime  @updatedAt
-
-    criteria  Criterion[]
-}
-
-model Criterion {
-    id          Int       @id @default(autoincrement())
-    name        String
-    description String?
-    weight      Float?
-    createdAt   DateTime  @default(now())
-    updatedAt   DateTime  @updatedAt
-
-    pillarId    Int
-    pillar      Pillar    @relation(fields: [pillarId], references: [id])
-
-    criteriaAssignments CriteriaAssignment[]
-}
-
-model CriteriaAssignment {
-    autoEvaluationId Int
-    criterionId      Int
-
-    autoEvaluation   AutoEvaluation @relation(fields: [autoEvaluationId], references: [id])
-    criterion        Criterion      @relation(fields: [criterionId], references: [id])
-
-    @@id([autoEvaluationId, criterionId])
-}
-
-model Tag {
-    id            Int       @id @default(autoincrement())
-    name          String
-    createdAt     DateTime  @default(now())
-    updatedAt     DateTime  @updatedAt
-
-    tagReferences TagReference[]
-}
-
-model Reference {
-    id            Int       @id @default(autoincrement())
-    evaluatorId   Int
-    evaluatedId   Int
-    justification String?
-    createdAt     DateTime  @default(now())
-    cycle         String?
-
-    evaluator     User      @relation("ReferenceEvaluator", fields: [evaluatorId], references: [id])
-    evaluated     User      @relation("ReferenceEvaluated", fields: [evaluatedId], references: [id])
-
-    tagReferences TagReference[]
-}
-
-model TagReference {
-    tagId       Int
-    referenceId Int
-
-    tag         Tag       @relation(fields: [tagId], references: [id])
-    reference   Reference @relation(fields: [referenceId], references: [id])
-
-    @@id([tagId, referenceId])
 }
