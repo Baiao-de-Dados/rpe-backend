@@ -7,4 +7,3 @@ dist/
 build/
 
 *.log
-/prisma/migrations
