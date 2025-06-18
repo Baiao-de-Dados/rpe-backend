@@ -29,8 +29,8 @@ model User {
     evaluations  Evaluation[]
     userRoles    UserRole[]
 
-    mentoringAsEvaluator   Mentoring[]    @relation("Mentor")
-    mentoringAsEvaluated   Mentoring[]    @relation("Mentored")
+    mentoringAsEvaluator   Mentoring[]    @relation("Mentor") // 1:N (pode mentorar vários)
+    mentoringAsEvaluated   Mentoring?    @relation("Mentored") // 1:1 (só pode ser mentorado por um)
 
     referenceAsEvaluator   Reference[]    @relation("ReferenceEvaluator")
     referenceAsEvaluated   Reference[]    @relation("ReferenceEvaluated")
@@ -81,7 +81,7 @@ model Mentoring {
     id            Int        @id @default(autoincrement())
     evaluationId  Int        @unique
     evaluatorId   Int
-    evaluatedId   Int
+    evaluatedId   Int        @unique // relacionamento 1:1 com User (só pode ser mentorado por um)
     justification String?
 
     evaluation    Evaluation @relation(fields: [evaluationId], references: [id])
