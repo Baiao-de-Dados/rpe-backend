@@ -8,7 +8,7 @@ async function bootstrap() {
     // Configuração do Swagger
     const config = new DocumentBuilder()
         .setTitle('RPE API')
-        .setDescription('API do sistema de Revisão de Performance e Evolução')
+        .setDescription('API do sistema da RockeCorp')
         .setVersion('1.0')
         .addBearerAuth()
         .build();
