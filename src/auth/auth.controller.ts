@@ -1,22 +1,39 @@
 import { Controller, Post, Body, UnauthorizedException } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { LoginResponse } from './interfaces/login-response.interface';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { LoginDto } from './dto/login.dto';
+import { RegisterDto } from './dto/register.dto';
+import { LoginResponseDto } from './dto/login-response.dto';
 
+@ApiTags('Autenticação')
 @Controller('auth')
 export class AuthController {
-    constructor(private authService: AuthService) {}
+    constructor(private readonly authService: AuthService) {}
 
     @Post('login')
-    async login(@Body() body: { email: string; password: string }): Promise<LoginResponse> {
+    @ApiOperation({ summary: 'Realizar login' })
+    @ApiResponse({
+        status: 200,
+        description: 'Login realizado com sucesso',
+        type: LoginResponseDto,
+    })
+    @ApiResponse({ status: 401, description: 'Credenciais inválidas' })
+    async login(@Body() loginDto: LoginDto): Promise<LoginResponseDto> {
         try {
-            return await this.authService.login(body.email, body.password);
+            return await this.authService.login(loginDto.email, loginDto.password);
         } catch {
-            throw new UnauthorizedException('Invalid credentials');
+            throw new UnauthorizedException('Credenciais inválidas');
         }
     }
 
     @Post('register')
-    async register(@Body() body: { email: string; password: string; name?: string }) {
-        return this.authService.register(body.email, body.password, body.name);
+    @ApiOperation({ summary: 'Registrar novo usuário' })
+    @ApiResponse({
+        status: 201,
+        description: 'Usuário registrado com sucesso',
+    })
+    @ApiResponse({ status: 401, description: 'Email já existe' })
+    async register(@Body() registerDto: RegisterDto) {
+        return this.authService.register(registerDto.email, registerDto.password, registerDto.name);
     }
 }

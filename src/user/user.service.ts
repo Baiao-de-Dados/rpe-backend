@@ -21,12 +21,31 @@ export class UserService {
     }
 
     async findAllUsers(): Promise<UserResponseDTO[]> {
-        const users = await this.prisma.user.findMany();
+        const users = await this.prisma.user.findMany({
+            select: {
+                id: true,
+                email: true,
+                name: true,
+                roleType: true,
+                createdAt: true,
+                updatedAt: true,
+            },
+        });
         return users.map((user) => new UserResponseDTO(user));
     }
 
     async findUserById(id: number) {
-        const user = await this.prisma.user.findUnique({ where: { id } });
+        const user = await this.prisma.user.findUnique({
+            where: { id },
+            select: {
+                id: true,
+                email: true,
+                name: true,
+                roleType: true,
+                createdAt: true,
+                updatedAt: true,
+            },
+        });
         if (!user) {
             throw new NotFoundException(`User with ID ${id} not found`);
         }
@@ -40,6 +59,14 @@ export class UserService {
         const user = await this.prisma.user.update({
             where: { id },
             data,
+            select: {
+                id: true,
+                email: true,
+                name: true,
+                roleType: true,
+                createdAt: true,
+                updatedAt: true,
+            },
         });
         return new UserResponseDTO(user);
     }

@@ -1,14 +1,9 @@
-import {
-    Injectable,
-    UnauthorizedException,
-    ConflictException,
-    BadRequestException,
-} from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { User } from '@prisma/client';
-import { LoginResponse } from './interfaces/login-response.interface';
+import { LoginResponseDto } from './dto/login-response.dto';
 
 type UserPublic = Omit<User, 'password'>;
 
@@ -33,8 +28,9 @@ export class AuthService {
                 typeof user.password === 'string' &&
                 (await bcrypt.compare(password, user.password))
             ) {
-                const { password: _password, ...result } = user;
-                return result;
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                const { password, ...rest } = user;
+                return rest;
             }
             return null;
         } catch {
@@ -47,21 +43,23 @@ export class AuthService {
      * @param password
      * @returns Objeto contendo o token de acesso e os dados do usuário.
      */
-    async login(email: string, password: string): Promise<LoginResponse> {
+
+    async login(email: string, password: string): Promise<LoginResponseDto> {
         const user = await this.prisma.user.findUnique({
             where: { email },
         });
 
-        if (!user || user.password !== password) {
+        if (!user || !(await bcrypt.compare(password, user.password))) {
             throw new UnauthorizedException('Invalid credentials');
         }
 
         const payload = { sub: user.id, email: user.email };
-        const { password: _password, ...userWithoutPassword } = user;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { password: passwordHash, ...rest } = user;
 
         return {
             access_token: await this.jwtService.signAsync(payload),
-            user: userWithoutPassword,
+            user: rest,
         };
     }
 
@@ -80,15 +78,19 @@ export class AuthService {
             throw new UnauthorizedException('Email already exists');
         }
 
+        // Criptografa a senha antes de salvar
+        const hashedPassword = await bcrypt.hash(password, 10);
+
         const user = await this.prisma.user.create({
             data: {
                 email,
-                password,
+                password: hashedPassword,
                 name,
             },
         });
 
-        const { password: _password, ...userWithoutPassword } = user;
-        return userWithoutPassword;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { password: senha, ...rest } = user;
+        return rest;
     }
 }

@@ -8,7 +8,7 @@ export class UserResponseDTO {
     createdAt: Date;
     updatedAt: Date;
 
-    constructor(user: PrismaUser) {
+    constructor(user: PrismaUser | Omit<PrismaUser, 'password'>) {
         this.id = user.id;
         this.email = user.email;
         this.name = user.name ?? undefined;
