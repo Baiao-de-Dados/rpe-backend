@@ -1,166 +1,128 @@
-# Visão Geral
+# Guia de Criptografia de Campos Sensíveis
 
-Este documento descreve como configurar e usar o interceptor de criptografia (`EncryptionInterceptor`) em diferentes módulos de uma aplicação NestJS, aproveitando o `CryptoModule` e o decorator `@EncryptField`.
+Este documento explica como aplicar criptografia de campos sensíveis em entidades e módulos do projeto usando o `EncryptionService` de forma **manual** e padronizada.
 
-# 1. Pré-requisitos
+---
 
-- Ter o módulo de criptografia implementado em `src/crypto/crypto.module.ts`.
-- Conter o serviço `EncryptionService` em `src/crypto/encryption.service.ts`, exportado pelo `CryptoModule`.
-- Variável de ambiente `ENCRYPTION_KEY` configurada (AES-256-CBC, 32 bytes).
+## 1. Pré-requisitos
 
-# 2. Componentes Principais
+- O módulo de criptografia (`CryptoModule`) deve estar implementado e exportando o `EncryptionService`.
+- A variável de ambiente `ENCRYPTION_KEY` deve estar configurada (32 bytes para AES-256-CBC).
 
-## 2.1 CryptoModule
+---
 
-### Local: `src/crypto/crypto.module.ts`
+## 2. Como Usar em Novas Entidades/Módulos
 
-```ts
-@Module({
-    providers: [EncryptionService],
-    exports: [EncryptionService],
-})
-export class CryptoModule {}
-```
+### 2.1. Importe o CryptoModule
 
-## 2.2 EncryptionService
+No módulo onde deseja usar a criptografia, importe o `CryptoModule`:
 
-### Local: `src/crypto/encryption.service.ts`
-
-- `encrypt(text: string): string` → retorna texto cifrado.
-
-- `decrypt(data: string): string` → retorna texto original.
-
-## 2.3 EncryptionInterceptor
-
-### Local: `src/interceptors/encryption.interceptor.ts`
-
-- ### Injeta EncryptionService.
-
-- ### Antes da rota: criptografa campos marcados no body.
-
-- ### Após a rota: descriptografa campos de resposta.
-
-## 2.4 Decorator @EncryptField()
-
-### Local: src/decorators/encrypt-field.decorator.ts
-
-- ### Marca propriedades de DTO para criptografia.
-
-- ### Usa Reflect.getMetadata(ENCRYPTED_FIELDS_KEY, dtoConstructor).
-
-# 3. Uso Local (por Controller/Módulo)
-
-### Quando você quiser aplicar criptografia apenas em módulos ou controllers específicos:
-
-### 3.1 Importar CryptoModule no Módulo
-
-```// Exemplo: FooModule
+```typescript
 import { Module } from '@nestjs/common';
-import { FooController } from './foo.controller';
-import { FooService }    from './foo.service';
-import { CryptoModule }  from 'src/crypto/crypto.module';
-import { EncryptionInterceptor } from 'src/interceptors/encryption.interceptor';
+import { CryptoModule } from 'src/crypto/crypto.module';
 
 @Module({
-  imports: [CryptoModule],                        // 🔑
-  providers: [
-    FooService,
-    EncryptionInterceptor,                        // 🔑
-  ],
-  controllers: [FooController],
+    imports: [CryptoModule],
+    // ... outros providers/controllers
 })
-export class FooModule {}
+export class MinhaEntidadeModule {}
 ```
 
-## 3.2 Aplicar Interceptor no Controller
+---
 
-```import { Controller, Post, Body, UseInterceptors } from '@nestjs/common';
-import { EncryptionInterceptor } from 'src/interceptors/encryption.interceptor';
-import { CreateFooDto }       from './dto/create-foo.dto';
+### 2.2. Injete o EncryptionService no Serviço
 
-@UseInterceptors(EncryptionInterceptor)
-@Controller('foo')
-export class FooController {
-  constructor(private readonly fooService: FooService) {}
+No serviço responsável pela entidade, injete o `EncryptionService`:
 
-  @Post()
-  create(@Body() dto: CreateFooDto) {
-    return this.fooService.create(dto);
-  }
+```typescript
+import { Injectable } from '@nestjs/common';
+import { EncryptionService } from 'src/crypto/encryption.service';
+
+@Injectable()
+export class MinhaEntidadeService {
+    constructor(private encryptionService: EncryptionService) {}
+
+    // ...
 }
 ```
 
-## 3.3 Marcar Campos para Criptografia
+---
 
-```import { EncryptField } from 'src/decorators/encrypt-field.decorator';
+### 2.3. Criptografe Antes de Salvar
 
-export class CreateFooDto {
-  @EncryptField()
-  sensitiveData: string;
+Antes de salvar dados sensíveis no banco, **sempre criptografe** usando o método `encrypt`:
 
-  // outros campos...
-}
-```
-
-# 4. Uso Global (todas as rotas)
-
-### Se você quiser criptografar em toda a aplicação:
-
-## 4.1 AppModule
-
-```
-import { Module } from '@nestjs/common';
-import { APP_INTERCEPTOR } from '@nestjs/core';
-import { CryptoModule }       from 'src/crypto/crypto.module';
-import { EncryptionInterceptor } from 'src/interceptors/encryption.interceptor';
-// outros módulos...
-
-@Module({
-  imports: [
-    CryptoModule,
-    // ... outros módulos
-  ],
-  providers: [
-    {
-      provide:  APP_INTERCEPTOR,
-      useClass: EncryptionInterceptor,
+```typescript
+async create(dto: CreateMinhaEntidadeDto) {
+  const encrypted = this.encryptionService.encrypt(dto.dadoSensivel);
+  // Salve no banco o valor criptografado
+  await this.repo.create({
+    data: {
+      ...dto,
+      dadoSensivel: encrypted,
     },
-  ],
-})
-export class AppModule {}
+  });
+}
 ```
 
-## 4.2 Remover configurações locais
+---
 
-- ### Não é necessário @UseInterceptors nos controllers.
+### 2.4. Descriptografe Antes de Retornar
 
-- ### Nem registrar o interceptor como provider em módulos específicos.
+Antes de retornar dados sensíveis para o cliente, **sempre descriptografe** usando o método `decrypt`:
 
-# 5. Validação e Transformação de DTOs
-
-### Recomenda-se usar ValidationPipe global:
-
-```
-// main.ts
-app.useGlobalPipes(new ValidationPipe({
-  whitelist: true,
-  transform: true,
-  forbidNonWhitelisted: true,
-}));
+```typescript
+async findOne(id: number) {
+  const entity = await this.repo.findUnique({ where: { id } });
+  entity.dadoSensivel = this.encryptionService.decrypt(entity.dadoSensivel);
+  return entity;
+}
 ```
 
-### Isso garante que apenas campos definidos no DTO sejam aceitos e transformados em instâncias corretas.
+---
 
-# 6. Resumo de Passos
+## 3. Boas Práticas
 
-### 1. Configure CryptoModule com EncryptionService exportado.
+- **Nunca** salve dados sensíveis em texto puro no banco.
+- Sempre criptografe manualmente no serviço antes de salvar.
+- Sempre descriptografe manualmente no serviço antes de retornar ao cliente.
+- Não dependa de interceptors ou decorators para criptografia de dados sensíveis.
 
-### 2. Importe CryptoModule nos módulos onde for usar.
+---
 
-### 3. Declare EncryptionInterceptor em providers desses módulos.
+## 4. Exemplo Completo
 
-### 4. Anote controllers com @UseInterceptors(EncryptionInterceptor).
+```typescript
+// DTO
+export class CreateFooDto {
+    sensitiveData: string;
+    // ...
+}
 
-### 5. Marque campos sensíveis nos DTOs com @EncryptField().
+// Serviço
+@Injectable()
+export class FooService {
+    constructor(private encryptionService: EncryptionService) {}
 
-### 6. Para uso global, registre o interceptor no AppModule via APP_INTERCEPTOR.
+    async create(dto: CreateFooDto) {
+        const encrypted = this.encryptionService.encrypt(dto.sensitiveData);
+        // Salve no banco
+        await this.repo.create({
+            data: {
+                ...dto,
+                sensitiveData: encrypted,
+            },
+        });
+    }
+
+    async findOne(id: number) {
+        const entity = await this.repo.findUnique({ where: { id } });
+        entity.sensitiveData = this.encryptionService.decrypt(entity.sensitiveData);
+        return entity;
+    }
+}
+```
+
+---
+
+Dúvidas? Consulte o código do `EncryptionService` ou peça ajuda ao time!
