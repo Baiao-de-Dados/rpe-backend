@@ -1,20 +1,18 @@
-import {
-    Injectable,
-    UnauthorizedException,
-    ConflictException,
-    BadRequestException,
-} from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
+import { UserRoleEnum } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
-import { User } from '@prisma/client';
 
-type UserPublic = Omit<User, 'password'>;
-
-export interface LoginResponse {
-    access_token: string;
-    user: UserPublic;
+export interface UserPublic {
+    id: number;
+    email: string;
+    name: string | null;
+    roles: UserRoleEnum[];
+    createdAt: Date;
+    updatedAt: Date;
 }
+
 @Injectable()
 export class AuthService {
     constructor(
@@ -22,23 +20,27 @@ export class AuthService {
         private jwtService: JwtService,
     ) {}
 
-    /**
-     * @param email
-     * @param password
-     * @returns Objeto do usuário sem a senha, ou null se a validação for inválida.
-     */
     async validateUser(email: string, password: string): Promise<UserPublic | null> {
         try {
-            const user = await this.prisma.user.findUnique({ where: { email } });
+            const user = await this.prisma.user.findUnique({
+                where: { email },
+                include: {
+                    userRoles: {
+                        where: { isActive: true },
+                        select: { role: true },
+                    },
+                },
+            });
 
             if (
                 user &&
                 typeof user.password === 'string' &&
                 (await bcrypt.compare(password, user.password))
             ) {
+                const roles = user.userRoles.map((ur) => ur.role);
                 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                const { password: _password, ...result } = user;
-                return result;
+                const { password, userRoles, ...result } = user;
+                return { ...result, roles };
             }
             return null;
         } catch {
@@ -46,16 +48,7 @@ export class AuthService {
         }
     }
 
-    /**
-     * @param email
-     * @param password
-     * @returns Objeto contendo o token de acesso e os dados do usuário.
-     */
-    async login(email: string, password: string): Promise<LoginResponse> {
-        if (!email || !password) {
-            throw new BadRequestException('Email and password are required');
-        }
-
+    async login(email: string, password: string) {
         const user = await this.validateUser(email, password);
         if (!user) {
             throw new UnauthorizedException('Invalid credentials');
@@ -64,51 +57,80 @@ export class AuthService {
         const payload = { email: user.email, sub: user.id };
         return {
             access_token: this.jwtService.sign(payload),
-            user,
+            user: user,
         };
     }
 
-    /**
-     * @param email
-     * @param password
-     * @param name (opcional)
-     * @returns O objeto do usuário criado, sem a senha.
-     */
-    async register(email: string, password: string, name?: string) {
-        try {
-            const existingUser = await this.prisma.user.findUnique({ where: { email } });
+    async findAdminUser() {
+        return await this.prisma.user.findFirst({
+            include: {
+                userRoles: {
+                    where: { role: UserRoleEnum.ADMIN, isActive: true },
+                },
+            },
+        });
+    }
 
-            if (existingUser) {
-                throw new ConflictException('Email already exists');
-            }
-            const hashedPassword = await bcrypt.hash(password, 10);
-            const user = await this.prisma.user.create({
+    async createUserWithRoles(
+        email: string,
+        password: string,
+        name: string,
+        roles: UserRoleEnum[],
+        assignedBy: number,
+    ): Promise<UserPublic> {
+        // Verificar se usuário já existe
+        const existingUser = await this.prisma.user.findUnique({
+            where: { email },
+        });
+
+        if (existingUser) {
+            throw new ConflictException('User already exists');
+        }
+
+        // Hash da senha
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // Criar usuário e suas roles em uma transação
+        const result = await this.prisma.$transaction(async (tx) => {
+            // Criar usuário
+            const user = await tx.user.create({
                 data: {
                     email,
                     password: hashedPassword,
-                    name: name || '',
+                    name,
                 },
             });
 
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const { password: _password, ...result } = user;
-            return result;
-        } catch (error) {
-            if (error instanceof ConflictException) {
-                throw error;
-            }
-            function isPrismaUniqueError(err: unknown): err is { code: string } {
-                return (
-                    typeof err === 'object' &&
-                    err !== null &&
-                    'code' in err &&
-                    typeof (err as { code: string }).code === 'string'
-                );
-            }
-            if (isPrismaUniqueError(error) && error.code === 'P2002') {
-                throw new ConflictException('Email already exists');
-            }
-            throw error;
-        }
+            // Criar roles do usuário
+            await tx.userRole.createMany({
+                data: roles.map((role) => ({
+                    userId: user.id,
+                    role: role,
+                    assignedBy: assignedBy,
+                })),
+            });
+
+            // Buscar usuário com roles
+            return await tx.user.findUnique({
+                where: { id: user.id },
+                include: {
+                    userRoles: {
+                        where: { isActive: true },
+                        select: { role: true },
+                    },
+                },
+            });
+        });
+
+        const userRoles = result!.userRoles.map((ur) => ur.role);
+
+        return {
+            id: result!.id,
+            email: result!.email,
+            name: result!.name,
+            createdAt: result!.createdAt,
+            updatedAt: result!.updatedAt,
+            roles: userRoles,
+        };
     }
 }
