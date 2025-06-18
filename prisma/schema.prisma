@@ -29,8 +29,8 @@ model User {
     evaluations  Evaluation[]
     userRoles    UserRole[]
 
-    mentoringAsEvaluator   Mentoring[]    @relation("Mentor") // 1:N (pode mentorar vários)
-    mentoringAsEvaluated   Mentoring?    @relation("Mentored") // 1:1 (só pode ser mentorado por um)
+    mentoringAsEvaluator   Mentoring[]    @relation("Mentor")
+    mentoringAsEvaluated   Mentoring[]    @relation("Mentored")
 
     referenceAsEvaluator   Reference[]    @relation("ReferenceEvaluator")
     referenceAsEvaluated   Reference[]    @relation("ReferenceEvaluated")
@@ -66,7 +66,7 @@ model Evaluation {
     id             Int              @id @default(autoincrement())
     cycle         String
     createdAt      DateTime         @default(now())
-    grade          Float?
+    grade          Float
 
     userId         Int
     user           User             @relation(fields: [userId], references: [id])
@@ -81,19 +81,21 @@ model Mentoring {
     id            Int        @id @default(autoincrement())
     evaluationId  Int        @unique
     evaluatorId   Int
-    evaluatedId   Int        @unique // relacionamento 1:1 com User (só pode ser mentorado por um)
-    justification String?
+    evaluatedId   Int
+    justification String
+    cycle         String
 
     evaluation    Evaluation @relation(fields: [evaluationId], references: [id])
     evaluator     User       @relation("Mentor", fields: [evaluatorId], references: [id])
     evaluated     User       @relation("Mentored", fields: [evaluatedId], references: [id])
 
+    @@unique([evaluatedId, cycle]) // O mentor pode ser avaliado apenas uma vez por ciclo
 }
 
 model AutoEvaluation {
     id                  Int                   @id @default(autoincrement())
     evaluationId        Int                   @unique
-    justification       String?
+    justification       String
 
     evaluation          Evaluation            @relation(fields: [evaluationId], references: [id])
     criteriaAssignments CriteriaAssignment[]
@@ -105,8 +107,8 @@ model Evaluation360 {
     evaluationId  Int         @unique
     evaluatorId   Int
     evaluatedId   Int
-    strengths     String?
-    improvements  String?
+    strengths     String
+    improvements  String
 
     evaluation    Evaluation  @relation(fields: [evaluationId], references: [id])
     evaluator     User        @relation("Evaluation360Evaluator", fields: [evaluatorId], references: [id])
@@ -160,9 +162,9 @@ model Reference {
     id            Int       @id @default(autoincrement())
     evaluatorId   Int
     evaluatedId   Int
-    justification String?
+    justification String
     createdAt     DateTime  @default(now())
-    cycle         String?
+    cycle         DateTime  
 
     evaluator     User      @relation("ReferenceEvaluator", fields: [evaluatorId], references: [id])
     evaluated     User      @relation("ReferenceEvaluated", fields: [evaluatedId], references: [id])
