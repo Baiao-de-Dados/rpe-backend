@@ -109,10 +109,9 @@ export class UserService {
         });
 
         if (!user) {
-            throw new NotFoundException('User not found');
+            throw new NotFoundException('Usuário não encontrado');
         }
 
-        // Verificar se já tem a role
         const existingRole = await this.prisma.userRole.findUnique({
             where: {
                 userId_role: {
@@ -124,7 +123,7 @@ export class UserService {
 
         if (existingRole) {
             if (existingRole.isActive) {
-                throw new ConflictException('User already has this role');
+                throw new ConflictException('Usuário já possui esta função');
             } else {
                 // Reativar role existente
                 await this.prisma.userRole.update({
@@ -142,7 +141,6 @@ export class UserService {
                 },
             });
         }
-
         return this.findOne(userId);
     }
 
