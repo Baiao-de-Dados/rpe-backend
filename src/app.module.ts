@@ -8,6 +8,10 @@ import { UserModule } from './user/user.module';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
+import { EvaluationsModule } from './evaluations/evaluations.module';
+import { PillarsModule } from './pillars/pillars.module';
+import { CriteriaModule } from './criteria/criteria.module';
+import { TagsModule } from './tags/tags.module';
 
 @Module({
     imports: [
@@ -17,6 +21,10 @@ import { RolesGuard } from './auth/guards/roles.guard';
         PrismaModule,
         UserModule,
         AuthModule,
+        EvaluationsModule,
+        PillarsModule,
+        CriteriaModule,
+        TagsModule,
     ],
     controllers: [AppController],
     providers: [

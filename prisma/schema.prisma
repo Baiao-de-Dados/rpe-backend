@@ -71,6 +71,7 @@ model Evaluation {
     mentoring      Mentoring?
     autoEvaluation AutoEvaluation?
     evaluation360  Evaluation360?
+    references     Reference?       @relation("EvaluationReference")
 
 }
 
@@ -162,6 +163,9 @@ model Reference {
     justification String
     createdAt     DateTime        @default(now())
     cycle         DateTime  
+
+    evaluationId  Int?            @unique
+    evaluation    Evaluation?     @relation("EvaluationReference", fields: [evaluationId], references: [id])
 
     evaluator     User            @relation("ReferenceEvaluator", fields: [evaluatorId], references: [id])
     evaluated     User            @relation("ReferenceEvaluated", fields: [evaluatedId], references: [id])
