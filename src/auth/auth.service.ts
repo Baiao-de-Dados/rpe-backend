@@ -1,6 +1,7 @@
 import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
+import { EncryptionService } from 'src/crypto/encryption.service';
 import { UserRoleEnum } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
@@ -18,12 +19,14 @@ export class AuthService {
     constructor(
         private prisma: PrismaService,
         private jwtService: JwtService,
+        private encryptionService: EncryptionService,
     ) {}
 
     async validateUser(email: string, password: string): Promise<UserPublic | null> {
         try {
+            const encryptedEmail = this.encryptionService.encrypt(email);
             const user = await this.prisma.user.findUnique({
-                where: { email },
+                where: { email: encryptedEmail },
                 include: {
                     userRoles: {
                         where: { isActive: true },
@@ -40,7 +43,7 @@ export class AuthService {
                 const roles = user.userRoles.map((ur) => ur.role);
                 // eslint-disable-next-line @typescript-eslint/no-unused-vars
                 const { password, userRoles, ...result } = user;
-                return { ...result, roles };
+                return { ...result, roles, email };
             }
             return null;
         } catch {
@@ -51,7 +54,7 @@ export class AuthService {
     async login(email: string, password: string) {
         const user = await this.validateUser(email, password);
         if (!user) {
-            throw new UnauthorizedException('Invalid credentials');
+            throw new UnauthorizedException('Credenciais inválidas');
         }
 
         const payload = { sub: user.id, email: user.email };
@@ -78,9 +81,11 @@ export class AuthService {
         roles: UserRoleEnum[],
         assignedBy: number,
     ): Promise<UserPublic> {
+        const encryptedEmail = this.encryptionService.encrypt(email);
+
         // Verificar se usuário já existe
         const existingUser = await this.prisma.user.findUnique({
-            where: { email },
+            where: { email: encryptedEmail },
         });
 
         if (existingUser) {
@@ -95,7 +100,7 @@ export class AuthService {
             // Criar usuário
             const user = await tx.user.create({
                 data: {
-                    email,
+                    email: encryptedEmail,
                     password: hashedPassword,
                     name,
                 },
@@ -126,7 +131,7 @@ export class AuthService {
 
         return {
             id: result!.id,
-            email: result!.email,
+            email,
             name: result!.name,
             createdAt: result!.createdAt,
             updatedAt: result!.updatedAt,

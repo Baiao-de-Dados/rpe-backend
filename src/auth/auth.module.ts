@@ -8,12 +8,14 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { PrismaModule } from '../prisma/prisma.module';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
+import { CryptoModule } from 'src/crypto/crypto.module';
 
 @Module({
     imports: [
         PrismaModule,
         PassportModule,
         ConfigModule,
+        CryptoModule,
         JwtModule.registerAsync({
             imports: [ConfigModule],
             inject: [ConfigService],
