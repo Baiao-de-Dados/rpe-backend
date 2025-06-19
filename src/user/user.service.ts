@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { UserRoleEnum } from '@prisma/client';
+import { EncryptionService } from 'src/crypto/encryption.service';
+import { User, UserRoleEnum } from '@prisma/client';
 
 export interface UserWithRoles {
     id: number;
@@ -13,7 +14,10 @@ export interface UserWithRoles {
 
 @Injectable()
 export class UserService {
-    constructor(private readonly prisma: PrismaService) {}
+    constructor(
+        private prisma: PrismaService,
+        private encryptionService: EncryptionService,
+    ) {}
 
     async findAll(): Promise<UserWithRoles[]> {
         const users = (await this.prisma.user.findMany({
@@ -34,7 +38,7 @@ export class UserService {
 
         return users.map((user) => ({
             id: user.id,
-            email: user.email,
+            email: this.encryptionService.decrypt(user.email),
             name: user.name,
             roles: user.userRoles.map((ur) => ur.role),
             createdAt: user.createdAt,
@@ -59,7 +63,7 @@ export class UserService {
 
         return {
             id: user.id,
-            email: user.email,
+            email: this.encryptionService.decrypt(user.email),
             name: user.name,
             roles: user.userRoles.map((ur) => ur.role),
             createdAt: user.createdAt,
@@ -71,9 +75,15 @@ export class UserService {
         id: number,
         updateData: { name?: string; email?: string },
     ): Promise<UserWithRoles> {
+        const dataToUpdate: Partial<User> = { ...updateData };
+
+        if (updateData.email) {
+            dataToUpdate.email = this.encryptionService.encrypt(updateData.email);
+        }
+
         const user = await this.prisma.user.update({
             where: { id },
-            data: updateData,
+            data: dataToUpdate,
             include: {
                 userRoles: {
                     where: { isActive: true },
@@ -82,6 +92,7 @@ export class UserService {
             },
         });
 
+        user.email = this.encryptionService.decrypt(user.email);
         return {
             id: user.id,
             email: user.email,
@@ -90,58 +101,6 @@ export class UserService {
             createdAt: user.createdAt,
             updatedAt: user.updatedAt,
         };
-    }
-
-    async deleteUser(id: number): Promise<void> {
-        await this.prisma.user.delete({
-            where: { id },
-        });
-    }
-
-    async assignRole(
-        userId: number,
-        role: UserRoleEnum,
-        assignedBy: number,
-    ): Promise<UserWithRoles> {
-        // Verificar se usuário existe
-        const user = await this.prisma.user.findUnique({
-            where: { id: userId },
-        });
-
-        if (!user) {
-            throw new NotFoundException('Usuário não encontrado');
-        }
-
-        const existingRole = await this.prisma.userRole.findUnique({
-            where: {
-                userId_role: {
-                    userId: userId,
-                    role: role,
-                },
-            },
-        });
-
-        if (existingRole) {
-            if (existingRole.isActive) {
-                throw new ConflictException('Usuário já possui esta função');
-            } else {
-                // Reativar role existente
-                await this.prisma.userRole.update({
-                    where: { id: existingRole.id },
-                    data: { isActive: true, assignedBy },
-                });
-            }
-        } else {
-            // Criar nova role
-            await this.prisma.userRole.create({
-                data: {
-                    userId,
-                    role,
-                    assignedBy,
-                },
-            });
-        }
-        return this.findOne(userId);
     }
 
     async removeRole(userId: number, role: UserRoleEnum): Promise<UserWithRoles> {
@@ -177,5 +136,96 @@ export class UserService {
         });
 
         return userRoles.map((ur) => ur.role);
+    }
+
+    async assignRole(
+        userId: number,
+        role: UserRoleEnum,
+        assignedBy: number,
+    ): Promise<UserWithRoles> {
+        const existingRole = await this.prisma.userRole.findUnique({
+            where: {
+                userId_role: {
+                    userId: userId,
+                    role: role,
+                },
+            },
+        });
+
+        if (existingRole) {
+            if (existingRole.isActive) {
+                throw new ConflictException('Usuário já possui esta função');
+            } else {
+                await this.prisma.userRole.update({
+                    where: { id: existingRole.id },
+                    data: { isActive: true, assignedBy },
+                });
+            }
+        } else {
+            await this.prisma.userRole.create({
+                data: {
+                    userId,
+                    role,
+                    assignedBy,
+                },
+            });
+        }
+        return this.findOne(userId);
+    }
+
+    async deleteUser(id: number): Promise<{ message: string }> {
+        const user = await this.prisma.user.findUnique({ where: { id } });
+        if (!user) {
+            throw new NotFoundException('Usuário não encontrado');
+        }
+        await this.prisma.user.delete({ where: { id } });
+        return { message: 'Usuário deletado com sucesso' };
+    }
+
+    async findByName(name: string): Promise<UserWithRoles[]> {
+        const users = await this.prisma.user.findMany({
+            where: { name: { contains: name, mode: 'insensitive' } },
+            include: {
+                userRoles: {
+                    where: { isActive: true },
+                    select: { role: true },
+                },
+            },
+        });
+
+        return users.map((user) => ({
+            id: user.id,
+            email: this.encryptionService.decrypt(user.email),
+            name: user.name,
+            roles: user.userRoles.map((ur) => ur.role),
+            createdAt: user.createdAt,
+            updatedAt: user.updatedAt,
+        }));
+    }
+
+    async findByEmail(email: string): Promise<UserWithRoles | null> {
+        const encryptedEmail = this.encryptionService.encrypt(email);
+        const user = await this.prisma.user.findUnique({
+            where: { email: encryptedEmail },
+            include: {
+                userRoles: {
+                    where: { isActive: true },
+                    select: { role: true },
+                },
+            },
+        });
+
+        if (!user) {
+            return null;
+        }
+
+        return {
+            id: user.id,
+            email: this.encryptionService.decrypt(user.email),
+            name: user.name,
+            roles: user.userRoles.map((ur) => ur.role),
+            createdAt: user.createdAt,
+            updatedAt: user.updatedAt,
+        };
     }
 }
