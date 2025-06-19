@@ -1,51 +1,183 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateUserDTO } from './dto/create-user.dto';
-import { UpdateUserDTO } from './dto/update-user.dto';
-import { UserResponseDTO } from './dto/user-response.dto';
-import * as bcrypt from 'bcrypt';
+import { UserRoleEnum } from '@prisma/client';
+
+export interface UserWithRoles {
+    id: number;
+    email: string;
+    name: string | null;
+    roles: UserRoleEnum[];
+    createdAt: Date;
+    updatedAt: Date;
+}
 
 @Injectable()
 export class UserService {
-    constructor(private prisma: PrismaService) {}
+    constructor(private readonly prisma: PrismaService) {}
 
-    async createUser(data: CreateUserDTO): Promise<UserResponseDTO> {
-        const hashedPassword = await bcrypt.hash(data.password, 10);
-        const user = await this.prisma.user.create({
-            data: {
-                ...data,
-                password: hashedPassword,
+    async findAll(): Promise<UserWithRoles[]> {
+        const users = (await this.prisma.user.findMany({
+            include: {
+                userRoles: {
+                    where: { isActive: true },
+                    select: { role: true },
+                },
+            },
+        })) as Array<{
+            id: number;
+            email: string;
+            name: string | null;
+            userRoles: { role: UserRoleEnum }[];
+            createdAt: Date;
+            updatedAt: Date;
+        }>;
+
+        return users.map((user) => ({
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            roles: user.userRoles.map((ur) => ur.role),
+            createdAt: user.createdAt,
+            updatedAt: user.updatedAt,
+        }));
+    }
+
+    async findOne(id: number): Promise<UserWithRoles> {
+        const user = await this.prisma.user.findUnique({
+            where: { id },
+            include: {
+                userRoles: {
+                    where: { isActive: true },
+                    select: { role: true },
+                },
             },
         });
-        return new UserResponseDTO(user);
-    }
 
-    async findAllUsers(): Promise<UserResponseDTO[]> {
-        const users = await this.prisma.user.findMany();
-        return users.map((user) => new UserResponseDTO(user));
-    }
-
-    async findUserById(id: number) {
-        const user = await this.prisma.user.findUnique({ where: { id } });
         if (!user) {
-            throw new NotFoundException(`User with ID ${id} not found`);
+            throw new NotFoundException('User not found');
         }
-        return new UserResponseDTO(user);
+
+        return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            roles: user.userRoles.map((ur) => ur.role),
+            createdAt: user.createdAt,
+            updatedAt: user.updatedAt,
+        };
     }
 
-    async updateUser(id: number, data: UpdateUserDTO): Promise<UserResponseDTO> {
-        if (data.password && typeof data.password === 'string') {
-            data.password = await bcrypt.hash(data.password, 10);
-        }
+    async updateUser(
+        id: number,
+        updateData: { name?: string; email?: string },
+    ): Promise<UserWithRoles> {
         const user = await this.prisma.user.update({
             where: { id },
-            data,
+            data: updateData,
+            include: {
+                userRoles: {
+                    where: { isActive: true },
+                    select: { role: true },
+                },
+            },
         });
-        return new UserResponseDTO(user);
+
+        return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            roles: user.userRoles.map((ur) => ur.role),
+            createdAt: user.createdAt,
+            updatedAt: user.updatedAt,
+        };
     }
 
-    async deleteUser(id: number): Promise<{ message: string }> {
-        await this.prisma.user.delete({ where: { id } });
-        return { message: 'User deleted sucessfully' };
+    async deleteUser(id: number): Promise<void> {
+        await this.prisma.user.delete({
+            where: { id },
+        });
+    }
+
+    async assignRole(
+        userId: number,
+        role: UserRoleEnum,
+        assignedBy: number,
+    ): Promise<UserWithRoles> {
+        // Verificar se usuário existe
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+        });
+
+        if (!user) {
+            throw new NotFoundException('User not found');
+        }
+
+        // Verificar se já tem a role
+        const existingRole = await this.prisma.userRole.findUnique({
+            where: {
+                userId_role: {
+                    userId: userId,
+                    role: role,
+                },
+            },
+        });
+
+        if (existingRole) {
+            if (existingRole.isActive) {
+                throw new ConflictException('User already has this role');
+            } else {
+                // Reativar role existente
+                await this.prisma.userRole.update({
+                    where: { id: existingRole.id },
+                    data: { isActive: true, assignedBy },
+                });
+            }
+        } else {
+            // Criar nova role
+            await this.prisma.userRole.create({
+                data: {
+                    userId,
+                    role,
+                    assignedBy,
+                },
+            });
+        }
+
+        return this.findOne(userId);
+    }
+
+    async removeRole(userId: number, role: UserRoleEnum): Promise<UserWithRoles> {
+        const userRole = await this.prisma.userRole.findUnique({
+            where: {
+                userId_role: {
+                    userId: userId,
+                    role: role,
+                },
+            },
+        });
+
+        if (!userRole) {
+            throw new NotFoundException('User does not have this role');
+        }
+
+        // Desativar role em vez de deletar (para auditoria)
+        await this.prisma.userRole.update({
+            where: { id: userRole.id },
+            data: { isActive: false },
+        });
+
+        return this.findOne(userId);
+    }
+
+    async getUserRoles(userId: number): Promise<UserRoleEnum[]> {
+        const userRoles = await this.prisma.userRole.findMany({
+            where: {
+                userId: userId,
+                isActive: true,
+            },
+            select: { role: true },
+        });
+
+        return userRoles.map((ur) => ur.role);
     }
 }
