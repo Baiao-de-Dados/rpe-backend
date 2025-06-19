@@ -12,6 +12,7 @@ import { EvaluationsModule } from './evaluations/evaluations.module';
 import { PillarsModule } from './pillars/pillars.module';
 import { CriteriaModule } from './criteria/criteria.module';
 import { TagsModule } from './tags/tags.module';
+import { CryptoModule } from './crypto/crypto.module';
 
 @Module({
     imports: [
@@ -25,6 +26,7 @@ import { TagsModule } from './tags/tags.module';
         PillarsModule,
         CriteriaModule,
         TagsModule,
+        CryptoModule,
     ],
     controllers: [AppController],
     providers: [
