@@ -1,14 +1,13 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { PinoLogger } from 'nestjs-pino';
 
 async function bootstrap() {
-    const app = await NestFactory.create(AppModule, { bufferLogs: true });
+    const app = await NestFactory.create(AppModule, {
+        bufferLogs: true, // Garante que logs sejam capturados antes do logger ser configurado
+    });
 
-    app.useLogger(app.get(PinoLogger));
-
-    // Configurar CORS
+    // CORS configurado
     app.enableCors({
         origin: true,
         methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
@@ -18,7 +17,7 @@ async function bootstrap() {
     // Configuração do Swagger
     const config = new DocumentBuilder()
         .setTitle('RPE API')
-        .setDescription('API do sistema da RockeCorp')
+        .setDescription('API do sistema da RocketCorp')
         .setVersion('1.0')
         .addBearerAuth(
             {
@@ -29,7 +28,7 @@ async function bootstrap() {
                 description: 'Enter JWT token',
                 in: 'header',
             },
-            'JWT-auth', // This name here is important for references
+            'JWT-auth',
         )
         .build();
 
@@ -46,4 +45,5 @@ async function bootstrap() {
     console.log(`🚀 Server running on http://localhost:${port}`);
     console.log(`📚 Swagger documentation available at http://localhost:${port}/api`);
 }
+
 void bootstrap();
