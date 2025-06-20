@@ -4,7 +4,7 @@ import { CreateEvaluationDto } from './dto/create-evaluation.dto';
 import { ApiTags } from '@nestjs/swagger';
 import { ApiCreate, ApiGet } from 'src/common/decorators/api-crud.decorator';
 import { ApiAuth } from 'src/common/decorators/api-auth.decorator';
-import { RequireRH } from 'src/auth/decorators/roles.decorator';
+import { RequireEmployer, RequireRH } from 'src/auth/decorators/roles.decorator';
 
 @ApiTags('Avaliações')
 @ApiAuth()
@@ -12,7 +12,7 @@ import { RequireRH } from 'src/auth/decorators/roles.decorator';
 export class EvaluationsController {
     constructor(private readonly evaluationsService: EvaluationsService) {}
 
-    @RequireRH()
+    @RequireEmployer()
     @Post()
     @ApiCreate('avaliação')
     create(@Body() createEvaluationDto: CreateEvaluationDto) {
