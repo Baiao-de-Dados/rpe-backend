@@ -30,35 +30,24 @@ export class RolesGuard implements CanActivate {
             context.getClass(),
         ]);
 
-        console.log('RolesGuard - Required roles (hierarchical):', requiredRoles);
-        console.log('RolesGuard - Required roles (exact):', exactRoles);
-
         // Se não tem nenhuma restrição, libera acesso
         if (!requiredRoles && !exactRoles) {
-            console.log('RolesGuard - No role restrictions, allowing access');
             return true;
         }
         const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
         const user = request.user;
 
-        console.log('RolesGuard - User from request:', user);
-
         if (!user) {
-            console.log('RolesGuard - User not authenticated');
             throw new ForbiddenException('User not authenticated');
         }
 
         if (!user.roles || user.roles.length === 0) {
-            console.log('RolesGuard - User has no roles assigned');
             throw new ForbiddenException('User has no roles assigned');
         }
-
-        console.log('RolesGuard - User roles:', user.roles);
 
         // Verificar roles com hierarquia
         if (requiredRoles) {
             const hasHierarchicalAccess = hasAnyRolePermission(user.roles, requiredRoles);
-            console.log('RolesGuard - Has hierarchical access:', hasHierarchicalAccess);
             if (hasHierarchicalAccess) {
                 return true;
             }
@@ -67,7 +56,6 @@ export class RolesGuard implements CanActivate {
         // Verificar roles exatas (sem hierarquia)
         if (exactRoles) {
             const hasExactAccess = exactRoles.some((role) => user.roles.includes(role));
-            console.log('RolesGuard - Has exact access:', hasExactAccess);
             if (hasExactAccess) {
                 return true;
             }
@@ -75,12 +63,6 @@ export class RolesGuard implements CanActivate {
 
         // Se chegou aqui, não tem acesso
         const allRequiredRoles = [...(requiredRoles || []), ...(exactRoles || [])];
-        console.log(
-            'RolesGuard - Access denied. Required:',
-            allRequiredRoles,
-            'User has:',
-            user.roles,
-        );
         throw new ForbiddenException(
             `Access denied. Required roles: ${allRequiredRoles.join(', ')}. Your roles: ${user.roles.join(', ')}`,
         );
