@@ -20,7 +20,7 @@ import { CryptoModule } from 'src/crypto/crypto.module';
             imports: [ConfigModule],
             inject: [ConfigService],
             useFactory: (configService: ConfigService) => ({
-                secret: configService.get('JWT_SECRET') || 'secretKey',
+                secret: configService.get('JWT_SECRET'),
                 signOptions: { expiresIn: '1d' },
             }),
         }),
