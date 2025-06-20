@@ -2,9 +2,9 @@ import { Controller, Post, Body, Get, Param, ParseIntPipe } from '@nestjs/common
 import { EvaluationsService } from './evaluations.service';
 import { CreateEvaluationDto } from './dto/create-evaluation.dto';
 import { ApiTags } from '@nestjs/swagger';
-import { Public } from 'src/auth/decorators/public.decorator';
 import { ApiCreate, ApiGet } from 'src/common/decorators/api-crud.decorator';
 import { ApiAuth } from 'src/common/decorators/api-auth.decorator';
+import { RequireRH } from 'src/auth/decorators/roles.decorator';
 
 @ApiTags('Avaliações')
 @ApiAuth()
@@ -12,19 +12,21 @@ import { ApiAuth } from 'src/common/decorators/api-auth.decorator';
 export class EvaluationsController {
     constructor(private readonly evaluationsService: EvaluationsService) {}
 
-    @Public() // @lorenzochaves, @markfranca --> Precisa refatorar isto!
+    @RequireRH()
     @Post()
     @ApiCreate('avaliação')
     create(@Body() createEvaluationDto: CreateEvaluationDto) {
         return this.evaluationsService.createEvaluation(createEvaluationDto);
     }
 
+    @RequireRH()
     @Get()
     @ApiGet('avaliações')
     findAll() {
         return this.evaluationsService.findAll();
     }
 
+    @RequireRH()
     @Get(':id')
     @ApiGet('avaliação')
     findOne(@Param('id', ParseIntPipe) id: number) {
