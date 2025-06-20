@@ -1,3 +1,4 @@
+import { Type } from 'class-transformer';
 import {
     IsString,
     IsNumber,
@@ -6,7 +7,6 @@ import {
     ValidateNested,
     IsDefined,
 } from 'class-validator';
-import { Type } from 'class-transformer';
 
 class CriterioDto {
     @IsNumber()
