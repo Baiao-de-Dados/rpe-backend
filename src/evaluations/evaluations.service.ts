@@ -28,8 +28,8 @@ export class EvaluationsService {
                     create: autoavaliacao.pilares.flatMap((pilar) =>
                         pilar.criterios.map((criterio) => ({
                             criterion: { connect: { id: criterio.criterioId } },
-                            nota: criterio.nota,
-                            justificativa: criterio.justificativa,
+                            note: criterio.nota,
+                            justification: criterio.justificativa,
                         })),
                     ),
                 },
