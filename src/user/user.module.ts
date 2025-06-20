@@ -3,7 +3,7 @@ import { UserController } from './user.controller';
 import { UserService } from './user.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { CryptoModule } from 'src/crypto/crypto.module';
-import { EncryptionInterceptor } from 'src/interceptors/encryption.interceptor';
+import { EncryptionInterceptor } from 'src/common/interceptors/encryption.interceptor';
 
 @Module({
     imports: [PrismaModule, CryptoModule], // Adicione o PrismaModule aqui

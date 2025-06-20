@@ -1,10 +1,12 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
+import { PinoLogger } from 'nestjs-pino';
 
 async function bootstrap() {
-    const app = await NestFactory.create(AppModule);
+    const app = await NestFactory.create(AppModule, { bufferLogs: true });
+
+    app.useLogger(app.get(PinoLogger));
 
     // Configurar CORS
     app.enableCors({
@@ -12,12 +14,6 @@ async function bootstrap() {
         methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
         credentials: true,
     });
-
-    // Configurar guards globais
-    const jwtAuthGuard = app.get(JwtAuthGuard);
-
-    // Aplicar apenas o JwtAuthGuard globalmente, o RolesGuard será aplicado onde necessário
-    app.useGlobalGuards(jwtAuthGuard);
 
     // Configuração do Swagger
     const config = new DocumentBuilder()
