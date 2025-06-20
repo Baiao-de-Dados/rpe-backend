@@ -11,6 +11,12 @@ import { Type } from 'class-transformer';
 class CriterioDto {
     @IsNumber()
     criterioId: number;
+
+    @IsNumber()
+    nota: number;
+
+    @IsString()
+    justificativa: string;
 }
 
 class PilarDto {
@@ -24,6 +30,9 @@ class PilarDto {
 }
 
 class AutoAvaliacaoDto {
+    @IsString()
+    justificativa: string;
+
     @IsArray()
     @ValidateNested({ each: true })
     @Type(() => PilarDto)

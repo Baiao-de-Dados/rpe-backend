@@ -138,13 +138,15 @@ model Criterion {
 }
 
 model CriteriaAssignment {
-    autoEvaluationId                       Int
-    criterionId                            Int
+  autoEvaluationId Int
+  criterionId      Int
+  nota             Int
+  justificativa    String
 
-    autoEvaluation                         AutoEvaluation @relation(fields: [autoEvaluationId], references: [id])
-    criterion                              Criterion      @relation(fields: [criterionId], references: [id])
+  autoEvaluation   AutoEvaluation @relation(fields: [autoEvaluationId], references: [id])
+  criterion        Criterion      @relation(fields: [criterionId], references: [id])
 
-    @@id([autoEvaluationId, criterionId])
+  @@id([autoEvaluationId, criterionId])
 }
 
 model Tag {

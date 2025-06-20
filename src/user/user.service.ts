@@ -204,9 +204,8 @@ export class UserService {
     }
 
     async findByEmail(email: string): Promise<UserWithRoles | null> {
-        const encryptedEmail = this.encryptionService.encrypt(email);
-        const user = await this.prisma.user.findUnique({
-            where: { email: encryptedEmail },
+        // Buscar todos os usuários e comparar emails descriptografados
+        const users = await this.prisma.user.findMany({
             include: {
                 userRoles: {
                     where: { isActive: true },
@@ -214,6 +213,9 @@ export class UserService {
                 },
             },
         });
+
+        // Encontrar o usuário com email correspondente
+        const user = users.find((u) => this.encryptionService.decrypt(u.email) === email);
 
         if (!user) {
             return null;

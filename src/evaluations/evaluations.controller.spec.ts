@@ -6,7 +6,6 @@ import { NotFoundException } from '@nestjs/common';
 
 describe('EvaluationsController', () => {
     let controller: EvaluationsController;
-    let service: EvaluationsService;
 
     const mockEvaluationsService = {
         createEvaluation: jest.fn(),
@@ -18,12 +17,15 @@ describe('EvaluationsController', () => {
         ciclo: '2024-Q1',
         colaboradorId: 1,
         autoavaliacao: {
+            justificativa: 'Autoavaliação geral do período',
             pilares: [
                 {
                     pilarId: 1,
                     criterios: [
                         {
                             criterioId: 1,
+                            nota: 8,
+                            justificativa: 'Bom domínio técnico',
                         },
                     ],
                 },
@@ -54,10 +56,10 @@ describe('EvaluationsController', () => {
 
     const mockEvaluation = {
         id: 1,
-        period: '2024-Q1',
+        cycle: '2024-Q1',
         userId: 1,
         createdAt: new Date(),
-        grade: null,
+        grade: 0,
         user: { id: 1, email: 'test@test.com', name: 'Test User' },
         autoEvaluation: {
             id: 1,
@@ -113,7 +115,6 @@ describe('EvaluationsController', () => {
         }).compile();
 
         controller = module.get<EvaluationsController>(EvaluationsController);
-        service = module.get<EvaluationsService>(EvaluationsService);
     });
 
     afterEach(() => {
@@ -129,7 +130,9 @@ describe('EvaluationsController', () => {
             const result = await controller.create(createEvaluationDto);
 
             // Assert
-            expect(() => service.createEvaluation(createEvaluationDto)).toHaveBeenCalled();
+            expect(mockEvaluationsService.createEvaluation).toHaveBeenCalledWith(
+                createEvaluationDto,
+            );
             expect(result).toEqual(mockEvaluation);
         });
 
@@ -140,7 +143,9 @@ describe('EvaluationsController', () => {
 
             // Act & Assert
             await expect(controller.create(createEvaluationDto)).rejects.toThrow(error);
-            expect(() => service.createEvaluation(createEvaluationDto)).toHaveBeenCalled();
+            expect(mockEvaluationsService.createEvaluation).toHaveBeenCalledWith(
+                createEvaluationDto,
+            );
         });
     });
 
@@ -154,7 +159,7 @@ describe('EvaluationsController', () => {
             const result = await controller.findAll();
 
             // Assert
-            expect(() => service.findAll()).toHaveBeenCalled();
+            expect(mockEvaluationsService.findAll).toHaveBeenCalled();
             expect(result).toEqual(mockEvaluations);
         });
 
@@ -166,7 +171,7 @@ describe('EvaluationsController', () => {
             const result = await controller.findAll();
 
             // Assert
-            expect(() => service.findAll()).toHaveBeenCalled();
+            expect(mockEvaluationsService.findAll).toHaveBeenCalled();
             expect(result).toEqual([]);
         });
 
@@ -177,7 +182,7 @@ describe('EvaluationsController', () => {
 
             // Act & Assert
             await expect(controller.findAll()).rejects.toThrow(error);
-            expect(() => service.findAll()).toHaveBeenCalled();
+            expect(mockEvaluationsService.findAll).toHaveBeenCalled();
         });
     });
 
@@ -191,21 +196,18 @@ describe('EvaluationsController', () => {
             const result = await controller.findOne(evaluationId);
 
             // Assert
-            expect(() => service.findOne(evaluationId)).toHaveBeenCalled();
+            expect(mockEvaluationsService.findOne).toHaveBeenCalledWith(evaluationId);
             expect(result).toEqual(mockEvaluation);
         });
 
         it('should handle NotFoundException properly', async () => {
             // Arrange
             const evaluationId = 999;
-            const notFoundError = new NotFoundException(
-                `Avaliação com ID ${evaluationId} não encontrada`,
-            );
-            mockEvaluationsService.findOne.mockRejectedValue(notFoundError);
+            mockEvaluationsService.findOne.mockRejectedValue(new NotFoundException());
 
             // Act & Assert
             await expect(controller.findOne(evaluationId)).rejects.toThrow(NotFoundException);
-            expect(() => service.findOne(evaluationId)).toHaveBeenCalled();
+            expect(mockEvaluationsService.findOne).toHaveBeenCalledWith(evaluationId);
         });
 
         it('should handle other service errors properly', async () => {
@@ -216,7 +218,7 @@ describe('EvaluationsController', () => {
 
             // Act & Assert
             await expect(controller.findOne(evaluationId)).rejects.toThrow(error);
-            expect(() => service.findOne(evaluationId)).toHaveBeenCalled();
+            expect(mockEvaluationsService.findOne).toHaveBeenCalledWith(evaluationId);
         });
     });
 });

@@ -31,12 +31,15 @@ describe('EvaluationsService', () => {
         ciclo: '2024-Q1',
         colaboradorId: 1,
         autoavaliacao: {
+            justificativa: 'Autoavaliação geral do período',
             pilares: [
                 {
                     pilarId: 1,
                     criterios: [
                         {
                             criterioId: 1,
+                            nota: 8,
+                            justificativa: 'Bom domínio técnico',
                         },
                     ],
                 },
@@ -150,18 +153,22 @@ describe('EvaluationsService', () => {
             // Assert
             expect(mockPrismaService.evaluation.create).toHaveBeenCalledWith({
                 data: {
-                    period: '2024-Q1',
+                    cycle: '2024-Q1',
                     userId: 1,
+                    grade: 0,
                 },
             });
 
             expect(mockPrismaService.autoEvaluation.create).toHaveBeenCalledWith({
                 data: {
                     evaluationId: 1,
+                    justification: 'Autoavaliação geral do período',
                     criteriaAssignments: {
                         create: [
                             {
                                 criterion: { connect: { id: 1 } },
+                                nota: 8,
+                                justificativa: 'Bom domínio técnico',
                             },
                         ],
                     },
@@ -184,6 +191,7 @@ describe('EvaluationsService', () => {
                     evaluatorId: 2,
                     evaluatedId: 1,
                     justification: 'Acompanhamento semanal',
+                    cycle: '2024-Q1',
                 },
             });
 
@@ -193,7 +201,7 @@ describe('EvaluationsService', () => {
                     evaluatorId: 1,
                     evaluatedId: 2,
                     justification: 'Referência técnica',
-                    cycle: '2024-Q1',
+                    cycle: expect.any(Date),
                     tagReferences: {
                         create: [{ tag: { connect: { id: 1 } } }],
                     },
@@ -244,7 +252,11 @@ describe('EvaluationsService', () => {
                         include: {
                             criteriaAssignments: {
                                 include: {
-                                    criterion: true,
+                                    criterion: {
+                                        include: {
+                                            pillar: true,
+                                        },
+                                    },
                                 },
                             },
                         },
@@ -295,7 +307,11 @@ describe('EvaluationsService', () => {
                         include: {
                             criteriaAssignments: {
                                 include: {
-                                    criterion: true,
+                                    criterion: {
+                                        include: {
+                                            pillar: true,
+                                        },
+                                    },
                                 },
                             },
                         },

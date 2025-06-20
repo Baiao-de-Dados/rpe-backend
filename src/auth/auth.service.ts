@@ -24,15 +24,24 @@ export class AuthService {
 
     async validateUser(email: string, password: string): Promise<UserPublic | null> {
         try {
-            const encryptedEmail = this.encryptionService.encrypt(email);
-            const user = await this.prisma.user.findUnique({
-                where: { email: encryptedEmail },
+            // Buscar todos os usuários e descriptografar os emails
+            const users = await this.prisma.user.findMany({
                 include: {
                     userRoles: {
                         where: { isActive: true },
                         select: { role: true },
                     },
                 },
+            });
+
+            // Encontrar o usuário pelo email descriptografado
+            const user = users.find((u) => {
+                try {
+                    const decryptedEmail = this.encryptionService.decrypt(u.email);
+                    return decryptedEmail === email;
+                } catch {
+                    return false;
+                }
             });
 
             if (

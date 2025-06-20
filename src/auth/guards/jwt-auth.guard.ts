@@ -16,10 +16,15 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
             context.getClass(),
         ]);
 
+        console.log('JwtAuthGuard - Route is public:', isPublic);
+        console.log('JwtAuthGuard - Route path:', context.getHandler().name);
+
         if (isPublic) {
+            console.log('JwtAuthGuard - Allowing public access');
             return true;
         }
 
+        console.log('JwtAuthGuard - Requiring authentication');
         // Se não é pública, aplicar autenticação JWT
         return super.canActivate(context);
     }

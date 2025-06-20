@@ -13,8 +13,9 @@ export class EvaluationsService {
         // Cria a avaliação principal
         const evaluation = await this.prisma.evaluation.create({
             data: {
-                period: ciclo,
+                cycle: ciclo,
                 userId: colaboradorId,
+                grade: 0, // ou null, se permitido, ou algum valor default
             },
         });
 
@@ -22,10 +23,13 @@ export class EvaluationsService {
         await this.prisma.autoEvaluation.create({
             data: {
                 evaluationId: evaluation.id,
+                justification: autoavaliacao.justificativa,
                 criteriaAssignments: {
                     create: autoavaliacao.pilares.flatMap((pilar) =>
                         pilar.criterios.map((criterio) => ({
                             criterion: { connect: { id: criterio.criterioId } },
+                            nota: criterio.nota,
+                            justificativa: criterio.justificativa,
                         })),
                     ),
                 },
@@ -40,8 +44,8 @@ export class EvaluationsService {
                         evaluationId: evaluation.id,
                         evaluatorId: colaboradorId,
                         evaluatedId: avaliacao.avaliadoId,
-                        strengths: avaliacao.pontosFortes,
-                        improvements: avaliacao.pontosMelhoria,
+                        strengths: avaliacao.pontosFortes || '',
+                        improvements: avaliacao.pontosMelhoria || '',
                     },
                 }),
             ),
@@ -56,6 +60,7 @@ export class EvaluationsService {
                         evaluatorId: mentor.mentorId,
                         evaluatedId: colaboradorId,
                         justification: mentor.justificativa,
+                        cycle: ciclo,
                     },
                 }),
             ),
@@ -70,7 +75,7 @@ export class EvaluationsService {
                         evaluatorId: colaboradorId,
                         evaluatedId: referencia.colaboradorId,
                         justification: referencia.justificativa,
-                        cycle: ciclo,
+                        cycle: new Date(ciclo),
                         tagReferences: {
                             create: referencia.tagIds.map((tagId) => ({
                                 tag: { connect: { id: tagId } },
@@ -89,7 +94,11 @@ export class EvaluationsService {
                     include: {
                         criteriaAssignments: {
                             include: {
-                                criterion: true,
+                                criterion: {
+                                    include: {
+                                        pillar: true,
+                                    },
+                                },
                             },
                         },
                     },
@@ -117,7 +126,11 @@ export class EvaluationsService {
                     include: {
                         criteriaAssignments: {
                             include: {
-                                criterion: true,
+                                criterion: {
+                                    include: {
+                                        pillar: true,
+                                    },
+                                },
                             },
                         },
                     },
@@ -146,7 +159,11 @@ export class EvaluationsService {
                     include: {
                         criteriaAssignments: {
                             include: {
-                                criterion: true,
+                                criterion: {
+                                    include: {
+                                        pillar: true,
+                                    },
+                                },
                             },
                         },
                     },

@@ -13,7 +13,7 @@ import { CryptoModule } from 'src/crypto/crypto.module';
 @Module({
     imports: [
         PrismaModule,
-        PassportModule,
+        PassportModule.register({ defaultStrategy: 'jwt' }),
         ConfigModule,
         CryptoModule,
         JwtModule.registerAsync({
