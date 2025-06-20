@@ -66,7 +66,13 @@ export class AuthService {
             throw new UnauthorizedException('Credenciais inválidas');
         }
 
-        const payload = { sub: user.id, email: user.email };
+        // Incluir roles no payload para o JWT
+        const payload = {
+            sub: user.id,
+            email: user.email,
+            roles: user.roles, // Adicionando roles ao payload
+        };
+
         return {
             access_token: this.jwtService.sign(payload),
             user: user,

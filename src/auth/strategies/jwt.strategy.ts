@@ -9,6 +9,7 @@ import { UserRoleEnum } from '@prisma/client';
 export interface JwtPayload {
     sub: number;
     email: string;
+    roles?: UserRoleEnum[]; // Adicionado campo roles
     iat?: number;
     exp?: number;
 }
@@ -37,46 +38,36 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     }
 
     async validate(payload: JwtPayload): Promise<UserFromJwt> {
-        const { sub: userId } = payload;
+        const { sub: userId, roles: payloadRoles } = payload;
 
-        console.log('JWT Strategy - Validating user ID:', userId);
+        console.log('JWT Strategy - Validating token with payload:', {
+            userId,
+            payloadHasRoles: !!payloadRoles,
+        });
 
-        // Buscar usuário com suas roles ativas
+        // Buscar o usuário somente pelo ID
         const user = await this.prisma.user.findUnique({
             where: { id: userId },
             include: {
                 userRoles: {
-                    where: {
-                        isActive: true,
-                    },
-                    select: {
-                        role: true,
-                    },
+                    where: { isActive: true },
+                    select: { role: true },
                 },
             },
         });
 
         if (!user) {
-            console.log('JWT Strategy - User not found');
             throw new UnauthorizedException('User not found');
         }
 
-        console.log('JWT Strategy - User found, encrypted email:', user.email);
+        // Usar roles do payload se disponíveis, caso contrário extrair do banco
+        const roles = payloadRoles || user.userRoles.map((userRole) => userRole.role);
 
-        // Verificar se o usuário tem pelo menos uma role ativa
-        if (!user.userRoles || user.userRoles.length === 0) {
-            console.log('JWT Strategy - User has no active roles');
-            throw new UnauthorizedException('User has no active roles');
-        }
+        console.log('JWT Strategy - Using roles:', roles);
 
-        // Extrair apenas as roles para o objeto de retorno
-        const roles = user.userRoles.map((userRole) => userRole.role);
-
-        // Descriptografar email
+        // Descriptografar email para retorno
         const decryptedEmail = this.encryptionService.decrypt(user.email);
-        console.log('JWT Strategy - Decrypted email:', decryptedEmail);
 
-        // Retornar usuário com roles para os guards
         return {
             id: user.id,
             email: decryptedEmail,

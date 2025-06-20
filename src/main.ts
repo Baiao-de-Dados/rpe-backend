@@ -1,12 +1,13 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { PinoLogger } from 'nestjs-pino';
+import { Logger } from '@nestjs/common';
 
 async function bootstrap() {
-    const app = await NestFactory.create(AppModule, { bufferLogs: true });
+    const app = await NestFactory.create(AppModule);
 
-    app.useLogger(app.get(PinoLogger));
+    // Logger para mensagens de inicialização
+    const logger = new Logger('Bootstrap');
 
     // Configurar CORS
     app.enableCors({
@@ -40,10 +41,10 @@ async function bootstrap() {
         },
     });
 
-    const port = process.env.PORT || 3000;
+    const port = process.env.PORT || 3001;
     await app.listen(port);
 
-    console.log(`🚀 Server running on http://localhost:${port}`);
-    console.log(`📚 Swagger documentation available at http://localhost:${port}/api`);
+    logger.log(`🚀 Server running on http://localhost:${port}`);
+    logger.log(`📚 Swagger documentation available at http://localhost:${port}/api`);
 }
 void bootstrap();
