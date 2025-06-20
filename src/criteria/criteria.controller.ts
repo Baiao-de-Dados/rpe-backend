@@ -12,8 +12,10 @@ import {
     ApiList,
     ApiDelete,
 } from 'src/common/decorators/api-crud.decorator';
+import { ApiAuth } from 'src/common/decorators/api-auth.decorator';
 
 @ApiTags('Critérios')
+@ApiAuth()
 @Controller('criteria')
 export class CriteriaController {
     constructor(private readonly criteriaService: CriteriaService) {}
