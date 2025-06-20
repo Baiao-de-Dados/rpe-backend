@@ -15,7 +15,7 @@ export class EvaluationsService {
             data: {
                 cycle: ciclo,
                 userId: colaboradorId,
-                grade: 0, // ou null, se permitido, ou algum valor default
+                grade: 0.0, // Garantir que é um número
             },
         });
 
