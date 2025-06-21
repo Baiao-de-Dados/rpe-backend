@@ -39,11 +39,11 @@ COPY --from=builder /usr/src/app/prisma ./prisma
 
 # 2. define variáveis (leia seu .env via docker-compose ou aqui)
 ENV NODE_ENV=production
-ENV PORT=3001
+ENV PORT=3000
 # ENV DATABASE_URL será definida no docker-compose
 
 # 3. expõe porta do Nest (3001 conforme seu package.json)
-EXPOSE 3001
+EXPOSE 3000
 
 # 4. comando de start otimizado
 CMD ["pnpm", "start:prod"]
