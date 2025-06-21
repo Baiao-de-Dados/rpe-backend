@@ -19,7 +19,7 @@ async function bootstrap() {
     // Configuração do Swagger
     const config = new DocumentBuilder()
         .setTitle('RPE API')
-        .setDescription('API do sistema da RockeCorp')
+        .setDescription('API do sistema da RocketCorp')
         .setVersion('1.0')
         .addBearerAuth(
             {
@@ -30,7 +30,7 @@ async function bootstrap() {
                 description: 'Enter JWT token',
                 in: 'header',
             },
-            'JWT-auth', // This name here is important for references
+            'JWT-auth',
         )
         .build();
 
@@ -47,4 +47,5 @@ async function bootstrap() {
     logger.log(`🚀 Server running on http://localhost:${port}`);
     logger.log(`📚 Swagger documentation available at http://localhost:${port}/api`);
 }
+
 void bootstrap();

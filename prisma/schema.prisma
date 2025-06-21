@@ -132,7 +132,7 @@ model Criterion {
     updatedAt           DateTime             @updatedAt
 
     pillarId            Int
-    pillar              Pillar               @relation(fields: [pillarId], references: [id])
+    pillar    Pillar  @relation(fields: [pillarId], references: [id], onDelete: Cascade)
 
     criteriaAssignments CriteriaAssignment[]
 }

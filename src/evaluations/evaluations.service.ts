@@ -1,14 +1,21 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateEvaluationDto } from './dto/create-evaluation.dto';
+import { EncryptionService } from 'src/crypto/encryption.service';
 
 @Injectable()
 export class EvaluationsService {
-    constructor(private prisma: PrismaService) {}
+    constructor(
+        private prisma: PrismaService,
+        private encryptionService: EncryptionService,
+    ) {}
 
     async createEvaluation(createEvaluationDto: CreateEvaluationDto) {
         const { ciclo, colaboradorId, autoavaliacao, avaliacao360, mentoring, referencias } =
             createEvaluationDto;
+        const encryptedMentorJustification = this.encryptionService.encrypt(
+            mentoring.map((m) => m.justificativa).join(', '),
+        );
 
         // Cria a avaliação principal
         const evaluation = await this.prisma.evaluation.create({
@@ -59,7 +66,7 @@ export class EvaluationsService {
                         evaluationId: evaluation.id,
                         evaluatorId: mentor.mentorId,
                         evaluatedId: colaboradorId,
-                        justification: mentor.justificativa,
+                        justification: encryptedMentorJustification,
                         cycle: ciclo,
                     },
                 }),
@@ -87,7 +94,7 @@ export class EvaluationsService {
         );
 
         // Retorna tudo junto
-        return this.prisma.evaluation.findUnique({
+        const result = await this.prisma.evaluation.findUnique({
             where: { id: evaluation.id },
             include: {
                 autoEvaluation: {
@@ -116,6 +123,8 @@ export class EvaluationsService {
                 },
             },
         });
+
+        return result;
     }
 
     async findAll() {
