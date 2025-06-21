@@ -37,6 +37,9 @@ COPY --from=builder /usr/src/app/dist ./dist
 # se usar Prisma, precisa do schema em runtime
 COPY --from=builder /usr/src/app/prisma ./prisma
 
+COPY scripts/start.sh ./scripts/start.sh
+RUN chmod +x ./scripts/start.sh
+
 # 2. define variáveis (leia seu .env via docker-compose ou aqui)
 ENV NODE_ENV=production
 ENV PORT=3000
@@ -46,4 +49,4 @@ ENV PORT=3000
 EXPOSE 3000
 
 # 4. comando de start otimizado
-CMD ["pnpm", "start:prod"]
+CMD ["./scripts/start.sh"]
