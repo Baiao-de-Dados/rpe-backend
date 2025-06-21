@@ -1,16 +1,41 @@
-version: '3.8'
 services:
-    postgres:
-        image: postgres:15
-        container_name: rpe-postgres
-        environment:
-            POSTGRES_USER: postgres
-            POSTGRES_PASSWORD: postgres
-            POSTGRES_DB: rpe_dev
-        ports:
-            - '5432:5432'
-        volumes:
-            - postgres_data:/var/lib/postgresql/data
+  postgres:
+    image: postgres:15
+    container_name: rpe-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: rpe_dev
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
 
+  app:
+    image: meu-backend  # Usa a imagem que você buildou
+    container_name: rpe-backend
+    depends_on:
+      - postgres
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/rpe_dev?schema=public
+      - NODE_ENV=production
+    ports:
+      - '3002:3000'  # Mapeia porta local 3002 para porta 3000 do container
+
+  prisma-studio:
+    build: .
+    container_name: rpe-prisma-studio
+    depends_on:
+      - postgres
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/rpe_dev?schema=public
+    ports:
+      - '5555:5555'
+    command: pnpm prisma studio --hostname 0.0.0.0
+    
 volumes:
-    postgres_data:
+  postgres_data:
