@@ -1,30 +1,59 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+
 import { Test, TestingModule } from '@nestjs/testing';
 import { EvaluationsService } from './evaluations.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateEvaluationDto } from './dto/create-evaluation.dto';
+import { EvaluationValidationService } from './services/evaluation-validation.service';
+import { AutoEvaluationService } from './services/auto-evaluation.service';
+import { Evaluation360Service } from './services/evaluation360.service';
+import { MentoringService } from './services/mentoring.service';
+import { ReferenceService } from './services/reference.service';
 import { NotFoundException } from '@nestjs/common';
 
 describe('EvaluationsService', () => {
     let service: EvaluationsService;
+    let mockPrismaService: any;
+    let mockValidationService: any;
+    let mockAutoEvaluationService: any;
+    let mockEvaluation360Service: any;
+    let mockMentoringService: any;
+    let mockReferenceService: any;
 
-    const mockPrismaService = {
-        evaluation: {
-            create: jest.fn(),
-            findMany: jest.fn(),
-            findUnique: jest.fn(),
-        },
+    const mockEvaluation = {
+        id: 1,
+        cycle: '2024-Q1',
+        userId: 1,
+        grade: 0,
+        createdAt: new Date(),
+    };
+
+    const mockCompleteEvaluation = {
+        ...mockEvaluation,
+        user: { id: 1, name: 'Test User', email: 'test@test.com' },
         autoEvaluation: {
-            create: jest.fn(),
+            id: 1,
+            evaluationId: 1,
+            justification: 'Autoavaliação geral do período',
+            criteriaAssignments: [
+                {
+                    criterion: {
+                        id: 1,
+                        name: 'Domínio Técnico',
+                        pillar: { id: 1, name: 'Técnico' },
+                    },
+                    note: 8,
+                    justification: 'Bom domínio técnico',
+                },
+            ],
         },
-        evaluation360: {
-            create: jest.fn(),
-        },
-        mentoring: {
-            create: jest.fn(),
-        },
-        reference: {
-            create: jest.fn(),
-        },
+        evaluation360: [],
+        mentoring: [],
+        references: [],
     };
 
     const mockCreateEvaluationDto: CreateEvaluationDto = {
@@ -68,64 +97,67 @@ describe('EvaluationsService', () => {
         ],
     };
 
-    const mockEvaluation = {
-        id: 1,
-        period: '2024-Q1',
-        userId: 1,
-        createdAt: new Date(),
-        grade: null,
-    };
-
-    const mockCompleteEvaluation = {
-        ...mockEvaluation,
-        user: { id: 1, email: 'test@test.com', name: 'Test User' },
-        autoEvaluation: {
-            id: 1,
-            evaluationId: 1,
-            criteriaAssignments: [
-                {
-                    criterion: { id: 1, name: 'Conhecimento Técnico' },
-                },
-            ],
-        },
-        evaluation360: [
-            {
-                id: 1,
-                evaluationId: 1,
-                evaluatorId: 1,
-                evaluatedId: 2,
-                strengths: 'Ótima comunicação',
-                improvements: 'Precisa melhorar prazos',
-            },
-        ],
-        mentoring: [
-            {
-                id: 1,
-                evaluationId: 1,
-                evaluatorId: 2,
-                evaluatedId: 1,
-                justification: 'Acompanhamento semanal',
-            },
-        ],
-        references: [
-            {
-                id: 1,
-                evaluationId: 1,
-                evaluatorId: 1,
-                evaluatedId: 2,
-                justification: 'Referência técnica',
-                tagReferences: [{ tag: { id: 1, name: 'Desenvolvedor' } }],
-            },
-        ],
-    };
-
     beforeEach(async () => {
+        // Create simple mocks
+        mockPrismaService = {
+            evaluation: {
+                create: jest.fn(),
+                findMany: jest.fn(),
+                findUnique: jest.fn(),
+            },
+            $transaction: jest.fn(),
+        };
+
+        mockValidationService = {
+            validateEvaluationData: jest.fn(),
+        };
+
+        mockAutoEvaluationService = {
+            createAutoEvaluation: jest.fn(),
+            getAutoEvaluationWithCriteria: jest.fn(),
+        };
+
+        mockEvaluation360Service = {
+            createEvaluation360: jest.fn(),
+            getEvaluation360ByEvaluationId: jest.fn(),
+        };
+
+        mockMentoringService = {
+            createMentoring: jest.fn(),
+            getMentoringByEvaluationId: jest.fn(),
+        };
+
+        mockReferenceService = {
+            createReferences: jest.fn(),
+            getReferencesByEvaluationId: jest.fn(),
+        };
+
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 EvaluationsService,
                 {
                     provide: PrismaService,
                     useValue: mockPrismaService,
+                },
+                {
+                    provide: EvaluationValidationService,
+                    useValue: mockValidationService,
+                },
+                {
+                    provide: AutoEvaluationService,
+                    useValue: mockAutoEvaluationService,
+                },
+                {
+                    provide: Evaluation360Service,
+                    useValue: mockEvaluation360Service,
+                },
+                {
+                    provide: MentoringService,
+                    useValue: mockMentoringService,
+                },
+                {
+                    provide: ReferenceService,
+                    useValue: mockReferenceService,
                 },
             ],
         }).compile();
@@ -140,74 +172,54 @@ describe('EvaluationsService', () => {
     describe('createEvaluation', () => {
         it('should create a complete evaluation successfully', async () => {
             // Arrange
-            mockPrismaService.evaluation.create.mockResolvedValue(mockEvaluation);
-            mockPrismaService.autoEvaluation.create.mockResolvedValue({});
-            mockPrismaService.evaluation360.create.mockResolvedValue({});
-            mockPrismaService.mentoring.create.mockResolvedValue({});
-            mockPrismaService.reference.create.mockResolvedValue({});
-            mockPrismaService.evaluation.findUnique.mockResolvedValue(mockCompleteEvaluation);
+            const mockTransaction = jest.fn().mockImplementation(async (callback) => {
+                return await callback(mockPrismaService);
+            });
+            mockPrismaService.$transaction = mockTransaction;
+            (mockPrismaService.evaluation.create as jest.Mock).mockResolvedValue(mockEvaluation);
+            (mockPrismaService.evaluation.findUnique as jest.Mock).mockResolvedValue(
+                mockCompleteEvaluation,
+            );
 
             // Act
             const result = await service.createEvaluation(mockCreateEvaluationDto);
 
             // Assert
+            expect(mockValidationService.validateEvaluationData).toHaveBeenCalledWith(
+                mockCreateEvaluationDto,
+            );
+            expect(mockPrismaService.$transaction).toHaveBeenCalled();
             expect(mockPrismaService.evaluation.create).toHaveBeenCalledWith({
                 data: {
                     cycle: '2024-Q1',
                     userId: 1,
-                    grade: 0,
+                    grade: 0.0,
                 },
             });
-
-            expect(mockPrismaService.autoEvaluation.create).toHaveBeenCalledWith({
-                data: {
-                    evaluationId: 1,
-                    justification: 'Autoavaliação geral do período',
-                    criteriaAssignments: {
-                        create: [
-                            {
-                                criterion: { connect: { id: 1 } },
-                                nota: 8,
-                                justificativa: 'Bom domínio técnico',
-                            },
-                        ],
-                    },
-                },
-            });
-
-            expect(mockPrismaService.evaluation360.create).toHaveBeenCalledWith({
-                data: {
-                    evaluationId: 1,
-                    evaluatorId: 1,
-                    evaluatedId: 2,
-                    strengths: 'Ótima comunicação',
-                    improvements: 'Precisa melhorar prazos',
-                },
-            });
-
-            expect(mockPrismaService.mentoring.create).toHaveBeenCalledWith({
-                data: {
-                    evaluationId: 1,
-                    evaluatorId: 2,
-                    evaluatedId: 1,
-                    justification: 'Acompanhamento semanal',
-                    cycle: '2024-Q1',
-                },
-            });
-
-            expect(mockPrismaService.reference.create).toHaveBeenCalledWith({
-                data: {
-                    evaluationId: 1,
-                    evaluatorId: 1,
-                    evaluatedId: 2,
-                    justification: 'Referência técnica',
-                    cycle: expect.any(Date),
-                    tagReferences: {
-                        create: [{ tag: { connect: { id: 1 } } }],
-                    },
-                },
-            });
-
+            expect(mockAutoEvaluationService.createAutoEvaluation).toHaveBeenCalledWith(
+                1,
+                mockCreateEvaluationDto.autoavaliacao,
+                mockPrismaService,
+            );
+            expect(mockEvaluation360Service.createEvaluation360).toHaveBeenCalledWith(
+                1,
+                1,
+                mockCreateEvaluationDto.avaliacao360,
+                mockPrismaService,
+            );
+            expect(mockMentoringService.createMentoring).toHaveBeenCalledWith(
+                1,
+                1,
+                '2024-Q1',
+                mockCreateEvaluationDto.mentoring,
+                mockPrismaService,
+            );
+            expect(mockReferenceService.createReferences).toHaveBeenCalledWith(
+                1,
+                1,
+                mockCreateEvaluationDto.referencias,
+                mockPrismaService,
+            );
             expect(result).toEqual(mockCompleteEvaluation);
         });
 
@@ -220,17 +232,22 @@ describe('EvaluationsService', () => {
                 referencias: [],
             };
 
-            mockPrismaService.evaluation.create.mockResolvedValue(mockEvaluation);
-            mockPrismaService.autoEvaluation.create.mockResolvedValue({});
-            mockPrismaService.evaluation.findUnique.mockResolvedValue(mockCompleteEvaluation);
+            const mockTransaction = jest.fn().mockImplementation(async (callback) => {
+                return await callback(mockPrismaService);
+            });
+            mockPrismaService.$transaction = mockTransaction;
+            (mockPrismaService.evaluation.create as jest.Mock).mockResolvedValue(mockEvaluation);
+            (mockPrismaService.evaluation.findUnique as jest.Mock).mockResolvedValue(
+                mockCompleteEvaluation,
+            );
 
             // Act
             const result = await service.createEvaluation(emptyDto);
 
             // Assert
-            expect(mockPrismaService.evaluation360.create).not.toHaveBeenCalled();
-            expect(mockPrismaService.mentoring.create).not.toHaveBeenCalled();
-            expect(mockPrismaService.reference.create).not.toHaveBeenCalled();
+            expect(mockEvaluation360Service.createEvaluation360).not.toHaveBeenCalled();
+            expect(mockMentoringService.createMentoring).not.toHaveBeenCalled();
+            expect(mockReferenceService.createReferences).not.toHaveBeenCalled();
             expect(result).toEqual(mockCompleteEvaluation);
         });
     });
@@ -239,7 +256,7 @@ describe('EvaluationsService', () => {
         it('should return all evaluations with complete data', async () => {
             // Arrange
             const mockEvaluations = [mockCompleteEvaluation];
-            mockPrismaService.evaluation.findMany.mockResolvedValue(mockEvaluations);
+            (mockPrismaService.evaluation.findMany as jest.Mock).mockResolvedValue(mockEvaluations);
 
             // Act
             const result = await service.findAll();
@@ -279,7 +296,7 @@ describe('EvaluationsService', () => {
 
         it('should return empty array when no evaluations exist', async () => {
             // Arrange
-            mockPrismaService.evaluation.findMany.mockResolvedValue([]);
+            (mockPrismaService.evaluation.findMany as jest.Mock).mockResolvedValue([]);
 
             // Act
             const result = await service.findAll();
@@ -293,7 +310,9 @@ describe('EvaluationsService', () => {
         it('should return a single evaluation by id', async () => {
             // Arrange
             const evaluationId = 1;
-            mockPrismaService.evaluation.findUnique.mockResolvedValue(mockCompleteEvaluation);
+            (mockPrismaService.evaluation.findUnique as jest.Mock).mockResolvedValue(
+                mockCompleteEvaluation,
+            );
 
             // Act
             const result = await service.findOne(evaluationId);
@@ -335,7 +354,7 @@ describe('EvaluationsService', () => {
         it('should throw NotFoundException when evaluation not found', async () => {
             // Arrange
             const evaluationId = 999;
-            mockPrismaService.evaluation.findUnique.mockResolvedValue(null);
+            (mockPrismaService.evaluation.findUnique as jest.Mock).mockResolvedValue(null);
 
             // Act & Assert
             await expect(service.findOne(evaluationId)).rejects.toThrow(NotFoundException);
