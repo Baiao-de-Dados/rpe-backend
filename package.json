@@ -22,6 +22,8 @@
         "db:down": "docker-compose down",
         "db:migrate": "prisma migrate dev",
         "db:generate": "prisma generate",
+        "db:build": "docker-compose build",
+        "db:run": "docker-compose up --build",
         "db:studio": "docker-compose exec app pnpm prisma studio",
         "db:deploy": "prisma migrate deploy",
         "prepare": "husky"

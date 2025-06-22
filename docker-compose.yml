@@ -12,6 +12,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
 
   app:
+    build: .
     image: meu-backend  # Usa a imagem que você buildou
     container_name: rpe-backend
     depends_on:

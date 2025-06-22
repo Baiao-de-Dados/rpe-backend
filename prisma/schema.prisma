@@ -20,9 +20,9 @@ enum UserRoleEnum {
 
 model User {
     id                        Int          @id @default(autoincrement())
-    email                     String       @unique
+    email                     String       @unique // luankato@email -> luan.kato@email
     password                  String       @map("password_hash")
-    name                      String? 
+    name                      String?      
     createdAt                 DateTime     @default(now()) @map("created_at")
     updatedAt                 DateTime     @updatedAt @map("updated_at")
     
