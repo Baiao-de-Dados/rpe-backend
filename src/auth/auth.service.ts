@@ -1,7 +1,7 @@
 import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
-import { EncryptionService } from 'src/crypto/encryption.service';
+import { EncryptionService } from 'src/encryption/encryption.service';
 import { UserRoleEnum } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 

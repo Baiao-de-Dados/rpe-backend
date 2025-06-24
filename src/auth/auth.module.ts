@@ -8,7 +8,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { PrismaModule } from '../prisma/prisma.module';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
-import { CryptoModule } from 'src/crypto/crypto.module';
+import { CryptoModule } from 'src/encryption/crypto.module';
 
 @Module({
     imports: [

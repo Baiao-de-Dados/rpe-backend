@@ -8,7 +8,7 @@ import { AutoEvaluationService } from './services/auto-evaluation.service';
 import { Evaluation360Service } from './services/evaluation360.service';
 import { MentoringService } from './services/mentoring.service';
 import { ReferenceService } from './services/reference.service';
-import { CryptoModule } from 'src/crypto/crypto.module';
+import { CryptoModule } from 'src/encryption/crypto.module';
 
 @Module({
     imports: [PrismaModule, CryptoModule],

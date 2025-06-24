@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { EncryptionService } from 'src/crypto/encryption.service';
+import { EncryptionService } from 'src/encryption/encryption.service';
 import { User, UserRoleEnum } from '@prisma/client';
 
 export interface UserWithRoles {
