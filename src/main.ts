@@ -1,13 +1,15 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { Logger } from '@nestjs/common';
+import { Logger } from 'nestjs-pino';
+import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 
 async function bootstrap() {
-    const app = await NestFactory.create(AppModule);
+    const app = await NestFactory.create(AppModule, { bufferLogs: true });
 
-    // Logger para mensagens de inicialização
-    const logger = new Logger('Bootstrap');
+    // Configurar o logger
+    const logger = app.get(Logger);
+    app.useLogger(logger);
 
     // Configurar CORS
     app.enableCors({
@@ -15,6 +17,7 @@ async function bootstrap() {
         methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
         credentials: true,
     });
+    app.useGlobalInterceptors(app.get(LoggingInterceptor));
 
     // Configuração do Swagger
     const config = new DocumentBuilder()
@@ -44,8 +47,8 @@ async function bootstrap() {
     const port = process.env.PORT || 3001;
     await app.listen(port, '0.0.0.0');
 
-    logger.log(`🚀 Server running on http://localhost:${port}`);
-    logger.log(`📚 Swagger documentation available at http://localhost:${port}/api`);
+    logger.log(`\nServer running on http://localhost:${port}`);
+    logger.log(`\nSwagger documentation available at http://localhost:${port}/api`);
 }
 
 void bootstrap();

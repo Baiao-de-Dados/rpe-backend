@@ -1,14 +1,16 @@
-import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
+import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { AuditMiddleware } from './common/middleware/audit.middleware';
+import { EvaluationsModule } from './evaluations/evaluations.module';
+import { CriteriaModule } from './criteria/criteria.module';
+import { PillarsModule } from './pillars/pillars.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { AppController } from './app.controller';
 import { UserModule } from './user/user.module';
 import { AuthModule } from './auth/auth.module';
-import { EvaluationsModule } from './evaluations/evaluations.module';
-import { PillarsModule } from './pillars/pillars.module';
-import { CriteriaModule } from './criteria/criteria.module';
 import { TagsModule } from './tags/tags.module';
+import { ConfigModule } from '@nestjs/config';
+import { AppService } from './app.service';
 import { LoggerModule } from 'nestjs-pino';
 
 @Module({
@@ -18,12 +20,13 @@ import { LoggerModule } from 'nestjs-pino';
         }),
         LoggerModule.forRoot({
             pinoHttp: {
+                level: process.env.LOG_LEVEL || 'info',
                 transport: {
                     target: 'pino-pretty',
                     options: {
                         colorize: true,
                         translateTime: 'SYS:standard',
-                        singleLine: true,
+                        ignore: 'pid,hostname,req.headers,req.cookies,res.headers',
                     },
                 },
             },
@@ -37,6 +40,12 @@ import { LoggerModule } from 'nestjs-pino';
         TagsModule,
     ],
     controllers: [AppController],
-    providers: [AppService],
+    providers: [AppService, LoggingInterceptor],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+    configure(consumer: MiddlewareConsumer) {
+        consumer
+            .apply(AuditMiddleware)
+            .forRoutes('evaluations', 'pillars', 'criteria', 'tags', 'users');
+    }
+}
