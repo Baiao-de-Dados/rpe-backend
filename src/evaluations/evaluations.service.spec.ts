@@ -52,7 +52,14 @@ describe('EvaluationsService', () => {
             ],
         },
         evaluation360: [],
-        mentoring: [],
+        mentoring: {
+            id: 1,
+            evaluationId: 1,
+            evaluatorId: 2,
+            evaluatedId: 1,
+            justification: 'Acompanhamento semanal',
+            cycle: '2024-Q1',
+        },
         references: [],
     };
 
@@ -82,12 +89,10 @@ describe('EvaluationsService', () => {
                 justificativa: 'Avaliação baseada no trabalho em equipe',
             },
         ],
-        mentoring: [
-            {
-                mentorId: 2,
-                justificativa: 'Acompanhamento semanal',
-            },
-        ],
+        mentoring: {
+            mentorId: 2,
+            justificativa: 'Acompanhamento semanal',
+        },
         referencias: [
             {
                 colaboradorId: 2,
@@ -228,7 +233,7 @@ describe('EvaluationsService', () => {
             const emptyDto = {
                 ...mockCreateEvaluationDto,
                 avaliacao360: [],
-                mentoring: [],
+                mentoring: undefined,
                 referencias: [],
             };
 

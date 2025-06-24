@@ -56,7 +56,7 @@ export class EvaluationsService {
             }
 
             // Cria as mentorias usando o service específico (só se houver dados)
-            if (mentoring && mentoring.length > 0) {
+            if (mentoring) {
                 await this.mentoringService.createMentoring(
                     evaluation.id,
                     colaboradorId,

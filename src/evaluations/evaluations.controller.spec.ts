@@ -39,12 +39,10 @@ describe('EvaluationsController', () => {
                 justificativa: 'Avaliação baseada no trabalho em equipe',
             },
         ],
-        mentoring: [
-            {
-                mentorId: 2,
-                justificativa: 'Acompanhamento semanal',
-            },
-        ],
+        mentoring: {
+            mentorId: 2,
+            justificativa: 'Acompanhamento semanal',
+        },
         referencias: [
             {
                 colaboradorId: 2,
@@ -82,15 +80,13 @@ describe('EvaluationsController', () => {
                 improvements: 'Precisa melhorar prazos',
             },
         ],
-        mentoring: [
-            {
-                id: 1,
-                evaluationId: 1,
-                evaluatorId: 2,
-                evaluatedId: 1,
-                justification: 'Acompanhamento semanal',
-            },
-        ],
+        mentoring: {
+            id: 1,
+            evaluationId: 1,
+            evaluatorId: 2,
+            evaluatedId: 1,
+            justification: 'Acompanhamento semanal',
+        },
         references: [
             {
                 id: 1,
