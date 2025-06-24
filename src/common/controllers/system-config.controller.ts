@@ -2,9 +2,12 @@ import { Controller, Get, Post, Body, UseGuards } from '@nestjs/common';
 import { SystemConfigService } from '../services/system-config.service';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
-import { Roles } from '../../auth/decorators/roles.decorator';
-import { UserRoleEnum } from '@prisma/client';
+import { OnlyAdmin } from '../../auth/decorators/roles.decorator';
+import { ApiAuth } from '../decorators/api-auth.decorator';
+import { SetCurrentCycleDto } from '../dto/set-current-cycle.dto';
+import { SetConfigDto } from '../dto/set-config.dto';
 
+@ApiAuth()
 @Controller('system-config')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class SystemConfigController {
@@ -18,8 +21,8 @@ export class SystemConfigController {
     }
 
     @Post('current-cycle')
-    @Roles(UserRoleEnum.RH, UserRoleEnum.ADMIN)
-    async setCurrentCycle(@Body() body: { cycle: string }) {
+    @OnlyAdmin()
+    async setCurrentCycle(@Body() body: SetCurrentCycleDto) {
         await this.systemConfigService.setCurrentCycle(body.cycle);
         return {
             message: 'Ciclo atual atualizado com sucesso',
@@ -35,7 +38,7 @@ export class SystemConfigController {
     }
 
     @Get('config/:key')
-    @Roles(UserRoleEnum.RH, UserRoleEnum.ADMIN)
+    @OnlyAdmin()
     async getConfig(@Body() body: { key: string }) {
         return {
             key: body.key,
@@ -44,8 +47,8 @@ export class SystemConfigController {
     }
 
     @Post('config')
-    @Roles(UserRoleEnum.RH, UserRoleEnum.ADMIN)
-    async setConfig(@Body() body: { key: string; value: string; description?: string }) {
+    @OnlyAdmin()
+    async setConfig(@Body() body: SetConfigDto) {
         await this.systemConfigService.setConfig(body.key, body.value, body.description);
         return {
             message: 'Configuração atualizada com sucesso',

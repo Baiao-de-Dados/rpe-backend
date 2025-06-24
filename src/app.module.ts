@@ -9,8 +9,8 @@ import { EvaluationsModule } from './evaluations/evaluations.module';
 import { PillarsModule } from './pillars/pillars.module';
 import { CriteriaModule } from './criteria/criteria.module';
 import { TagsModule } from './tags/tags.module';
+import { CommonModule } from './common/common.module';
 import { LoggerModule } from 'nestjs-pino';
-
 @Module({
     imports: [
         ConfigModule.forRoot({
@@ -35,6 +35,7 @@ import { LoggerModule } from 'nestjs-pino';
         PillarsModule,
         CriteriaModule,
         TagsModule,
+        CommonModule,
     ],
     controllers: [AppController],
     providers: [AppService],

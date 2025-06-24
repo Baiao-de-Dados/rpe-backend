@@ -2,12 +2,17 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { Logger } from '@nestjs/common';
+import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 
 async function bootstrap() {
     const app = await NestFactory.create(AppModule);
 
     // Logger para mensagens de inicialização
     const logger = new Logger('Bootstrap');
+
+    // Configurar guard global
+    const jwtAuthGuard = app.get(JwtAuthGuard);
+    app.useGlobalGuards(jwtAuthGuard);
 
     // Configurar CORS
     app.enableCors({
