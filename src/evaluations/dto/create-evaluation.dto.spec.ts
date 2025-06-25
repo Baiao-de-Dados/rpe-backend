@@ -32,12 +32,10 @@ describe('CreateEvaluationDto', () => {
                         justificativa: 'Avaliação baseada no trabalho em equipe',
                     },
                 ],
-                mentoring: [
-                    {
-                        mentorId: 2,
-                        justificativa: 'Acompanhamento semanal',
-                    },
-                ],
+                mentoring: {
+                    mentorId: 2,
+                    justificativa: 'Acompanhamento semanal',
+                },
                 referencias: [
                     {
                         colaboradorId: 2,

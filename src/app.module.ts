@@ -11,8 +11,8 @@ import { AuthModule } from './auth/auth.module';
 import { TagsModule } from './tags/tags.module';
 import { ConfigModule } from '@nestjs/config';
 import { AppService } from './app.service';
+import { CommonModule } from './common/common.module';
 import { LoggerModule } from 'nestjs-pino';
-
 @Module({
     imports: [
         ConfigModule.forRoot({
@@ -38,6 +38,7 @@ import { LoggerModule } from 'nestjs-pino';
         PillarsModule,
         CriteriaModule,
         TagsModule,
+        CommonModule,
     ],
     controllers: [AppController],
     providers: [AppService, LoggingInterceptor],

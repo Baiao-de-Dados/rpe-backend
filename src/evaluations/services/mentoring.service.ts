@@ -11,33 +11,29 @@ export class MentoringService {
         evaluationId: number,
         colaboradorId: number,
         ciclo: string,
-        mentoring: MentoringDto[],
+        mentoring: MentoringDto | null,
         prismaClient?: Prisma.TransactionClient,
     ) {
         const client = prismaClient || this.prisma;
 
-        // Só cria se houver mentorias
-        if (!mentoring || mentoring.length === 0) {
-            return [];
+        // Só cria se houver mentoria
+        if (!mentoring) {
+            return null;
         }
 
-        return await Promise.all(
-            mentoring.map((mentor) =>
-                client.mentoring.create({
-                    data: {
-                        evaluationId: evaluationId,
-                        evaluatorId: mentor.mentorId,
-                        evaluatedId: colaboradorId,
-                        justification: mentor.justificativa,
-                        cycle: ciclo,
-                    },
-                }),
-            ),
-        );
+        return await client.mentoring.create({
+            data: {
+                evaluationId: evaluationId,
+                evaluatorId: mentoring.mentorId,
+                evaluatedId: colaboradorId,
+                justification: mentoring.justificativa,
+                cycle: ciclo,
+            },
+        });
     }
 
     async getMentoringByEvaluationId(evaluationId: number) {
-        return await this.prisma.mentoring.findMany({
+        return await this.prisma.mentoring.findFirst({
             where: { evaluationId },
         });
     }
