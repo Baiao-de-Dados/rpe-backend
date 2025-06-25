@@ -1,14 +1,13 @@
+import { CollaboratorsStatusDto, CollaboratorStatusDto } from '../dto/collaborator.dashboard.dto';
 import { Controller, Get, Param, ParseIntPipe, Query } from '@nestjs/common';
-import { ApiTags, ApiResponse, ApiQuery } from '@nestjs/swagger';
-import { RhPanelService } from '../services/rh-panel.service';
-import {
-    DashboardStatsDto,
-    CollaboratorsStatusDto,
-    CollaboratorStatusDto,
-    RoleCompletionStatsDto,
-} from '../dto/dashboard-stats.dto';
 import { ApiAuth } from '../../../common/decorators/api-auth.decorator';
 import { RequireRH } from '../../../auth/decorators/roles.decorator';
+import { RoleCompletionStatsDto } from '../dto/roles.dashboard.dto';
+import { ApiTags } from '@nestjs/swagger';
+import { DashboardStatsDto } from '../dto/dashboard-stats.dto';
+import { RhPanelService } from '../services/rh-panel.service';
+import { ApiGet } from 'src/common/decorators/api-crud.decorator';
+import { ApiQueryCycle } from 'src/common/decorators/api-query-cycle.decorator';
 
 @ApiTags('Painel RH')
 @ApiAuth()
@@ -18,44 +17,22 @@ export class RhPanelController {
 
     @RequireRH()
     @Get('dashboard')
-    @ApiQuery({
-        name: 'cycle',
-        required: false,
-        description:
-            'Ciclo específico para análise (ex: 2024-01). Se não fornecido, usa o ciclo mais recente.',
-        type: String,
-    })
-    @ApiResponse({
-        status: 200,
-        description: 'Estatísticas do painel RH retornadas com sucesso',
-        type: DashboardStatsDto,
-    })
+    @ApiQueryCycle()
+    @ApiGet('dashboard')
     getDashboardStats(@Query('cycle') cycle?: string): Promise<DashboardStatsDto> {
         return this.rhPanelService.getDashboardStats(cycle);
     }
 
     @RequireRH()
     @Get('collaborators/status')
-    @ApiResponse({
-        status: 200,
-        description: 'Status de todos os colaboradores retornado com sucesso',
-        type: CollaboratorsStatusDto,
-    })
+    @ApiGet('status')
     getCollaboratorsStatus(): Promise<CollaboratorsStatusDto> {
         return this.rhPanelService.getCollaboratorsStatus();
     }
 
     @RequireRH()
     @Get('collaborators/:id/status')
-    @ApiResponse({
-        status: 200,
-        description: 'Status do colaborador específico retornado com sucesso',
-        type: CollaboratorStatusDto,
-    })
-    @ApiResponse({
-        status: 404,
-        description: 'Colaborador não encontrado',
-    })
+    @ApiGet('statusById')
     getCollaboratorStatusById(
         @Param('id', ParseIntPipe) id: number,
     ): Promise<CollaboratorStatusDto> {
@@ -64,11 +41,7 @@ export class RhPanelController {
 
     @RequireRH()
     @Get('roles/completion')
-    @ApiResponse({
-        status: 200,
-        description: 'Estatísticas de preenchimento por role retornadas com sucesso',
-        type: RoleCompletionStatsDto,
-    })
+    @ApiGet('roleCompletionStats')
     getRoleCompletionStats(): Promise<RoleCompletionStatsDto> {
         return this.rhPanelService.getRoleCompletionStats();
     }
