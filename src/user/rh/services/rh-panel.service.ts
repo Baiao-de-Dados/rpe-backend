@@ -1,12 +1,10 @@
+import { CollaboratorsStatusDto, CollaboratorStatusDto } from '../dto/collaborator.dashboard.dto';
+import { SystemConfigService } from '../../../common/services/system-config.service';
+import { RoleCompletionStatsDto } from '../dto/roles.dashboard.dto';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { SystemConfigService } from '../../../common/services/system-config.service';
-import {
-    DashboardStatsDto,
-    CollaboratorsStatusDto,
-    CollaboratorStatusDto,
-    RoleCompletionStatsDto,
-} from '../dto/dashboard-stats.dto';
+import { DashboardStatsDto } from '../dto/dashboard-stats.dto';
+import { EvaluationType } from '@prisma/client';
 
 @Injectable()
 export class RhPanelService {
@@ -16,42 +14,27 @@ export class RhPanelService {
     ) {}
 
     async getDashboardStats(currentCycle?: string): Promise<DashboardStatsDto> {
-        // Se não foi fornecido um ciclo atual, usar o configurado no sistema
         let targetCycle = currentCycle;
+
         if (!targetCycle) {
-            targetCycle = await this.systemConfigService.getCurrentCycle();
+            targetCycle = this.systemConfigService.getCurrentCycle();
         }
 
-        // Se ainda não há ciclo configurado, usar o mais recente das avaliações existentes
-        if (targetCycle === 'N/A') {
-            const latestEvaluation = await this.prisma.evaluation.findFirst({
-                orderBy: { createdAt: 'desc' },
-                select: { cycle: true },
-            });
-            targetCycle = latestEvaluation?.cycle || 'N/A';
-        }
-
-        // Buscar APENAS as avaliações do ciclo atual com seus usuários
         const evaluations = await this.prisma.evaluation.findMany({
-            where: { cycle: targetCycle },
+            where: { cycle: parseInt(targetCycle, 10) },
             include: {
-                user: true,
-                autoEvaluation: true,
-                evaluation360: true,
-                mentoring: true,
-                references: true,
+                evaluator: true,
+                evaluatee: true,
             },
             orderBy: { createdAt: 'desc' },
         });
 
-        // Calcular estatísticas APENAS para as avaliações do ciclo atual
         const totalEvaluations = evaluations.length;
         const completedEvaluations = evaluations.filter((evaluation) => {
-            return !!(
-                evaluation.autoEvaluation ||
-                evaluation.evaluation360 ||
-                evaluation.mentoring ||
-                evaluation.references
+            return (
+                evaluation.type === EvaluationType.AUTOEVALUATION ||
+                evaluation.type === EvaluationType.PEER_360 ||
+                evaluation.type === EvaluationType.LEADER
             );
         }).length;
 
@@ -59,15 +42,12 @@ export class RhPanelService {
         const completionPercentage =
             totalEvaluations > 0 ? Math.round((completedEvaluations / totalEvaluations) * 100) : 0;
 
-        // Detalhar por tipo de avaliação
         const autoEvaluationCount = evaluations.filter(
-            (evaluation) => evaluation.autoEvaluation,
+            (evaluation) => evaluation.type === EvaluationType.AUTOEVALUATION,
         ).length;
         const evaluation360Count = evaluations.filter(
-            (evaluation) => evaluation.evaluation360,
+            (evaluation) => evaluation.type === EvaluationType.PEER_360,
         ).length;
-        const mentoringCount = evaluations.filter((evaluation) => evaluation.mentoring).length;
-        const referencesCount = evaluations.filter((evaluation) => evaluation.references).length;
 
         return {
             overall: {
@@ -85,8 +65,8 @@ export class RhPanelService {
                 breakdown: {
                     autoEvaluation: autoEvaluationCount,
                     evaluation360: evaluation360Count,
-                    mentoring: mentoringCount,
-                    references: referencesCount,
+                    mentoring: 0,
+                    references: 0,
                 },
                 cycleEndDate: this.getCycleEndDate(targetCycle),
             },
@@ -95,10 +75,9 @@ export class RhPanelService {
         };
     }
 
-    //retorna o status de todos os colaboradores
     async getCollaboratorsStatus(): Promise<CollaboratorsStatusDto> {
         // Obter o ciclo atual
-        const currentCycle = await this.systemConfigService.getCurrentCycle();
+        const currentCycle = this.systemConfigService.getCurrentCycle();
         let targetCycle = currentCycle;
 
         if (targetCycle === 'N/A') {
@@ -106,41 +85,35 @@ export class RhPanelService {
                 orderBy: { createdAt: 'desc' },
                 select: { cycle: true },
             });
-            targetCycle = latestEvaluation?.cycle || 'N/A';
+            targetCycle = latestEvaluation?.cycle?.toString() || 'N/A';
         }
 
-        // Buscar APENAS as avaliações do ciclo atual com seus usuários
         const evaluations = await this.prisma.evaluation.findMany({
-            where: { cycle: targetCycle },
+            where: { cycle: parseInt(targetCycle, 10) },
             include: {
-                user: true,
-                autoEvaluation: true,
-                evaluation360: true,
-                mentoring: true,
-                references: true,
+                evaluator: true,
+                evaluatee: true,
             },
             orderBy: { createdAt: 'desc' },
         });
 
         const collaborators = evaluations.map((evaluation) => {
-            const isCompleted = !!(
-                evaluation.autoEvaluation ||
-                evaluation.evaluation360 ||
-                evaluation.mentoring ||
-                evaluation.references
-            );
+            const isCompleted =
+                evaluation.type === EvaluationType.AUTOEVALUATION ||
+                evaluation.type === EvaluationType.PEER_360 ||
+                evaluation.type === EvaluationType.LEADER;
 
             return {
-                id: evaluation.user.id,
-                name: evaluation.user.name || 'Sem nome',
-                email: evaluation.user.email,
-                cycle: evaluation.cycle,
+                id: evaluation.evaluatee.id,
+                name: evaluation.evaluatee.name || 'Sem nome',
+                email: evaluation.evaluatee.email,
+                cycle: evaluation.cycle.toString(),
                 status: isCompleted ? ('finalizado' as const) : ('pendente' as const),
                 breakdown: {
-                    autoEvaluation: !!evaluation.autoEvaluation,
-                    evaluation360: !!evaluation.evaluation360,
-                    mentoring: !!evaluation.mentoring,
-                    references: !!evaluation.references,
+                    autoEvaluation: evaluation.type === EvaluationType.AUTOEVALUATION,
+                    evaluation360: evaluation.type === EvaluationType.PEER_360,
+                    mentoring: false, // Ajustar depois
+                    references: false,
                 },
                 createdAt: evaluation.createdAt.toISOString(),
             };
@@ -161,7 +134,7 @@ export class RhPanelService {
     //retorna o status de um colaborador específico
     async getCollaboratorStatusById(collaboratorId: number): Promise<CollaboratorStatusDto> {
         // Obter o ciclo atual
-        const currentCycle = await this.systemConfigService.getCurrentCycle();
+        const currentCycle = this.systemConfigService.getCurrentCycle();
         let targetCycle = currentCycle;
 
         if (targetCycle === 'N/A') {
@@ -169,21 +142,18 @@ export class RhPanelService {
                 orderBy: { createdAt: 'desc' },
                 select: { cycle: true },
             });
-            targetCycle = latestEvaluation?.cycle || 'N/A';
+            targetCycle = latestEvaluation?.cycle?.toString() || 'N/A';
         }
 
         // Buscar APENAS a avaliação do usuário no ciclo atual
         const evaluation = await this.prisma.evaluation.findFirst({
             where: {
-                userId: collaboratorId,
-                cycle: targetCycle,
+                evaluateeId: collaboratorId,
+                cycle: parseInt(targetCycle, 10),
             },
             include: {
-                user: true,
-                autoEvaluation: true,
-                evaluation360: true,
-                mentoring: true,
-                references: true,
+                evaluator: true,
+                evaluatee: true,
             },
         });
 
@@ -193,33 +163,30 @@ export class RhPanelService {
             );
         }
 
-        const isCompleted = !!(
-            evaluation.autoEvaluation ||
-            evaluation.evaluation360 ||
-            evaluation.mentoring ||
-            evaluation.references
-        );
+        const isCompleted =
+            evaluation.type === EvaluationType.AUTOEVALUATION ||
+            evaluation.type === EvaluationType.PEER_360 ||
+            evaluation.type === EvaluationType.LEADER;
 
         return {
-            id: evaluation.user.id,
-            name: evaluation.user.name || 'Sem nome',
-            email: evaluation.user.email,
-            cycle: evaluation.cycle,
+            id: evaluation.evaluatee.id,
+            name: evaluation.evaluatee.name || 'Sem nome',
+            email: evaluation.evaluatee.email,
+            cycle: evaluation.cycle.toString(),
             status: isCompleted ? ('finalizado' as const) : ('pendente' as const),
             breakdown: {
-                autoEvaluation: !!evaluation.autoEvaluation,
-                evaluation360: !!evaluation.evaluation360,
-                mentoring: !!evaluation.mentoring,
-                references: !!evaluation.references,
+                autoEvaluation: evaluation.type === EvaluationType.AUTOEVALUATION,
+                evaluation360: evaluation.type === EvaluationType.PEER_360,
+                mentoring: false,
+                references: false,
             },
             createdAt: evaluation.createdAt.toISOString(),
         };
     }
 
-    //retorna as estatísticas de completude das roles
+    // retorna as estatísticas de completude das roles
     async getRoleCompletionStats(): Promise<RoleCompletionStatsDto> {
-        // Obter o ciclo atual
-        const currentCycle = await this.systemConfigService.getCurrentCycle();
+        const currentCycle = this.systemConfigService.getCurrentCycle();
         let targetCycle = currentCycle;
 
         if (targetCycle === 'N/A') {
@@ -227,14 +194,14 @@ export class RhPanelService {
                 orderBy: { createdAt: 'desc' },
                 select: { cycle: true },
             });
-            targetCycle = latestEvaluation?.cycle || 'N/A';
+            targetCycle = latestEvaluation?.cycle?.toString() || 'N/A';
         }
 
         // Buscar APENAS as avaliações do ciclo atual com seus usuários e roles
         const evaluations = await this.prisma.evaluation.findMany({
-            where: { cycle: targetCycle },
+            where: { cycle: parseInt(targetCycle, 10) },
             include: {
-                user: {
+                evaluatee: {
                     include: {
                         userRoles: {
                             where: { isActive: true },
@@ -242,32 +209,26 @@ export class RhPanelService {
                         },
                     },
                 },
-                autoEvaluation: true,
-                evaluation360: true,
-                mentoring: true,
-                references: true,
             },
         });
 
         const roleStats = new Map<string, { total: number; completed: number; pending: number }>();
 
         evaluations.forEach((evaluation) => {
-            const userRoles = evaluation.user.userRoles.map((ur) => ur.role);
+            const userRoles = evaluation.evaluatee.userRoles.map((ur) => ur.role);
 
             if (userRoles.length === 0) return;
 
-            const hasCompletedEvaluation = !!(
-                evaluation.autoEvaluation ||
-                evaluation.evaluation360 ||
-                evaluation.mentoring ||
-                evaluation.references
-            );
+            const isCompleted =
+                evaluation.type === EvaluationType.AUTOEVALUATION ||
+                evaluation.type === EvaluationType.PEER_360 ||
+                evaluation.type === EvaluationType.LEADER;
 
             userRoles.forEach((role) => {
                 const current = roleStats.get(role) || { total: 0, completed: 0, pending: 0 };
                 current.total += 1;
 
-                if (hasCompletedEvaluation) {
+                if (isCompleted) {
                     current.completed += 1;
                 } else {
                     current.pending += 1;
