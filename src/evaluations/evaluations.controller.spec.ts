@@ -1,8 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { EvaluationsController } from './evaluations.controller';
 import { EvaluationsService } from './evaluations.service';
-import { CreateEvaluationDto } from './dto/create-evaluation.dto';
 import { NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
 
 describe('EvaluationsController', () => {
     let controller: EvaluationsController;
@@ -13,17 +13,25 @@ describe('EvaluationsController', () => {
         findOne: jest.fn(),
     };
 
-    const createEvaluationDto: CreateEvaluationDto = {
+    const mockPrismaService = {
+        user: {
+            findMany: jest.fn(),
+        },
+        evaluation: {
+            findMany: jest.fn(),
+        },
+    };
+
+    const mockCreateEvaluationDto = {
         ciclo: '2024-Q1',
-        colaboradorId: 1,
+        colaboradorId: '1',
         autoavaliacao: {
-            justificativa: 'Autoavaliação geral do período',
             pilares: [
                 {
-                    pilarId: 1,
+                    pilarId: '1',
                     criterios: [
                         {
-                            criterioId: 1,
+                            criterioId: '1',
                             nota: 8,
                             justificativa: 'Bom domínio técnico',
                         },
@@ -33,19 +41,23 @@ describe('EvaluationsController', () => {
         },
         avaliacao360: [
             {
-                avaliadoId: 2,
+                avaliadoId: '2',
                 pontosFortes: 'Ótima comunicação',
                 pontosMelhoria: 'Precisa melhorar prazos',
                 justificativa: 'Avaliação baseada no trabalho em equipe',
             },
         ],
-        mentoring: {
-            mentorId: 2,
-            justificativa: 'Acompanhamento semanal',
-        },
+        mentoring: [
+            {
+                mentorId: '3',
+                justificativa: 'Acompanhamento semanal',
+                leaderId: '4',
+                leaderJustificativa: 'Avaliação do líder',
+            },
+        ],
         referencias: [
             {
-                colaboradorId: 2,
+                colaboradorId: '2',
                 justificativa: 'Referência técnica',
                 tagIds: [1],
             },
@@ -80,12 +92,21 @@ describe('EvaluationsController', () => {
                 improvements: 'Precisa melhorar prazos',
             },
         ],
+        leader: {
+            id: 2,
+            evaluationId: 2,
+            evaluatorId: 3,
+            evaluatedId: 1,
+            justification: 'Avaliação do líder',
+            cycle: '2024-Q1',
+        },
         mentoring: {
-            id: 1,
-            evaluationId: 1,
-            evaluatorId: 2,
+            id: 3,
+            evaluationId: 3,
+            evaluatorId: 4,
             evaluatedId: 1,
             justification: 'Acompanhamento semanal',
+            cycle: '2024-Q1',
         },
         references: [
             {
@@ -107,6 +128,10 @@ describe('EvaluationsController', () => {
                     provide: EvaluationsService,
                     useValue: mockEvaluationsService,
                 },
+                {
+                    provide: PrismaService,
+                    useValue: mockPrismaService,
+                },
             ],
         }).compile();
 
@@ -123,11 +148,11 @@ describe('EvaluationsController', () => {
             mockEvaluationsService.createEvaluation.mockResolvedValue(mockEvaluation);
 
             // Act
-            const result = await controller.create(createEvaluationDto);
+            const result = await controller.create(mockCreateEvaluationDto);
 
             // Assert
             expect(mockEvaluationsService.createEvaluation).toHaveBeenCalledWith(
-                createEvaluationDto,
+                mockCreateEvaluationDto,
             );
             expect(result).toEqual(mockEvaluation);
         });
@@ -138,9 +163,9 @@ describe('EvaluationsController', () => {
             mockEvaluationsService.createEvaluation.mockRejectedValue(error);
 
             // Act & Assert
-            await expect(controller.create(createEvaluationDto)).rejects.toThrow(error);
+            await expect(controller.create(mockCreateEvaluationDto)).rejects.toThrow(error);
             expect(mockEvaluationsService.createEvaluation).toHaveBeenCalledWith(
-                createEvaluationDto,
+                mockCreateEvaluationDto,
             );
         });
     });

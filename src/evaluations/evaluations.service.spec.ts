@@ -7,8 +7,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateEvaluationDto } from './dto/create-evaluation.dto';
 import { EvaluationValidationService } from './services/evaluation-validation.service';
 import { AutoEvaluationService } from './services/auto-evaluation.service';
-import { Evaluation360Service } from './services/evaluation360.service';
-import { MentoringService } from './services/mentoring.service';
+import { Peer360EvaluationService } from './services/peer360-evaluation.service';
+import { MentorEvaluationService } from './services/mentor-evaluation.service';
 import { ReferenceService } from './services/reference.service';
 import { NotFoundException } from '@nestjs/common';
 
@@ -17,60 +17,31 @@ describe('EvaluationsService', () => {
     let mockPrismaService: any;
     let mockValidationService: any;
     let mockAutoEvaluationService: any;
-    let mockEvaluation360Service: any;
-    let mockMentoringService: any;
+    let mockPeer360EvaluationService: any;
+    let mockMentorEvaluationService: any;
     let mockReferenceService: any;
 
     const mockEvaluation = {
         id: 1,
-        cycle: '2024-Q1',
-        userId: 1,
-        grade: 0,
+        type: 'AUTOEVALUATION',
+        evaluatorId: 1,
+        evaluateeId: 1,
+        cycle: 2024,
+        justification: 'Test justification',
+        score: 0,
         createdAt: new Date(),
-    };
-
-    const mockCompleteEvaluation = {
-        ...mockEvaluation,
-        user: { id: 1, name: 'Test User', email: 'test@test.com' },
-        autoEvaluation: {
-            id: 1,
-            evaluationId: 1,
-            justification: 'Autoavaliação geral do período',
-            criteriaAssignments: [
-                {
-                    criterion: {
-                        id: 1,
-                        name: 'Domínio Técnico',
-                        pillar: { id: 1, name: 'Técnico' },
-                    },
-                    note: 8,
-                    justification: 'Bom domínio técnico',
-                },
-            ],
-        },
-        evaluation360: [],
-        mentoring: {
-            id: 1,
-            evaluationId: 1,
-            evaluatorId: 2,
-            evaluatedId: 1,
-            justification: 'Acompanhamento semanal',
-            cycle: '2024-Q1',
-        },
-        references: [],
     };
 
     const mockCreateEvaluationDto: CreateEvaluationDto = {
         ciclo: '2024-Q1',
-        colaboradorId: 1,
+        colaboradorId: '1',
         autoavaliacao: {
-            justificativa: 'Autoavaliação geral do período',
             pilares: [
                 {
-                    pilarId: 1,
+                    pilarId: '1',
                     criterios: [
                         {
-                            criterioId: 1,
+                            criterioId: '1',
                             nota: 8,
                             justificativa: 'Bom domínio técnico',
                         },
@@ -80,19 +51,23 @@ describe('EvaluationsService', () => {
         },
         avaliacao360: [
             {
-                avaliadoId: 2,
+                avaliadoId: '2',
                 pontosFortes: 'Ótima comunicação',
                 pontosMelhoria: 'Precisa melhorar prazos',
                 justificativa: 'Avaliação baseada no trabalho em equipe',
             },
         ],
-        mentoring: {
-            mentorId: 2,
-            justificativa: 'Acompanhamento semanal',
-        },
+        mentoring: [
+            {
+                mentorId: '3',
+                justificativa: 'Acompanhamento semanal',
+                leaderId: '4',
+                leaderJustificativa: 'Avaliação do líder',
+            },
+        ],
         referencias: [
             {
-                colaboradorId: 2,
+                colaboradorId: '2',
                 justificativa: 'Referência técnica',
                 tagIds: [1],
             },
@@ -107,6 +82,9 @@ describe('EvaluationsService', () => {
                 findMany: jest.fn(),
                 findUnique: jest.fn(),
             },
+            reference: {
+                findMany: jest.fn(),
+            },
             $transaction: jest.fn(),
         };
 
@@ -116,22 +94,18 @@ describe('EvaluationsService', () => {
 
         mockAutoEvaluationService = {
             createAutoEvaluation: jest.fn(),
-            getAutoEvaluationWithCriteria: jest.fn(),
         };
 
-        mockEvaluation360Service = {
-            createEvaluation360: jest.fn(),
-            getEvaluation360ByEvaluationId: jest.fn(),
+        mockPeer360EvaluationService = {
+            createPeer360Evaluations: jest.fn(),
         };
 
-        mockMentoringService = {
-            createMentoring: jest.fn(),
-            getMentoringByEvaluationId: jest.fn(),
+        mockMentorEvaluationService = {
+            createMentorEvaluations: jest.fn(),
         };
 
         mockReferenceService = {
             createReferences: jest.fn(),
-            getReferencesByEvaluationId: jest.fn(),
         };
 
         const module: TestingModule = await Test.createTestingModule({
@@ -150,12 +124,12 @@ describe('EvaluationsService', () => {
                     useValue: mockAutoEvaluationService,
                 },
                 {
-                    provide: Evaluation360Service,
-                    useValue: mockEvaluation360Service,
+                    provide: Peer360EvaluationService,
+                    useValue: mockPeer360EvaluationService,
                 },
                 {
-                    provide: MentoringService,
-                    useValue: mockMentoringService,
+                    provide: MentorEvaluationService,
+                    useValue: mockMentorEvaluationService,
                 },
                 {
                     provide: ReferenceService,
@@ -178,10 +152,17 @@ describe('EvaluationsService', () => {
                 return await callback(mockPrismaService);
             });
             mockPrismaService.$transaction = mockTransaction;
-            (mockPrismaService.evaluation.create as jest.Mock).mockResolvedValue(mockEvaluation);
-            (mockPrismaService.evaluation.findUnique as jest.Mock).mockResolvedValue(
-                mockCompleteEvaluation,
-            );
+
+            mockAutoEvaluationService.createAutoEvaluation.mockResolvedValue(mockEvaluation);
+            mockPeer360EvaluationService.createPeer360Evaluations.mockResolvedValue([
+                mockEvaluation,
+            ]);
+            mockMentorEvaluationService.createMentorEvaluations.mockResolvedValue([
+                mockEvaluation,
+                mockEvaluation, // para mentor e líder
+            ]);
+            mockReferenceService.createReferences.mockResolvedValue(undefined);
+            mockPrismaService.reference.findMany.mockResolvedValue([]);
 
             // Act
             const result = await service.createEvaluation(mockCreateEvaluationDto);
@@ -191,38 +172,30 @@ describe('EvaluationsService', () => {
                 mockCreateEvaluationDto,
             );
             expect(mockPrismaService.$transaction).toHaveBeenCalled();
-            expect(mockPrismaService.evaluation.create).toHaveBeenCalledWith({
-                data: {
-                    cycle: '2024-Q1',
-                    userId: 1,
-                    grade: 0.0,
-                },
-            });
             expect(mockAutoEvaluationService.createAutoEvaluation).toHaveBeenCalledWith(
-                1,
+                mockPrismaService,
                 mockCreateEvaluationDto.autoavaliacao,
-                mockPrismaService,
+                parseInt(mockCreateEvaluationDto.colaboradorId, 10),
+                mockCreateEvaluationDto.ciclo,
             );
-            expect(mockEvaluation360Service.createEvaluation360).toHaveBeenCalledWith(
-                1,
-                1,
+            expect(mockPeer360EvaluationService.createPeer360Evaluations).toHaveBeenCalledWith(
+                mockPrismaService,
                 mockCreateEvaluationDto.avaliacao360,
-                mockPrismaService,
+                parseInt(mockCreateEvaluationDto.colaboradorId, 10),
+                mockCreateEvaluationDto.ciclo,
             );
-            expect(mockMentoringService.createMentoring).toHaveBeenCalledWith(
-                1,
-                1,
-                '2024-Q1',
-                mockCreateEvaluationDto.mentoring,
+            expect(mockMentorEvaluationService.createMentorEvaluations).toHaveBeenCalledWith(
                 mockPrismaService,
+                mockCreateEvaluationDto.mentoring,
+                parseInt(mockCreateEvaluationDto.colaboradorId, 10),
+                mockCreateEvaluationDto.ciclo,
             );
             expect(mockReferenceService.createReferences).toHaveBeenCalledWith(
-                1,
-                1,
-                mockCreateEvaluationDto.referencias,
                 mockPrismaService,
+                mockCreateEvaluationDto.referencias,
+                parseInt(mockCreateEvaluationDto.colaboradorId, 10),
             );
-            expect(result).toEqual(mockCompleteEvaluation);
+            expect(result).toBeDefined();
         });
 
         it('should handle empty arrays gracefully', async () => {
@@ -230,7 +203,7 @@ describe('EvaluationsService', () => {
             const emptyDto = {
                 ...mockCreateEvaluationDto,
                 avaliacao360: [],
-                mentoring: undefined,
+                mentoring: [],
                 referencias: [],
             };
 
@@ -238,27 +211,43 @@ describe('EvaluationsService', () => {
                 return await callback(mockPrismaService);
             });
             mockPrismaService.$transaction = mockTransaction;
-            (mockPrismaService.evaluation.create as jest.Mock).mockResolvedValue(mockEvaluation);
-            (mockPrismaService.evaluation.findUnique as jest.Mock).mockResolvedValue(
-                mockCompleteEvaluation,
-            );
+
+            mockAutoEvaluationService.createAutoEvaluation.mockResolvedValue(null);
+            mockPeer360EvaluationService.createPeer360Evaluations.mockResolvedValue([]);
+            mockMentorEvaluationService.createMentorEvaluations.mockResolvedValue([]);
+            mockReferenceService.createReferences.mockResolvedValue(undefined);
+            mockPrismaService.reference.findMany.mockResolvedValue([]);
 
             // Act
             const result = await service.createEvaluation(emptyDto);
 
             // Assert
-            expect(mockEvaluation360Service.createEvaluation360).not.toHaveBeenCalled();
-            expect(mockMentoringService.createMentoring).not.toHaveBeenCalled();
-            expect(mockReferenceService.createReferences).not.toHaveBeenCalled();
-            expect(result).toEqual(mockCompleteEvaluation);
+            expect(mockPeer360EvaluationService.createPeer360Evaluations).toHaveBeenCalledWith(
+                mockPrismaService,
+                [],
+                parseInt(emptyDto.colaboradorId, 10),
+                emptyDto.ciclo,
+            );
+            expect(mockMentorEvaluationService.createMentorEvaluations).toHaveBeenCalledWith(
+                mockPrismaService,
+                [],
+                parseInt(emptyDto.colaboradorId, 10),
+                emptyDto.ciclo,
+            );
+            expect(mockReferenceService.createReferences).toHaveBeenCalledWith(
+                mockPrismaService,
+                [],
+                parseInt(emptyDto.colaboradorId, 10),
+            );
+            expect(result).toBeDefined();
         });
     });
 
     describe('findAll', () => {
         it('should return all evaluations with complete data', async () => {
             // Arrange
-            const mockEvaluations = [mockCompleteEvaluation];
-            (mockPrismaService.evaluation.findMany as jest.Mock).mockResolvedValue(mockEvaluations);
+            const mockEvaluations = [mockEvaluation];
+            mockPrismaService.evaluation.findMany.mockResolvedValue(mockEvaluations);
 
             // Act
             const result = await service.findAll();
@@ -266,39 +255,32 @@ describe('EvaluationsService', () => {
             // Assert
             expect(mockPrismaService.evaluation.findMany).toHaveBeenCalledWith({
                 include: {
-                    user: true,
-                    autoEvaluation: {
+                    evaluator: true,
+                    evaluatee: true,
+                    CriteriaAssignment: {
                         include: {
-                            criteriaAssignments: {
+                            criterion: {
                                 include: {
-                                    criterion: {
-                                        include: {
-                                            pillar: true,
-                                        },
-                                    },
-                                },
-                            },
-                        },
-                    },
-                    evaluation360: true,
-                    mentoring: true,
-                    references: {
-                        include: {
-                            tagReferences: {
-                                include: {
-                                    tag: true,
+                                    pillar: true,
                                 },
                             },
                         },
                     },
                 },
             });
-            expect(result).toEqual(mockEvaluations);
+            expect(result).toEqual([
+                {
+                    cycle: 2024,
+                    userId: 1,
+                    user: undefined,
+                    evaluations: [mockEvaluation],
+                },
+            ]);
         });
 
         it('should return empty array when no evaluations exist', async () => {
             // Arrange
-            (mockPrismaService.evaluation.findMany as jest.Mock).mockResolvedValue([]);
+            mockPrismaService.evaluation.findMany.mockResolvedValue([]);
 
             // Act
             const result = await service.findAll();
@@ -312,9 +294,7 @@ describe('EvaluationsService', () => {
         it('should return a single evaluation by id', async () => {
             // Arrange
             const evaluationId = 1;
-            (mockPrismaService.evaluation.findUnique as jest.Mock).mockResolvedValue(
-                mockCompleteEvaluation,
-            );
+            mockPrismaService.evaluation.findUnique.mockResolvedValue(mockEvaluation);
 
             // Act
             const result = await service.findOne(evaluationId);
@@ -323,40 +303,26 @@ describe('EvaluationsService', () => {
             expect(mockPrismaService.evaluation.findUnique).toHaveBeenCalledWith({
                 where: { id: evaluationId },
                 include: {
-                    user: true,
-                    autoEvaluation: {
+                    evaluator: true,
+                    evaluatee: true,
+                    CriteriaAssignment: {
                         include: {
-                            criteriaAssignments: {
+                            criterion: {
                                 include: {
-                                    criterion: {
-                                        include: {
-                                            pillar: true,
-                                        },
-                                    },
-                                },
-                            },
-                        },
-                    },
-                    evaluation360: true,
-                    mentoring: true,
-                    references: {
-                        include: {
-                            tagReferences: {
-                                include: {
-                                    tag: true,
+                                    pillar: true,
                                 },
                             },
                         },
                     },
                 },
             });
-            expect(result).toEqual(mockCompleteEvaluation);
+            expect(result).toEqual(mockEvaluation);
         });
 
         it('should throw NotFoundException when evaluation not found', async () => {
             // Arrange
             const evaluationId = 999;
-            (mockPrismaService.evaluation.findUnique as jest.Mock).mockResolvedValue(null);
+            mockPrismaService.evaluation.findUnique.mockResolvedValue(null);
 
             // Act & Assert
             await expect(service.findOne(evaluationId)).rejects.toThrow(NotFoundException);

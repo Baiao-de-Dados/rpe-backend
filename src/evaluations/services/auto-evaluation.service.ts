@@ -1,55 +1,41 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
-import { AutoAvaliacaoDto } from '../interfaces/evaluation.interface';
-import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class AutoEvaluationService {
-    constructor(private prisma: PrismaService) {}
-
     async createAutoEvaluation(
-        evaluationId: number,
-        autoavaliacao: AutoAvaliacaoDto,
-        prismaClient?: Prisma.TransactionClient,
+        prisma: any,
+        autoavaliacao: any,
+        colaboradorId: number,
+        ciclo: string,
     ) {
-        const client = prismaClient || this.prisma;
+        if (autoavaliacao && autoavaliacao.pilares && autoavaliacao.pilares.length > 0) {
+            const autoEvaluation = await prisma.evaluation.create({
+                data: {
+                    type: 'AUTOEVALUATION',
+                    evaluatorId: colaboradorId,
+                    evaluateeId: colaboradorId,
+                    cycle: parseInt(ciclo.replace(/\D/g, '')),
+                    justification: 'Autoavaliação', // Justificativa padrão
+                    score: 0,
+                },
+            });
 
-        // Só cria se houver auto-avaliação
-        if (!autoavaliacao || !autoavaliacao.pilares || autoavaliacao.pilares.length === 0) {
-            return null;
-        }
-
-        return await client.autoEvaluation.create({
-            data: {
-                evaluationId: evaluationId,
-                justification: autoavaliacao.justificativa,
-                criteriaAssignments: {
-                    create: autoavaliacao.pilares.flatMap((pilar) =>
-                        pilar.criterios.map((criterio) => ({
-                            criterion: { connect: { id: criterio.criterioId } },
+            // Cria os critérios da autoavaliação
+            for (const pilar of autoavaliacao.pilares) {
+                for (const criterio of pilar.criterios) {
+                    await prisma.criteriaAssignment.create({
+                        data: {
+                            autoEvaluationID: autoEvaluation.id,
+                            criterionId: parseInt(criterio.criterioId, 10),
                             note: criterio.nota,
                             justification: criterio.justificativa,
-                        })),
-                    ),
-                },
-            },
-        });
-    }
-
-    async getAutoEvaluationWithCriteria(evaluationId: number) {
-        return await this.prisma.autoEvaluation.findUnique({
-            where: { evaluationId },
-            include: {
-                criteriaAssignments: {
-                    include: {
-                        criterion: {
-                            include: {
-                                pillar: true,
-                            },
                         },
-                    },
-                },
-            },
-        });
+                    });
+                }
+            }
+
+            return autoEvaluation;
+        }
+        return null;
     }
 }
