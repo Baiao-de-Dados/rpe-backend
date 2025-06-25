@@ -39,7 +39,7 @@ export class AuthController {
     @Public()
     @Post('logout')
     @ApiStandardResponses()
-    async logou(@CurrentUser() user: UserFromJwt) {
+    async logout(@CurrentUser() user: UserFromJwt) {
         return this.authService.logout(user.id);
     }
 
