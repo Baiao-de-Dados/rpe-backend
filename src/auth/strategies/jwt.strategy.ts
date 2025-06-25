@@ -4,12 +4,13 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EncryptionService } from '../../encryption/encryption.service';
-import { UserRoleEnum } from '@prisma/client';
+import { UserRole } from '@prisma/client';
+import * as crypto from 'crypto';
 
 export interface JwtPayload {
     sub: number;
     email: string;
-    roles?: UserRoleEnum[]; // Adicionado campo roles
+    roles?: UserRole[];
     iat?: number;
     exp?: number;
 }
@@ -18,10 +19,12 @@ export interface UserFromJwt {
     id: number;
     email: string;
     name: string | null;
-    roles: UserRoleEnum[];
+    roles: UserRole[];
     createdAt: Date;
     updatedAt: Date;
 }
+
+const FALL_BACK_JWT_SECRET = crypto.randomBytes(32).toString('base64');
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -33,7 +36,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         super({
             jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
             ignoreExpiration: false,
-            secretOrKey: configService.get<string>('JWT_SECRET') || 'fall_back_secret',
+            secretOrKey: configService.get<string>('JWT_SECRET') || FALL_BACK_JWT_SECRET,
         });
     }
 
@@ -72,7 +75,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
             id: user.id,
             email: decryptedEmail,
             name: user.name,
-            roles: roles,
+            roles,
             createdAt: user.createdAt,
             updatedAt: user.updatedAt,
         };

@@ -2,14 +2,14 @@ import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/co
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { EncryptionService } from 'src/encryption/encryption.service';
-import { UserRoleEnum } from '@prisma/client';
+import { UserRole } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 export interface UserPublic {
     id: number;
     email: string;
     name: string | null;
-    roles: UserRoleEnum[];
+    roles: UserRole[];
     createdAt: Date;
     updatedAt: Date;
 }
@@ -70,12 +70,12 @@ export class AuthService {
         const payload = {
             sub: user.id,
             email: user.email,
-            roles: user.roles, // Adicionando roles ao payload
+            roles: user.roles,
         };
 
         return {
             access_token: this.jwtService.sign(payload),
-            user: user,
+            user,
         };
     }
 
@@ -83,7 +83,7 @@ export class AuthService {
         return await this.prisma.user.findFirst({
             include: {
                 userRoles: {
-                    where: { role: UserRoleEnum.ADMIN, isActive: true },
+                    where: { role: UserRole.ADMIN, isActive: true },
                 },
             },
         });
@@ -93,7 +93,7 @@ export class AuthService {
         email: string,
         password: string,
         name: string,
-        roles: UserRoleEnum[],
+        roles: UserRole[],
         assignedBy: number,
     ): Promise<UserPublic> {
         const encryptedEmail = this.encryptionService.encrypt(email);
@@ -107,10 +107,8 @@ export class AuthService {
             throw new ConflictException('User already exists');
         }
 
-        // Hash da senha
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // Criar usuário e suas roles em uma transação
         const result = await this.prisma.$transaction(async (tx) => {
             // Criar usuário
             const user = await tx.user.create({
@@ -122,7 +120,8 @@ export class AuthService {
             });
 
             // Criar roles do usuário
-            await tx.userRole.createMany({
+
+            await tx.userRoleLink.createMany({
                 data: roles.map((role) => ({
                     userId: user.id,
                     role: role,

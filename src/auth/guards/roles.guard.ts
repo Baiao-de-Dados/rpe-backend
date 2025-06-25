@@ -1,11 +1,11 @@
 import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { UserRoleEnum } from '@prisma/client';
+import { UserRole } from '@prisma/client';
 import { ROLES_KEY, EXACT_ROLES_KEY } from '../decorators/roles.decorator';
 import { hasAnyRolePermission } from '../role-hierarchy';
 
 interface AuthenticatedUser {
-    roles: UserRoleEnum[];
+    roles: UserRole[];
     // [key: string]: any -> se quiser adicionar outras propriedades como user.email ou user.id
 }
 
@@ -19,13 +19,13 @@ export class RolesGuard implements CanActivate {
 
     canActivate(context: ExecutionContext): boolean {
         // Verificar roles com hierarquia
-        const requiredRoles = this.reflector.getAllAndOverride<UserRoleEnum[]>(ROLES_KEY, [
+        const requiredRoles = this.reflector.getAllAndOverride<UserRole[]>(ROLES_KEY, [
             context.getHandler(),
             context.getClass(),
         ]);
 
         // Verificar roles exatas (sem hierarquia)
-        const exactRoles = this.reflector.getAllAndOverride<UserRoleEnum[]>(EXACT_ROLES_KEY, [
+        const exactRoles = this.reflector.getAllAndOverride<UserRole[]>(EXACT_ROLES_KEY, [
             context.getHandler(),
             context.getClass(),
         ]);
@@ -61,10 +61,6 @@ export class RolesGuard implements CanActivate {
             }
         }
 
-        // Se chegou aqui, não tem acesso
-        const allRequiredRoles = [...(requiredRoles || []), ...(exactRoles || [])];
-        throw new ForbiddenException(
-            `Access denied. Required roles: ${allRequiredRoles.join(', ')}. Your roles: ${user.roles.join(', ')}`,
-        );
+        throw new ForbiddenException(`Access denied.`);
     }
 }

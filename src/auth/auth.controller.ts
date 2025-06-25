@@ -5,7 +5,7 @@ import { Public } from './decorators/public.decorator';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { RequireAdmin } from './decorators/roles.decorator';
 import { UserFromJwt } from './strategies/jwt.strategy';
-import { UserRoleEnum } from '@prisma/client';
+import { UserRole } from '@prisma/client';
 import { RolesGuard } from './guards/roles.guard';
 
 export class LoginDto {
@@ -17,7 +17,7 @@ export class CreateUserDto {
     email: string;
     password: string;
     name: string;
-    roles: UserRoleEnum[];
+    roles: UserRole[];
 }
 
 @ApiTags('Authentication')
@@ -86,7 +86,7 @@ export class AuthController {
             'admin@test.com',
             'admin123',
             'System Admin',
-            [UserRoleEnum.ADMIN],
+            [UserRole.ADMIN],
             1, // Self-assigned
         );
 

@@ -4,7 +4,7 @@ import { ApiTags } from '@nestjs/swagger';
 import { UserService } from './user.service';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { UserFromJwt } from '../auth/strategies/jwt.strategy';
-import { UserRoleEnum } from '@prisma/client';
+import { UserRole } from '@prisma/client';
 
 import { ApiAuth } from 'src/common/decorators/api-auth.decorator';
 import {
@@ -28,7 +28,7 @@ export class UpdateUserDto {
 }
 
 export class AssignRoleDto {
-    role: UserRoleEnum;
+    role: UserRole;
 }
 
 @ApiTags('Users')
@@ -50,7 +50,7 @@ export class UserController {
         return this.userService.findOne(user.id);
     }
 
-    @Roles(UserRoleEnum.RH, UserRoleEnum.ADMIN)
+    @Roles(UserRole.RH, UserRole.ADMIN)
     @Get(':id')
     @ApiGet('usuário')
     async findOne(@Param('id') id: string) {
@@ -85,7 +85,7 @@ export class UserController {
     @RequireAdmin()
     @Delete(':id/roles/:role')
     @ApiDelete('role do usuário (apenas Admin)')
-    async removeRole(@Param('id') userId: string, @Param('role') role: UserRoleEnum) {
+    async removeRole(@Param('id') userId: string, @Param('role') role: UserRole) {
         return this.userService.removeRole(+userId, role);
     }
 }

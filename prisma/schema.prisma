@@ -12,7 +12,6 @@ model User {
     email       String        @unique
     password    String
     name        String?
-    role        UserRole
     unit        String?
     track       String?
     createdAt   DateTime      @default(now())
@@ -25,6 +24,18 @@ model User {
     referencesTo Reference[] @relation("RefTo")
     okrs        Okr[]
     pdps        Pdi[]
+    userRoles   UserRoleLink[]
+}
+
+model UserRoleLink {
+    userId      Int
+    role        UserRole
+    isActive    Boolean   @default(true)
+    createdAt   DateTime  @default(now())
+
+    user        User      @relation(fields: [userId], references: [id])
+
+    @@id([userId, role])
 }
 
 model Evaluation {
@@ -39,6 +50,44 @@ model Evaluation {
 
     evaluator      User      @relation("Evaluator", fields: [evaluatorId], references: [id])
     evaluatee      User      @relation("Evaluatee", fields: [evaluateeId], references: [id])
+
+    CriteriaAssignment CriteriaAssignment[]
+
+    @@index([type], map: "EvaluationTypeIndex")
+}
+
+model Pillar {
+    id          Int       @id @default(autoincrement())
+    name        String
+    description String?
+    createdAt   DateTime  @default(now())
+
+    criteria    Criterion[]
+}
+
+model Criterion {
+    id          Int       @id @default(autoincrement())
+    pillarId    Int
+    name        String
+    description String?
+    weight      Float
+    createdAt   DateTime  @default(now())
+
+    pillar      Pillar    @relation(fields: [pillarId], references: [id], onDelete: Cascade)
+    CriteriaAssignment CriteriaAssignment[]
+}
+
+model CriteriaAssignment {
+    autoEvaluationID Int
+    criterionId     Int
+    note          Float
+    justification String
+
+    autoEvaluation  Evaluation @relation(fields: [autoEvaluationID], references: [id])
+    criterion      Criterion  @relation(fields: [criterionId], references: [id])
+
+    @@id([autoEvaluationID, criterionId])
+
 }
 
 model Reference {
@@ -95,8 +144,8 @@ model Log {
 }
 
 enum EvaluationType {
-    AUTO
-    PEER
+    AUTOEVALUATION
+    PEER_360
     LEADER
 }
 
@@ -106,10 +155,12 @@ enum FeedbackSource {
 }
 
 enum UserRole {
-    COLLABORATOR
-    RH
+    EMPLOYER
+    LEADER
+    MENTOR
     MANAGER
+    RH
     COMMITTEE
-    ADMIN
     DEVELOPER
+    ADMIN
 }

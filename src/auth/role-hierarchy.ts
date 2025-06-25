@@ -1,18 +1,18 @@
-import { UserRoleEnum } from '@prisma/client';
+import { UserRole } from '@prisma/client';
 
 /**
  * Hierarquia de roles do sistema
  * Quanto maior o número, maior o privilégio
  */
-export const ROLE_HIERARCHY: Record<UserRoleEnum, number> = {
-    [UserRoleEnum.EMPLOYER]: 1, // Menor privilégio
-    [UserRoleEnum.MENTOR]: 2,
-    [UserRoleEnum.LEADER]: 3,
-    [UserRoleEnum.MANAGER]: 4,
-    [UserRoleEnum.RH]: 5,
-    [UserRoleEnum.COMMITTEE]: 6,
-    [UserRoleEnum.ADMIN]: 7,
-    [UserRoleEnum.DEVELOPER]: 8, // Maior privilégio
+export const ROLE_HIERARCHY: Record<UserRole, number> = {
+    [UserRole.EMPLOYER]: 1, // Menor privilégio
+    [UserRole.MENTOR]: 2,
+    [UserRole.LEADER]: 3,
+    [UserRole.MANAGER]: 4,
+    [UserRole.RH]: 5,
+    [UserRole.COMMITTEE]: 6,
+    [UserRole.ADMIN]: 7,
+    [UserRole.DEVELOPER]: 8, // Maior privilégio
 };
 
 /**
@@ -21,7 +21,7 @@ export const ROLE_HIERARCHY: Record<UserRoleEnum, number> = {
  * @param requiredRole - Role mínima necessária
  * @returns true se tem permissão
  */
-export function hasRolePermission(userRoles: UserRoleEnum[], requiredRole: UserRoleEnum): boolean {
+export function hasRolePermission(userRoles: UserRole[], requiredRole: UserRole): boolean {
     const requiredLevel = ROLE_HIERARCHY[requiredRole];
 
     return userRoles.some((role) => {
@@ -36,10 +36,7 @@ export function hasRolePermission(userRoles: UserRoleEnum[], requiredRole: UserR
  * @param requiredRoles - Array de roles necessárias (OR)
  * @returns true se tem permissão para pelo menos uma
  */
-export function hasAnyRolePermission(
-    userRoles: UserRoleEnum[],
-    requiredRoles: UserRoleEnum[],
-): boolean {
+export function hasAnyRolePermission(userRoles: UserRole[], requiredRoles: UserRole[]): boolean {
     return requiredRoles.some((requiredRole) => hasRolePermission(userRoles, requiredRole));
 }
 
@@ -48,7 +45,7 @@ export function hasAnyRolePermission(
  * @param userRoles - Array de roles do usuário
  * @returns Role de maior privilégio
  */
-export function getHighestRole(userRoles: UserRoleEnum[]): UserRoleEnum | null {
+export function getHighestRole(userRoles: UserRole[]): UserRole | null {
     if (!userRoles.length) return null;
 
     return userRoles.reduce((highest, current) => {
