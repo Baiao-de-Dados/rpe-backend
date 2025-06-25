@@ -1,9 +1,4 @@
-import {
-    Injectable,
-    NotFoundException,
-    BadRequestException,
-    ConflictException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateEvaluationDto } from '../dto/create-evaluation.dto';
 import {
@@ -18,16 +13,15 @@ export class EvaluationValidationService {
     constructor(private prisma: PrismaService) {}
 
     async validateEvaluationData(data: CreateEvaluationDto): Promise<void> {
-        const { ciclo, colaboradorId, autoavaliacao, avaliacao360, mentoring, referencias } = data;
+        const { colaboradorId, autoavaliacao, avaliacao360, mentoring, referencias } = data;
+        const colaboradorIdNum = parseInt(colaboradorId, 10);
 
         await Promise.all([
-            this.validateColaborador(colaboradorId),
-            this.validateExistingEvaluation(colaboradorId, ciclo),
+            this.validateColaborador(colaboradorIdNum),
             this.validateCriterios(autoavaliacao),
-            this.validateAvaliacao360(avaliacao360, colaboradorId),
-            this.validateMentoring(mentoring, colaboradorId),
-            this.validateReferencias(referencias, colaboradorId),
-            this.validateTags(referencias),
+            this.validateAvaliacao360(avaliacao360, colaboradorIdNum),
+            this.validateMentoring(Array.isArray(mentoring) ? mentoring : [], colaboradorIdNum),
+            this.validateReferencias(referencias, colaboradorIdNum),
             this.validateDuplicates(avaliacao360, mentoring, referencias),
         ]);
 
@@ -43,27 +37,13 @@ export class EvaluationValidationService {
         }
     }
 
-    private async validateExistingEvaluation(colaboradorId: number, ciclo: string): Promise<void> {
-        const existingEvaluation = await this.prisma.evaluation.findFirst({
-            where: {
-                userId: colaboradorId,
-                cycle: ciclo,
-            },
-        });
-        if (existingEvaluation) {
-            throw new ConflictException(
-                `Já existe uma avaliação para o colaborador ${colaboradorId} no ciclo ${ciclo}`,
-            );
-        }
-    }
-
     private async validateCriterios(autoavaliacao: AutoAvaliacaoDto): Promise<void> {
         if (!autoavaliacao || !autoavaliacao.pilares || autoavaliacao.pilares.length === 0) {
             return;
         }
 
         const criterioIds = autoavaliacao.pilares.flatMap((pilar) =>
-            pilar.criterios.map((criterio) => criterio.criterioId),
+            pilar.criterios.map((criterio) => parseInt(criterio.criterioId, 10)),
         );
         const criteriosExistentes = await this.prisma.criterion.findMany({
             where: { id: { in: criterioIds } },
@@ -85,7 +65,7 @@ export class EvaluationValidationService {
             return;
         }
 
-        const avaliadoIds = avaliacao360.map((av) => av.avaliadoId);
+        const avaliadoIds = avaliacao360.map((av) => parseInt(av.avaliadoId, 10));
         const avaliadosExistentes = await this.prisma.user.findMany({
             where: { id: { in: avaliadoIds } },
         });
@@ -104,22 +84,36 @@ export class EvaluationValidationService {
     }
 
     private async validateMentoring(
-        mentoring: MentoringDto | null | undefined,
+        mentoring: MentoringDto[],
         colaboradorId: number,
     ): Promise<void> {
-        if (!mentoring) {
+        if (!mentoring || mentoring.length === 0) {
             return;
         }
 
-        const mentor = await this.prisma.user.findUnique({
-            where: { id: mentoring.mentorId },
-        });
-        if (!mentor) {
-            throw new NotFoundException(`Mentor com ID ${mentoring.mentorId} não encontrado`);
-        }
-
-        if (mentoring.mentorId === colaboradorId) {
-            throw new BadRequestException('O colaborador não pode ser seu próprio mentor');
+        for (const m of mentoring) {
+            if (m.mentorId) {
+                const mentor = await this.prisma.user.findUnique({
+                    where: { id: parseInt(m.mentorId, 10) },
+                });
+                if (!mentor) {
+                    throw new NotFoundException(`Mentor com ID ${m.mentorId} não encontrado`);
+                }
+                if (parseInt(m.mentorId, 10) === colaboradorId) {
+                    throw new BadRequestException('O colaborador não pode ser seu próprio mentor');
+                }
+            }
+            if (m.leaderId) {
+                const leader = await this.prisma.user.findUnique({
+                    where: { id: parseInt(m.leaderId, 10) },
+                });
+                if (!leader) {
+                    throw new NotFoundException(`Líder com ID ${m.leaderId} não encontrado`);
+                }
+                if (parseInt(m.leaderId, 10) === colaboradorId) {
+                    throw new BadRequestException('O colaborador não pode ser seu próprio líder');
+                }
+            }
         }
     }
 
@@ -131,7 +125,7 @@ export class EvaluationValidationService {
             return;
         }
 
-        const referenciaColaboradorIds = referencias.map((r) => r.colaboradorId);
+        const referenciaColaboradorIds = referencias.map((r) => parseInt(r.colaboradorId, 10));
         const referenciaColaboradoresExistentes = await this.prisma.user.findMany({
             where: { id: { in: referenciaColaboradorIds } },
         });
@@ -151,25 +145,9 @@ export class EvaluationValidationService {
         }
     }
 
-    private async validateTags(referencias: ReferenciaDto[]): Promise<void> {
-        if (!referencias || referencias.length === 0) {
-            return;
-        }
-
-        const tagIds = referencias.flatMap((r) => r.tagIds);
-        const tagsExistentes = await this.prisma.tag.findMany({
-            where: { id: { in: tagIds } },
-        });
-        if (tagsExistentes.length !== tagIds.length) {
-            const idsExistentes = tagsExistentes.map((t) => t.id);
-            const idsNaoExistentes = tagIds.filter((id) => !idsExistentes.includes(id));
-            throw new NotFoundException(`Tags não encontradas: ${idsNaoExistentes.join(', ')}`);
-        }
-    }
-
     private validateDuplicates(
         avaliacao360: Avaliacao360Dto[],
-        mentoring: MentoringDto | null | undefined,
+        mentoring: MentoringDto[] | null | undefined,
         referencias: ReferenciaDto[],
     ): void {
         if (avaliacao360 && avaliacao360.length > 0) {
@@ -181,8 +159,6 @@ export class EvaluationValidationService {
                 );
             }
         }
-
-        // Não é mais necessário verificar duplicatas para mentoring pois agora só aceita um mentor
 
         if (referencias && referencias.length > 0) {
             const referenciaColaboradorIds = referencias.map((r) => r.colaboradorId);

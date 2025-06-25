@@ -1,33 +1,34 @@
 export interface CriterioDto {
-    criterioId: number;
+    criterioId: string;
     nota: number;
     justificativa: string;
 }
 
 export interface PilarDto {
-    pilarId: number;
+    pilarId: string;
     criterios: CriterioDto[];
 }
 
 export interface AutoAvaliacaoDto {
-    justificativa: string;
     pilares: PilarDto[];
 }
 
 export interface Avaliacao360Dto {
-    avaliadoId: number;
+    avaliadoId: string;
     pontosFortes?: string;
     pontosMelhoria?: string;
     justificativa: string;
 }
 
 export interface MentoringDto {
-    mentorId: number;
-    justificativa: string;
+    mentorId?: string;
+    justificativa?: string;
+    leaderId?: string;
+    leaderJustificativa?: string;
 }
 
 export interface ReferenciaDto {
-    colaboradorId: number;
+    colaboradorId: string;
     tagIds: number[];
     justificativa: string;
 }
