@@ -37,7 +37,7 @@ model UserRoleLink {
     createdAt    DateTime  @default(now())
     assignedBy   Int
 
-    admin        User?     @relation("AssignedByAdmin", fields: [assignedBy], references: [id])
+    admin        User?     @relation("AssignedByAdmi", fields: [assignedBy], references: [id])
     user         User      @relation("UserRoleUser", fields: [userId], references: [id])
 
     @@id([userId, role])

@@ -1,4 +1,9 @@
-import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
+import {
+    Injectable,
+    UnauthorizedException,
+    ConflictException,
+    NotFoundException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { EncryptionService } from 'src/encryption/encryption.service';
@@ -146,8 +151,16 @@ export class AuthService {
         const hashedPassword = await bcrypt.hash(password, 10);
 
         const result = await this.prisma.$transaction(async (tx) => {
+            const superAdmin = await tx.user.findUnique({
+                where: {
+                    id: assignedBy,
+                },
+            });
+            if (!superAdmin) {
+                throw new NotFoundException('Super-admin não existe');
+            }
             // Criar usuário
-            const user = await tx.user.create({
+            const newUser = await tx.user.create({
                 data: {
                     email: encryptedEmail,
                     password: hashedPassword,
@@ -159,15 +172,16 @@ export class AuthService {
 
             await tx.userRoleLink.createMany({
                 data: roles.map((role) => ({
-                    userId: user.id,
-                    role: role,
-                    assignedBy: assignedBy,
+                    userId: newUser.id,
+                    role,
+                    assignedBy,
+                    createdAt: new Date(),
                 })),
             });
 
             // Buscar usuário com roles
             return await tx.user.findUnique({
-                where: { id: user.id },
+                where: { id: newUser.id },
                 include: {
                     userRoles: {
                         where: { isActive: true },
