@@ -79,6 +79,42 @@ export class AuthService {
         };
     }
 
+    async logout(userId: number): Promise<{ message: string; data: UserPublic }> {
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+            include: {
+                userRoles: {
+                    where: { isActive: true },
+                    select: { role: true },
+                },
+            },
+        });
+
+        if (!user) {
+            throw new UnauthorizedException('User not found');
+        }
+
+        await this.prisma.user.update({
+            where: { id: userId },
+            data: { lastLogged: new Date() },
+        });
+
+        const userRoles = user.userRoles.map((ur) => ur.role);
+        const userData: UserPublic = {
+            id: user.id,
+            email: this.encryptionService.decrypt(user.email),
+            name: user.name,
+            roles: userRoles,
+            createdAt: user.createdAt,
+            updatedAt: user.updatedAt,
+        };
+
+        return {
+            message: 'Logout successful',
+            data: userData,
+        };
+    }
+
     async findAdminUser() {
         return await this.prisma.user.findFirst({
             include: {
