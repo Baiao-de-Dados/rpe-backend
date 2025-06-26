@@ -35,10 +35,10 @@ model UserRoleLink {
     role         UserRole
     isActive     Boolean   @default(true)
     createdAt    DateTime  @default(now())
-    assignedBy   Int
+    assignedBy   Int?
 
-    admin        User?     @relation("AssignedByAdmin", fields: [assignedBy], references: [id])
-    user         User      @relation("UserRoleUser", fields: [userId], references: [id])
+    admin        User?     @relation("AssignedByAdmin", fields: [assignedBy], references: [id], onDelete: SetNull)
+    user         User      @relation("UserRoleUser", fields: [userId], references: [id], onDelete: Cascade)
 
     @@id([userId, role])
 }
@@ -53,8 +53,8 @@ model Evaluation {
     score          Int
     createdAt      DateTime  @default(now())
 
-    evaluator      User      @relation("Evaluator", fields: [evaluatorId], references: [id])
-    evaluatee      User      @relation("Evaluatee", fields: [evaluateeId], references: [id])
+    evaluator      User      @relation("Evaluator", fields: [evaluatorId], references: [id], onDelete: Cascade)
+    evaluatee      User      @relation("Evaluatee", fields: [evaluateeId], references: [id], onDelete: Cascade)
 
     CriteriaAssignment CriteriaAssignment[]
 
@@ -94,6 +94,7 @@ model Pillar {
     createdAt   DateTime  @default(now())
 
     criteria    Criterion[]
+    cycleConfigs PillarCycleConfig[]
 }
 
 model Criterion {
@@ -106,6 +107,7 @@ model Criterion {
 
     pillar      Pillar    @relation(fields: [pillarId], references: [id], onDelete: Cascade)
     CriteriaAssignment CriteriaAssignment[]
+    cycleConfigs CriterionCycleConfig[]
 }
 
 model CriteriaAssignment {
@@ -137,12 +139,11 @@ model Reference {
     comment     String
     createdAt   DateTime  @default(now())
 
-    from        User      @relation("RefFrom", fields: [fromId], references: [id])
-    to          User      @relation("RefTo", fields: [toId], references: [id])
+    from        User      @relation("RefFrom", fields: [fromId], references: [id], onDelete: Cascade)
+    to          User      @relation("RefTo", fields: [toId], references: [id], onDelete: Cascade)
 
     tagReferences TagReference[]
 }
-
 
 model TagReference {
     tagId   Int
@@ -160,7 +161,7 @@ model Feedback {
     sourceType  FeedbackSource // TEXT | AUDIO_TRANSCRIBED
     createdAt   DateTime  @default(now())
 
-    user        User      @relation(fields: [userId], references: [id])
+    user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Okr {
@@ -172,7 +173,7 @@ model Okr {
     cycle       Int
     createdAt   DateTime  @default(now())
 
-    user        User      @relation(fields: [userId], references: [id])
+    user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Pdi {
@@ -183,7 +184,7 @@ model Pdi {
     status      String     // OPEN | IN_PROGRESS | DONE
     createdAt   DateTime   @default(now())
 
-    user        User       @relation(fields: [userId], references: [id])
+    user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Log {
@@ -192,6 +193,52 @@ model Log {
     action      String     // ex: "EXPORT_EVALUATIONS", "LOGIN", etc.
     metadata    Json
     createdAt   DateTime   @default(now())
+}
+
+model CycleConfig {
+    id          Int       @id @default(autoincrement())
+    name        String    // ex: "2025.1", "2025.2"
+    description String?
+    startDate   DateTime
+    endDate     DateTime
+    isActive    Boolean   @default(false)
+    createdAt   DateTime  @default(now())
+    updatedAt   DateTime  @updatedAt
+
+    pillarConfigs PillarCycleConfig[]
+    criterionConfigs CriterionCycleConfig[]
+
+    @@unique([name])
+}
+
+model PillarCycleConfig {
+    id          Int       @id @default(autoincrement())
+    cycleId     Int
+    pillarId    Int
+    isActive    Boolean   @default(true)
+    weight      Float     @default(1.0)
+    createdAt   DateTime  @default(now())
+    updatedAt   DateTime  @updatedAt
+
+    cycle       CycleConfig @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+    pillar      Pillar      @relation(fields: [pillarId], references: [id], onDelete: Cascade)
+
+    @@unique([cycleId, pillarId])
+}
+
+model CriterionCycleConfig {
+    id          Int       @id @default(autoincrement())
+    cycleId     Int
+    criterionId Int
+    isActive    Boolean   @default(true)
+    weight      Float     @default(1.0)
+    createdAt   DateTime  @default(now())
+    updatedAt   DateTime  @updatedAt
+
+    cycle       CycleConfig @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+    criterion   Criterion   @relation(fields: [criterionId], references: [id], onDelete: Cascade)
+
+    @@unique([cycleId, criterionId])
 }
 
 enum EvaluationType {
