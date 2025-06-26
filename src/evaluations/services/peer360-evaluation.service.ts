@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
+import { CycleValidationService } from './cycle-validation.service';
 
 @Injectable()
 export class Peer360EvaluationService {
+    constructor(private cycleValidationService: CycleValidationService) {}
+
     async createPeer360Evaluations(
         prisma: any,
         avaliacao360: any[],
@@ -10,6 +13,9 @@ export class Peer360EvaluationService {
     ) {
         const peerEvaluations: any[] = [];
         if (avaliacao360 && avaliacao360.length > 0) {
+            // Validar ciclo ativo e dentro do prazo
+            await this.cycleValidationService.validateActiveCycle(prisma, 'PEER_360');
+
             for (const avaliacao of avaliacao360) {
                 const peerEvaluation = await prisma.evaluation.create({
                     data: {

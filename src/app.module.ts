@@ -9,6 +9,8 @@ import { AppController } from './app.controller';
 import { UserModule } from './user/user.module';
 import { AuthModule } from './auth/auth.module';
 import { TagsModule } from './tags/tags.module';
+import { ErpModule } from './erp/erp.module';
+import { CycleConfigModule } from './cycle-config/cycle-config.module';
 import { ConfigModule } from '@nestjs/config';
 import { AppService } from './app.service';
 import { CommonModule } from './common/common.module';
@@ -38,6 +40,8 @@ import { LoggerModule } from 'nestjs-pino';
         PillarsModule,
         CriteriaModule,
         TagsModule,
+        ErpModule,
+        CycleConfigModule,
         CommonModule,
     ],
     controllers: [AppController],
@@ -47,6 +51,14 @@ export class AppModule implements NestModule {
     configure(consumer: MiddlewareConsumer) {
         consumer
             .apply(AuditMiddleware)
-            .forRoutes('evaluations', 'pillars', 'criteria', 'tags', 'users');
+            .forRoutes(
+                'evaluations',
+                'pillars',
+                'criteria',
+                'tags',
+                'users',
+                'export',
+                'cycle-config',
+            );
     }
 }

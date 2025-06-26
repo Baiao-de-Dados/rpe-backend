@@ -6,7 +6,43 @@ import {
     IsOptional,
     ValidateNested,
     IsDefined,
+    IsEnum,
 } from 'class-validator';
+import { EvaluationType } from '@prisma/client';
+
+// DTO simples para autoavaliação
+export class SimpleCreateEvaluationDto {
+    @IsEnum(EvaluationType)
+    type: EvaluationType;
+
+    @IsNumber()
+    evaluateeId: number;
+
+    @IsNumber()
+    cycle: number;
+
+    @IsString()
+    justification: string;
+
+    @IsNumber()
+    score: number;
+
+    @IsArray()
+    @ValidateNested({ each: true })
+    @Type(() => CriteriaAssignmentDto)
+    criteriaAssignments: CriteriaAssignmentDto[];
+}
+
+export class CriteriaAssignmentDto {
+    @IsNumber()
+    criterionId: number;
+
+    @IsNumber()
+    note: number;
+
+    @IsString()
+    justification: string;
+}
 
 class CriterioDto {
     @IsString()

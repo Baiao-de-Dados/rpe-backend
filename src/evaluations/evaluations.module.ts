@@ -9,9 +9,11 @@ import { Peer360EvaluationService } from './services/peer360-evaluation.service'
 import { ReferenceService } from './services/reference.service';
 import { AutoEvaluationService } from './services/auto-evaluation.service';
 import { MentorEvaluationService } from './services/mentor-evaluation.service';
+import { CycleValidationService } from './services/cycle-validation.service';
+import { CycleConfigModule } from '../cycle-config/cycle-config.module';
 
 @Module({
-    imports: [PrismaModule, CryptoModule],
+    imports: [PrismaModule, CryptoModule, CycleConfigModule],
     controllers: [EvaluationsController],
     providers: [
         EvaluationsService,
@@ -20,6 +22,7 @@ import { MentorEvaluationService } from './services/mentor-evaluation.service';
         ReferenceService,
         AutoEvaluationService,
         MentorEvaluationService,
+        CycleValidationService,
     ],
 })
 export class EvaluationsModule {}

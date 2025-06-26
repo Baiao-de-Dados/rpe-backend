@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateEvaluationDto } from './dto/create-evaluation.dto';
 import { EvaluationValidationService } from './services/evaluation-validation.service';
@@ -6,6 +6,7 @@ import { Peer360EvaluationService } from './services/peer360-evaluation.service'
 import { ReferenceService } from './services/reference.service';
 import { AutoEvaluationService } from './services/auto-evaluation.service';
 import { MentorEvaluationService } from './services/mentor-evaluation.service';
+import { EvaluationType } from '@prisma/client';
 
 @Injectable()
 export class EvaluationsService {
@@ -118,8 +119,11 @@ export class EvaluationsService {
     }
 
     async findByType(type: string) {
+        if (!Object.values(EvaluationType).includes(type as EvaluationType)) {
+            throw new BadRequestException(`Tipo de avaliação inválido: ${type}`);
+        }
         const evaluations = await this.prisma.evaluation.findMany({
-            where: { type: type as any },
+            where: { type: type as EvaluationType },
             include: {
                 evaluator: true,
                 evaluatee: true,
@@ -137,14 +141,16 @@ export class EvaluationsService {
                 createdAt: 'desc',
             },
         });
-
         return evaluations;
     }
 
     async findByTypeAndEvaluatee(type: string, evaluateeId: number) {
+        if (!Object.values(EvaluationType).includes(type as EvaluationType)) {
+            throw new BadRequestException(`Tipo de avaliação inválido: ${type}`);
+        }
         const evaluations = await this.prisma.evaluation.findMany({
             where: {
-                type: type as any,
+                type: type as EvaluationType,
                 evaluateeId: evaluateeId,
             },
             include: {
@@ -164,14 +170,16 @@ export class EvaluationsService {
                 createdAt: 'desc',
             },
         });
-
         return evaluations;
     }
 
     async findByTypeAndEvaluator(type: string, evaluatorId: number) {
+        if (!Object.values(EvaluationType).includes(type as EvaluationType)) {
+            throw new BadRequestException(`Tipo de avaliação inválido: ${type}`);
+        }
         const evaluations = await this.prisma.evaluation.findMany({
             where: {
-                type: type as any,
+                type: type as EvaluationType,
                 evaluatorId: evaluatorId,
             },
             include: {
@@ -191,7 +199,6 @@ export class EvaluationsService {
                 createdAt: 'desc',
             },
         });
-
         return evaluations;
     }
 
