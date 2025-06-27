@@ -64,7 +64,8 @@ export class CycleConfigService {
                 });
             }
 
-            return this.findOne(cycle.id);
+            // Retornar o ciclo diretamente sem chamar findOne
+            return this.mapToResponseDto(cycle);
         });
     }
 
@@ -317,19 +318,19 @@ export class CycleConfigService {
             isActive: cycle.isActive,
             createdAt: cycle.createdAt,
             updatedAt: cycle.updatedAt,
-            pillarConfigs: cycle.pillarConfigs.map((config: any) => ({
+            pillarConfigs: (cycle.pillarConfigs || []).map((config: any) => ({
                 id: config.id,
                 pillarId: config.pillarId,
-                pillarName: config.pillar.name,
+                pillarName: config.pillar?.name || 'N/A',
                 isActive: config.isActive,
                 weight: config.weight,
             })),
-            criterionConfigs: cycle.criterionConfigs.map((config: any) => ({
+            criterionConfigs: (cycle.criterionConfigs || []).map((config: any) => ({
                 id: config.id,
                 criterionId: config.criterionId,
-                criterionName: config.criterion.name,
-                pillarId: config.criterion.pillar.id,
-                pillarName: config.criterion.pillar.name,
+                criterionName: config.criterion?.name || 'N/A',
+                pillarId: config.criterion?.pillar?.id || 0,
+                pillarName: config.criterion?.pillar?.name || 'N/A',
                 isActive: config.isActive,
                 weight: config.weight,
             })),

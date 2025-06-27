@@ -1,13 +1,26 @@
-import { Controller, Post, Body, Get, Param, ParseIntPipe, Query } from '@nestjs/common';
+import {
+    Controller,
+    Post,
+    Body,
+    Get,
+    Param,
+    ParseIntPipe,
+    Query,
+    NotFoundException,
+} from '@nestjs/common';
 import { EvaluationsService } from './evaluations.service';
-import { CreateEvaluationDto, SimpleCreateEvaluationDto } from './dto/create-evaluation.dto';
-import { ActiveCriteriaResponseDto } from './dto/active-criteria-response.dto';
+import { CreateEvaluationDto } from './dto/create-evaluation.dto';
+import {
+    ActiveCriteriaResponseDto,
+    ActiveCriteriaUserResponseDto,
+} from './dto/active-criteria-response.dto';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { ApiCreate, ApiGet } from 'src/common/decorators/api-crud.decorator';
 import { ApiAuth } from 'src/common/decorators/api-auth.decorator';
 import { RequireEmployer, RequireRH, RequireLeader } from 'src/auth/decorators/roles.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 import { CycleConfigService } from '../cycle-config/cycle-config.service';
+import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 
 @ApiTags('Avaliações')
 @ApiAuth()
@@ -23,114 +36,12 @@ export class EvaluationsController {
     @RequireLeader()
     @Post()
     @ApiCreate('avaliação')
-    create(@Body() createEvaluationDto: CreateEvaluationDto) {
-        return this.evaluationsService.createEvaluation(createEvaluationDto);
-    }
-
-    @RequireEmployer()
-    @Post('simple')
-    @ApiOperation({ summary: 'Criar autoavaliação simples' })
-    @ApiResponse({ status: 201, description: 'Autoavaliação criada com sucesso' })
-    async createSimple(@Body() createEvaluationDto: SimpleCreateEvaluationDto) {
-        // Verificar se já existe uma autoavaliação para este usuário no ciclo
-        const existingEvaluation = await this.prisma.evaluation.findFirst({
-            where: {
-                type: 'AUTOEVALUATION',
-                evaluateeId: createEvaluationDto.evaluateeId,
-                cycle: createEvaluationDto.cycle,
-            },
-        });
-
-        if (existingEvaluation) {
-            throw new Error(
-                `Já existe uma autoavaliação para o usuário ${createEvaluationDto.evaluateeId} no ciclo ${createEvaluationDto.cycle}`,
-            );
-        }
-
-        // Buscar ciclo ativo para validar data de expiração
-        const activeCycle = await this.prisma.cycleConfig.findFirst({
-            where: { isActive: true },
-        });
-
-        if (!activeCycle) {
-            throw new Error('Não há ciclo ativo configurado');
-        }
-
-        // Verificar se o ciclo não expirou
-        const now = new Date();
-        if (now > activeCycle.endDate) {
-            throw new Error(
-                `O ciclo ${activeCycle.name} expirou em ${activeCycle.endDate.toLocaleDateString()}. Não é possível criar autoavaliações.`,
-            );
-        }
-
-        // Verificar se o ciclo já começou
-        if (now < activeCycle.startDate) {
-            throw new Error(
-                `O ciclo ${activeCycle.name} ainda não começou. Início previsto para ${activeCycle.startDate.toLocaleDateString()}.`,
-            );
-        }
-
-        // Validar se os critérios estão ativos no ciclo
-        if (
-            createEvaluationDto.criteriaAssignments &&
-            createEvaluationDto.criteriaAssignments.length > 0
-        ) {
-            const criterionIds = createEvaluationDto.criteriaAssignments.map(
-                (ca) => ca.criterionId,
-            );
-
-            // Buscar configurações dos critérios no ciclo atual
-            const criterionConfigs = await this.prisma.criterionCycleConfig.findMany({
-                where: {
-                    criterionId: { in: criterionIds },
-                    cycle: { isActive: true },
-                },
-                include: {
-                    criterion: true,
-                },
-            });
-
-            // Verificar se todos os critérios estão ativos
-            const inactiveCriteria = createEvaluationDto.criteriaAssignments.filter((ca) => {
-                const config = criterionConfigs.find((cc) => cc.criterionId === ca.criterionId);
-                return !config || !config.isActive;
-            });
-
-            if (inactiveCriteria.length > 0) {
-                const inactiveIds = inactiveCriteria.map((ca) => ca.criterionId);
-                throw new Error(`Critérios inativos no ciclo atual: ${inactiveIds.join(', ')}`);
-            }
-        }
-
-        // Criar a avaliação
-        const evaluation = await this.prisma.evaluation.create({
-            data: {
-                type: createEvaluationDto.type,
-                evaluatorId: createEvaluationDto.evaluateeId, // Autoavaliação
-                evaluateeId: createEvaluationDto.evaluateeId,
-                cycle: createEvaluationDto.cycle,
-                justification: createEvaluationDto.justification,
-                score: createEvaluationDto.score,
-            },
-        });
-
-        // Criar as atribuições de critérios
-        if (
-            createEvaluationDto.criteriaAssignments &&
-            createEvaluationDto.criteriaAssignments.length > 0
-        ) {
-            await this.prisma.criteriaAssignment.createMany({
-                data: createEvaluationDto.criteriaAssignments.map((ca) => ({
-                    autoEvaluationID: evaluation.id,
-                    criterionId: ca.criterionId,
-                    note: ca.note,
-                    justification: ca.justification,
-                })),
-            });
-        }
-
-        return evaluation;
+    create(@Body() createEvaluationDto: CreateEvaluationDto, @CurrentUser() user: any) {
+        return this.evaluationsService.createEvaluation(
+            createEvaluationDto,
+            user.track,
+            user.position,
+        );
     }
 
     @RequireRH()
@@ -276,6 +187,82 @@ export class EvaluationsController {
         }, {});
 
         return Object.values(groupedByPillar);
+    }
+
+    @RequireEmployer()
+    @Get('active-criteria/user')
+    @ApiOperation({
+        summary: 'Buscar critérios ativos para o usuário logado baseado em sua trilha/cargo',
+        description:
+            'Retorna apenas os critérios que estão ativos para a trilha e cargo específicos do usuário logado',
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Critérios ativos para o usuário logado',
+        type: ActiveCriteriaUserResponseDto,
+    })
+    @ApiResponse({
+        status: 404,
+        description: 'Usuário não encontrado ou sem critérios configurados',
+    })
+    async getActiveCriteriaForUser(
+        @CurrentUser() user: any,
+    ): Promise<ActiveCriteriaUserResponseDto> {
+        // Buscar critérios ativos para o usuário baseado em track e position
+        const userCriteria = await this.prisma.criterionTrackConfig.findMany({
+            where: {
+                track: user.track || null,
+                position: user.position || null,
+                isActive: true,
+            },
+            include: {
+                criterion: {
+                    include: {
+                        pillar: true,
+                    },
+                },
+            },
+        });
+
+        if (!userCriteria || userCriteria.length === 0) {
+            throw new NotFoundException(
+                `Nenhum critério configurado para sua trilha (${user.track}) e cargo (${user.position})`,
+            );
+        }
+
+        // Agrupar critérios por pilar
+        const groupedByPillar = userCriteria.reduce((acc, config) => {
+            const pillar = config.criterion.pillar;
+            const pillarId = pillar.id;
+
+            if (!acc[pillarId]) {
+                acc[pillarId] = {
+                    id: pillar.id,
+                    name: pillar.name,
+                    description: pillar.description,
+                    criterios: [],
+                };
+            }
+
+            acc[pillarId].criterios.push({
+                id: config.criterion.id,
+                name: config.criterion.name,
+                description: config.criterion.description,
+                weight: config.weight, // Usa o peso personalizado da configuração
+                originalWeight: config.criterion.weight, // Peso original do critério
+            });
+
+            return acc;
+        }, {});
+
+        return {
+            user: {
+                id: user.sub,
+                track: user.track,
+                position: user.position,
+            },
+            pilares: Object.values(groupedByPillar),
+        };
     }
 
     @RequireRH()

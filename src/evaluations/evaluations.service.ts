@@ -19,7 +19,11 @@ export class EvaluationsService {
         private mentorEvaluationService: MentorEvaluationService,
     ) {}
 
-    async createEvaluation(createEvaluationDto: CreateEvaluationDto) {
+    async createEvaluation(
+        createEvaluationDto: CreateEvaluationDto,
+        userTrack?: string,
+        userPosition?: string,
+    ) {
         const { ciclo, colaboradorId, autoavaliacao, avaliacao360, mentoring, referencias } =
             createEvaluationDto;
 
@@ -33,12 +37,14 @@ export class EvaluationsService {
         return await this.prisma.$transaction(async (prisma) => {
             const evaluations: any[] = [];
 
-            // 1. Cria a autoavaliação usando o service
+            // 1. Cria a autoavaliação usando o service (com validação de trilha/cargo)
             const autoEvaluation = await this.autoEvaluationService.createAutoEvaluation(
                 prisma,
                 autoavaliacao,
                 colaboradorIdNumber,
                 ciclo,
+                userTrack,
+                userPosition,
             );
             if (autoEvaluation) {
                 evaluations.push(autoEvaluation);

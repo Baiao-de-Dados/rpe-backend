@@ -15,6 +15,10 @@ import { ConfigModule } from '@nestjs/config';
 import { AppService } from './app.service';
 import { CommonModule } from './common/common.module';
 import { LoggerModule } from 'nestjs-pino';
+import { APP_GUARD } from '@nestjs/core';
+import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
+import { RolesGuard } from './auth/guards/roles.guard';
+
 @Module({
     imports: [
         ConfigModule.forRoot({
@@ -45,7 +49,18 @@ import { LoggerModule } from 'nestjs-pino';
         CommonModule,
     ],
     controllers: [AppController],
-    providers: [AppService, LoggingInterceptor],
+    providers: [
+        AppService,
+        LoggingInterceptor,
+        {
+            provide: APP_GUARD,
+            useClass: JwtAuthGuard,
+        },
+        {
+            provide: APP_GUARD,
+            useClass: RolesGuard,
+        },
+    ],
 })
 export class AppModule implements NestModule {
     configure(consumer: MiddlewareConsumer) {

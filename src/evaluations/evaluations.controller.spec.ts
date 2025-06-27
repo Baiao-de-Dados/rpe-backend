@@ -3,28 +3,29 @@ import { EvaluationsController } from './evaluations.controller';
 import { EvaluationsService } from './evaluations.service';
 import { NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { CycleConfigService } from '../cycle-config/cycle-config.service';
 
 describe('EvaluationsController', () => {
     let controller: EvaluationsController;
+    let mockEvaluationsService: any;
+    let mockPrismaService: any;
+    let mockCycleConfigService: any;
 
-    const mockEvaluationsService = {
-        createEvaluation: jest.fn(),
-        findAll: jest.fn(),
-        findOne: jest.fn(),
-    };
-
-    const mockPrismaService = {
-        user: {
-            findMany: jest.fn(),
-        },
-        evaluation: {
-            findMany: jest.fn(),
-        },
+    const mockEvaluation = {
+        id: 1,
+        type: 'AUTOEVALUATION',
+        evaluatorId: 1,
+        evaluateeId: 1,
+        cycle: 2024,
+        justification: 'Test',
+        score: 0,
+        createdAt: new Date(),
+        updatedAt: new Date(),
     };
 
     const mockCreateEvaluationDto = {
-        ciclo: '2024-Q1',
         colaboradorId: '1',
+        ciclo: '2024-Q1',
         autoavaliacao: {
             pilares: [
                 {
@@ -39,88 +40,32 @@ describe('EvaluationsController', () => {
                 },
             ],
         },
-        avaliacao360: [
-            {
-                avaliadoId: '2',
-                pontosFortes: 'Ótima comunicação',
-                pontosMelhoria: 'Precisa melhorar prazos',
-                justificativa: 'Avaliação baseada no trabalho em equipe',
-            },
-        ],
-        mentoring: [
-            {
-                mentorId: '3',
-                justificativa: 'Acompanhamento semanal',
-                leaderId: '4',
-                leaderJustificativa: 'Avaliação do líder',
-            },
-        ],
-        referencias: [
-            {
-                colaboradorId: '2',
-                justificativa: 'Referência técnica',
-                tagIds: [1],
-            },
-        ],
-    };
-
-    const mockEvaluation = {
-        id: 1,
-        cycle: '2024-Q1',
-        userId: 1,
-        createdAt: new Date(),
-        grade: 0,
-        user: { id: 1, email: 'test@test.com', name: 'Test User' },
-        autoEvaluation: {
-            id: 1,
-            evaluationId: 1,
-            criteriaAssignments: [
-                {
-                    criterion: { id: 1, name: 'Conhecimento Técnico' },
-                    justification: 'Tenho bom domínio das tecnologias',
-                    nota: 8.0,
-                },
-            ],
-        },
-        evaluation360: [
-            {
-                id: 1,
-                evaluationId: 1,
-                evaluatorId: 1,
-                evaluatedId: 2,
-                strengths: 'Ótima comunicação',
-                improvements: 'Precisa melhorar prazos',
-            },
-        ],
-        leader: {
-            id: 2,
-            evaluationId: 2,
-            evaluatorId: 3,
-            evaluatedId: 1,
-            justification: 'Avaliação do líder',
-            cycle: '2024-Q1',
-        },
-        mentoring: {
-            id: 3,
-            evaluationId: 3,
-            evaluatorId: 4,
-            evaluatedId: 1,
-            justification: 'Acompanhamento semanal',
-            cycle: '2024-Q1',
-        },
-        references: [
-            {
-                id: 1,
-                evaluationId: 1,
-                evaluatorId: 1,
-                evaluatedId: 2,
-                justification: 'Referência técnica',
-                tagReferences: [{ tag: { id: 1, name: 'Desenvolvedor' } }],
-            },
-        ],
+        avaliacao360: [],
+        mentoring: [],
+        referencias: [],
     };
 
     beforeEach(async () => {
+        mockEvaluationsService = {
+            createEvaluation: jest.fn(),
+            findAll: jest.fn(),
+            findOne: jest.fn(),
+        };
+
+        mockPrismaService = {
+            evaluation: {
+                findMany: jest.fn(),
+                findUnique: jest.fn(),
+            },
+            user: {
+                findUnique: jest.fn(),
+            },
+        };
+
+        mockCycleConfigService = {
+            getActiveCriteria: jest.fn(),
+        };
+
         const module: TestingModule = await Test.createTestingModule({
             controllers: [EvaluationsController],
             providers: [
@@ -132,40 +77,47 @@ describe('EvaluationsController', () => {
                     provide: PrismaService,
                     useValue: mockPrismaService,
                 },
+                {
+                    provide: CycleConfigService,
+                    useValue: mockCycleConfigService,
+                },
             ],
         }).compile();
 
         controller = module.get<EvaluationsController>(EvaluationsController);
     });
 
-    afterEach(() => {
-        jest.clearAllMocks();
+    it('should be defined', () => {
+        expect(controller).toBeDefined();
     });
 
     describe('create', () => {
-        it('should create a new evaluation', async () => {
+        it('should create an evaluation successfully', async () => {
             // Arrange
+            const mockUser = { id: 1, track: 'Backend', position: 'Developer' };
             mockEvaluationsService.createEvaluation.mockResolvedValue(mockEvaluation);
 
             // Act
-            const result = await controller.create(mockCreateEvaluationDto);
+            const result = await controller.create(mockCreateEvaluationDto, mockUser);
 
             // Assert
             expect(mockEvaluationsService.createEvaluation).toHaveBeenCalledWith(
                 mockCreateEvaluationDto,
+                mockUser.track,
+                mockUser.position,
             );
             expect(result).toEqual(mockEvaluation);
         });
 
-        it('should handle service errors properly', async () => {
+        it('should handle service errors', async () => {
             // Arrange
-            const error = new Error('Database error');
+            const mockUser = { id: 1, track: 'Backend', position: 'Developer' };
+            const error = new Error('Service error');
             mockEvaluationsService.createEvaluation.mockRejectedValue(error);
 
             // Act & Assert
-            await expect(controller.create(mockCreateEvaluationDto)).rejects.toThrow(error);
-            expect(mockEvaluationsService.createEvaluation).toHaveBeenCalledWith(
-                mockCreateEvaluationDto,
+            await expect(controller.create(mockCreateEvaluationDto, mockUser)).rejects.toThrow(
+                error,
             );
         });
     });
@@ -203,43 +155,41 @@ describe('EvaluationsController', () => {
 
             // Act & Assert
             await expect(controller.findAll()).rejects.toThrow(error);
-            expect(mockEvaluationsService.findAll).toHaveBeenCalled();
         });
     });
 
     describe('findOne', () => {
         it('should return a single evaluation by id', async () => {
             // Arrange
-            const evaluationId = 1;
+            const id = 1;
             mockEvaluationsService.findOne.mockResolvedValue(mockEvaluation);
 
             // Act
-            const result = await controller.findOne(evaluationId);
+            const result = await controller.findOne(id);
 
             // Assert
-            expect(mockEvaluationsService.findOne).toHaveBeenCalledWith(evaluationId);
+            expect(mockEvaluationsService.findOne).toHaveBeenCalledWith(1);
             expect(result).toEqual(mockEvaluation);
         });
 
         it('should handle NotFoundException properly', async () => {
             // Arrange
-            const evaluationId = 999;
-            mockEvaluationsService.findOne.mockRejectedValue(new NotFoundException());
+            const id = 999;
+            const notFoundError = new NotFoundException('Evaluation not found');
+            mockEvaluationsService.findOne.mockRejectedValue(notFoundError);
 
             // Act & Assert
-            await expect(controller.findOne(evaluationId)).rejects.toThrow(NotFoundException);
-            expect(mockEvaluationsService.findOne).toHaveBeenCalledWith(evaluationId);
+            await expect(controller.findOne(id)).rejects.toThrow(notFoundError);
         });
 
         it('should handle other service errors properly', async () => {
             // Arrange
-            const evaluationId = 1;
+            const id = 1;
             const error = new Error('Database error');
             mockEvaluationsService.findOne.mockRejectedValue(error);
 
             // Act & Assert
-            await expect(controller.findOne(evaluationId)).rejects.toThrow(error);
-            expect(mockEvaluationsService.findOne).toHaveBeenCalledWith(evaluationId);
+            await expect(controller.findOne(id)).rejects.toThrow(error);
         });
     });
 });

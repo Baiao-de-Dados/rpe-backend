@@ -14,6 +14,7 @@ model User {
     name            String?
     unit            String?
     track           String?
+    position        String?
     createdAt       DateTime        @default(now())
     updatedAt       DateTime        @updatedAt
     lastLogged      DateTime        @updatedAt
@@ -95,6 +96,7 @@ model Pillar {
 
     criteria    Criterion[]
     cycleConfigs PillarCycleConfig[]
+    trackConfigs PillarTrackConfig[]
 }
 
 model Criterion {
@@ -108,6 +110,7 @@ model Criterion {
     pillar      Pillar    @relation(fields: [pillarId], references: [id], onDelete: Cascade)
     CriteriaAssignment CriteriaAssignment[]
     cycleConfigs CriterionCycleConfig[]
+    trackConfigs CriterionTrackConfig[]
 }
 
 model CriteriaAssignment {
@@ -239,6 +242,35 @@ model CriterionCycleConfig {
     criterion   Criterion   @relation(fields: [criterionId], references: [id], onDelete: Cascade)
 
     @@unique([cycleId, criterionId])
+}
+
+model PillarTrackConfig {
+    id          Int       @id @default(autoincrement())
+    pillarId    Int
+    track       String?   // trilha
+    position    String?   // cargo
+    isActive    Boolean   @default(true)
+    createdAt   DateTime  @default(now())
+    updatedAt   DateTime  @updatedAt
+
+    pillar      Pillar    @relation(fields: [pillarId], references: [id], onDelete: Cascade)
+
+    @@unique([pillarId, track, position])
+}
+
+model CriterionTrackConfig {
+    id          Int       @id @default(autoincrement())
+    criterionId Int
+    track       String?   // trilha
+    position    String?   // cargo
+    isActive    Boolean   @default(true)
+    weight      Float     @default(1.0)
+    createdAt   DateTime  @default(now())
+    updatedAt   DateTime  @updatedAt
+
+    criterion   Criterion @relation(fields: [criterionId], references: [id], onDelete: Cascade)
+
+    @@unique([criterionId, track, position])
 }
 
 enum EvaluationType {

@@ -71,11 +71,24 @@ export class AuthService {
             throw new UnauthorizedException('Credenciais inválidas');
         }
 
-        // Incluir roles no payload para o JWT
+        // Buscar dados completos do usuário incluindo track e position
+        const fullUser = await this.prisma.user.findUnique({
+            where: { id: user.id },
+            include: {
+                userRoles: {
+                    where: { isActive: true },
+                    select: { role: true },
+                },
+            },
+        });
+
+        // Incluir roles, track e position no payload para o JWT
         const payload = {
             sub: user.id,
             email: user.email,
             roles: user.roles,
+            track: fullUser?.track || null,
+            position: fullUser?.position || null,
         };
 
         return {
