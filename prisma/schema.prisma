@@ -44,17 +44,17 @@ model UserRoleLink {
 }
 
 model Evaluation {
-    id             Int       @id @default(autoincrement())
-    type           EvaluationType // AUTO | PEER | LEADER
-    evaluatorId    Int
-    evaluateeId    Int
-    cycle          Int
-    justification  String
-    score          Int
-    createdAt      DateTime  @default(now())
+    id                 Int       @id @default(autoincrement())
+    type               EvaluationType // AUTO | PEER | LEADER
+    evaluatorId        Int
+    evaluateeId        Int
+    cycle              Int
+    justification      String
+    score              Int
+    createdAt          DateTime  @default(now())
 
-    evaluator      User      @relation("Evaluator", fields: [evaluatorId], references: [id])
-    evaluatee      User      @relation("Evaluatee", fields: [evaluateeId], references: [id])
+    evaluator          User      @relation("Evaluator", fields: [evaluatorId], references: [id])
+    evaluatee          User      @relation("Evaluatee", fields: [evaluateeId], references: [id])
 
     CriteriaAssignment CriteriaAssignment[]
 
@@ -88,64 +88,64 @@ model ProjectMember {
 }
 
 model Pillar {
-    id          Int       @id @default(autoincrement())
-    name        String
-    description String?
-    createdAt   DateTime  @default(now())
+    id           Int       @id @default(autoincrement())
+    name         String
+    description  String?
+    createdAt    DateTime  @default(now())
 
-    criteria    Criterion[]
+    criteria     Criterion[]
 }
 
 model Criterion {
-    id          Int       @id @default(autoincrement())
-    pillarId    Int
-    name        String
-    description String?
-    weight      Float
-    createdAt   DateTime  @default(now())
+    id                 Int       @id @default(autoincrement())
+    pillarId           Int
+    name               String
+    description        String?
+    weight             Float
+    createdAt          DateTime  @default(now())
 
-    pillar      Pillar    @relation(fields: [pillarId], references: [id], onDelete: Cascade)
+    pillar             Pillar    @relation(fields: [pillarId], references: [id], onDelete: Cascade)
     CriteriaAssignment CriteriaAssignment[]
 }
 
 model CriteriaAssignment {
     autoEvaluationID Int
-    criterionId     Int
-    note          Float
-    justification String
+    criterionId      Int
+    note             Float
+    justification    String
 
-    autoEvaluation  Evaluation @relation(fields: [autoEvaluationID], references: [id])
-    criterion      Criterion  @relation(fields: [criterionId], references: [id])
+    autoEvaluation   Evaluation @relation(fields: [autoEvaluationID], references: [id])
+    criterion        Criterion  @relation(fields: [criterionId], references: [id])
 
     @@id([autoEvaluationID, criterionId])
 }
 
 model Tag {
-    id          Int         @id @default(autoincrement())
-    name        String
-    createdAt   DateTime    @default(now())
-    updatedAt   DateTime    @updatedAt
+    id            Int         @id @default(autoincrement())
+    name          String
+    createdAt     DateTime    @default(now())
+    updatedAt     DateTime    @updatedAt
 
     tagReferences TagReference[]
 }
 
 model Reference {
-    id          Int       @id @default(autoincrement())
-    fromId      Int
-    toId        Int
-    tags        String[]
-    comment     String
-    createdAt   DateTime  @default(now())
+    id            Int       @id @default(autoincrement())
+    fromId        Int
+    toId          Int
+    tags          String[]
+    comment       String
+    createdAt     DateTime  @default(now())
 
-    from        User      @relation("RefFrom", fields: [fromId], references: [id])
-    to          User      @relation("RefTo", fields: [toId], references: [id])
+    from          User      @relation("RefFrom", fields: [fromId], references: [id])
+    to            User      @relation("RefTo", fields: [toId], references: [id])
 
     tagReferences TagReference[]
 }
 
 
 model TagReference {
-    tagId   Int
+    tagId       Int
     referenceId Int
     tag         Tag         @relation(fields: [tagId], references: [id])
     reference   Reference   @relation(fields: [referenceId], references: [id])
@@ -197,7 +197,6 @@ model Log {
 enum EvaluationType {
     AUTOEVALUATION
     PEER_360
-    LEADER
     MENTOR
 }
 

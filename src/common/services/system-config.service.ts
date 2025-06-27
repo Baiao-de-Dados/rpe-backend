@@ -10,7 +10,7 @@ export class SystemConfigService {
         const year = currentDate.getFullYear();
         const month = currentDate.getMonth() + 1;
         const semester = month <= 6 ? `1` : `2`;
-        return `${year}-${semester}`;
+        return `${year}.${semester}`;
     }
 
     async getAllCycles(): Promise<string[]> {
