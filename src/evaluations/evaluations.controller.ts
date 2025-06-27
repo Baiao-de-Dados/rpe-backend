@@ -1,11 +1,26 @@
-import { Controller, Post, Body, Get, Param, ParseIntPipe, Query } from '@nestjs/common';
+import {
+    Controller,
+    Post,
+    Body,
+    Get,
+    Param,
+    ParseIntPipe,
+    Query,
+    NotFoundException,
+} from '@nestjs/common';
 import { EvaluationsService } from './evaluations.service';
 import { CreateEvaluationDto } from './dto/create-evaluation.dto';
-import { ApiTags } from '@nestjs/swagger';
+import {
+    ActiveCriteriaResponseDto,
+    ActiveCriteriaUserResponseDto,
+} from './dto/active-criteria-response.dto';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { ApiCreate, ApiGet } from 'src/common/decorators/api-crud.decorator';
 import { ApiAuth } from 'src/common/decorators/api-auth.decorator';
 import { RequireEmployer, RequireRH, RequireLeader } from 'src/auth/decorators/roles.decorator';
 import { PrismaService } from '../prisma/prisma.service';
+import { CycleConfigService } from '../cycle-config/cycle-config.service';
+import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 
 @ApiTags('Avaliações')
 @ApiAuth()
@@ -14,14 +29,19 @@ export class EvaluationsController {
     constructor(
         private readonly evaluationsService: EvaluationsService,
         private readonly prisma: PrismaService,
+        private readonly cycleConfigService: CycleConfigService,
     ) {}
 
     @RequireEmployer()
     @RequireLeader()
     @Post()
     @ApiCreate('avaliação')
-    create(@Body() createEvaluationDto: CreateEvaluationDto) {
-        return this.evaluationsService.createEvaluation(createEvaluationDto);
+    create(@Body() createEvaluationDto: CreateEvaluationDto, @CurrentUser() user: any) {
+        return this.evaluationsService.createEvaluation(
+            createEvaluationDto,
+            user.track,
+            user.position,
+        );
     }
 
     @RequireRH()
@@ -32,13 +52,6 @@ export class EvaluationsController {
             return this.evaluationsService.findByType(type);
         }
         return this.evaluationsService.findAll();
-    }
-
-    @RequireRH()
-    @Get(':id')
-    @ApiGet('avaliação')
-    findOne(@Param('id', ParseIntPipe) id: number) {
-        return this.evaluationsService.findOne(id);
     }
 
     @RequireRH()
@@ -116,5 +129,146 @@ export class EvaluationsController {
         }
         // Se não especificar tipo, retorna todas as avaliações do avaliador
         return this.evaluationsService.findByTypeAndEvaluator('LEADER', evaluatorId);
+    }
+
+    @RequireEmployer()
+    @Get('active-criteria')
+    @ApiOperation({
+        summary: 'Buscar critérios ativos do ciclo atual',
+        description:
+            'Retorna todos os critérios que estão ativos no ciclo de avaliação atual para uso em autoavaliações',
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Critérios ativos encontrados',
+        type: ActiveCriteriaResponseDto,
+    })
+    @ApiResponse({ status: 404, description: 'Nenhum ciclo ativo encontrado' })
+    async getActiveCriteria(): Promise<ActiveCriteriaResponseDto> {
+        const activeCriteria = await this.cycleConfigService.getActiveCriteria();
+        return { criteria: activeCriteria };
+    }
+
+    @RequireEmployer()
+    @Get('active-criteria/grouped')
+    @ApiOperation({
+        summary: 'Buscar critérios ativos agrupados por pilar',
+        description:
+            'Retorna os critérios ativos organizados por pilar para facilitar o uso em formulários de autoavaliação',
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Critérios ativos agrupados por pilar',
+    })
+    @ApiResponse({ status: 404, description: 'Nenhum ciclo ativo encontrado' })
+    async getActiveCriteriaGrouped() {
+        const activeCriteria = await this.cycleConfigService.getActiveCriteria();
+
+        // Agrupar critérios por pilar
+        const groupedByPillar = activeCriteria.reduce((acc, criterion) => {
+            const pillarId = criterion.pillar.id;
+            if (!acc[pillarId]) {
+                acc[pillarId] = {
+                    id: criterion.pillar.id,
+                    name: criterion.pillar.name,
+                    description: criterion.pillar.description,
+                    criterios: [],
+                };
+            }
+
+            acc[pillarId].criterios.push({
+                id: criterion.id,
+                name: criterion.name,
+                description: criterion.description,
+                weight: criterion.weight,
+            });
+
+            return acc;
+        }, {});
+
+        return Object.values(groupedByPillar);
+    }
+
+    @RequireEmployer()
+    @Get('active-criteria/user')
+    @ApiOperation({
+        summary: 'Buscar critérios ativos para o usuário logado baseado em sua trilha/cargo',
+        description:
+            'Retorna apenas os critérios que estão ativos para a trilha e cargo específicos do usuário logado',
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Critérios ativos para o usuário logado',
+        type: ActiveCriteriaUserResponseDto,
+    })
+    @ApiResponse({
+        status: 404,
+        description: 'Usuário não encontrado ou sem critérios configurados',
+    })
+    async getActiveCriteriaForUser(
+        @CurrentUser() user: any,
+    ): Promise<ActiveCriteriaUserResponseDto> {
+        // Buscar critérios ativos para o usuário baseado em track e position
+        const userCriteria = await this.prisma.criterionTrackConfig.findMany({
+            where: {
+                track: user.track || null,
+                position: user.position || null,
+                isActive: true,
+            },
+            include: {
+                criterion: {
+                    include: {
+                        pillar: true,
+                    },
+                },
+            },
+        });
+
+        if (!userCriteria || userCriteria.length === 0) {
+            throw new NotFoundException(
+                `Nenhum critério configurado para sua trilha (${user.track}) e cargo (${user.position})`,
+            );
+        }
+
+        // Agrupar critérios por pilar
+        const groupedByPillar = userCriteria.reduce((acc, config) => {
+            const pillar = config.criterion.pillar;
+            const pillarId = pillar.id;
+
+            if (!acc[pillarId]) {
+                acc[pillarId] = {
+                    id: pillar.id,
+                    name: pillar.name,
+                    description: pillar.description,
+                    criterios: [],
+                };
+            }
+
+            acc[pillarId].criterios.push({
+                id: config.criterion.id,
+                name: config.criterion.name,
+                description: config.criterion.description,
+                weight: config.weight, // Usa o peso personalizado da configuração
+                originalWeight: config.criterion.weight, // Peso original do critério
+            });
+
+            return acc;
+        }, {});
+
+        return {
+            user: {
+                id: user.sub,
+                track: user.track,
+                position: user.position,
+            },
+            pilares: Object.values(groupedByPillar),
+        };
+    }
+
+    @RequireRH()
+    @Get(':id')
+    @ApiGet('avaliação')
+    findOne(@Param('id', ParseIntPipe) id: number) {
+        return this.evaluationsService.findOne(id);
     }
 }

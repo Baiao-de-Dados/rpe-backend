@@ -23,97 +23,78 @@ function encrypt(text: string): string {
 }
 
 async function main() {
+    console.log('🌱 Iniciando seed com reset completo...');
+
     // Hash das senhas
     const hashedPassword = await bcrypt.hash('senha123', 10);
 
     // Criptografar emails
-    const encryptedEmail1 = encrypt('avaliador@teste.com');
-    const encryptedEmail2 = encrypt('avaliado@teste.com');
+    const encryptedEmailBackend = encrypt('backend@teste.com');
+    const encryptedEmailFrontend = encrypt('frontend@teste.com');
 
-    console.log('ENCRYPTION_KEY:', SECRET);
-    console.log('Email 1 criptografado:', encryptedEmail1);
-    console.log('Email 2 criptografado:', encryptedEmail2);
+    console.log('👥 Criando usuários...');
 
-    // Usuários
-    const user1 = await prisma.user.create({
+    // Usuário Backend/Desenvolvedor
+    const userBackend = await prisma.user.create({
         data: {
-            email: encryptedEmail1,
+            email: encryptedEmailBackend,
             password: hashedPassword,
-            name: 'Avaliador',
+            name: 'João Backend',
+            track: 'Backend',
+            position: 'Desenvolvedor',
             userRoles: {
                 create: [{ role: 'EMPLOYER' }],
             },
         },
     });
 
-    const user2 = await prisma.user.create({
+    // Usuário Frontend/Desenvolvedor
+    const userFrontend = await prisma.user.create({
         data: {
-            email: encryptedEmail2,
+            email: encryptedEmailFrontend,
             password: hashedPassword,
-            name: 'Avaliado',
+            name: 'Maria Frontend',
+            track: 'Frontend',
+            position: 'Desenvolvedor',
             userRoles: {
                 create: [{ role: 'EMPLOYER' }],
             },
         },
     });
 
-    // Pilares
-    const pilar1 = await prisma.pillar.create({
-        data: { name: 'Técnico', description: 'Avaliação Técnica' },
-    });
-    const pilar2 = await prisma.pillar.create({
-        data: { name: 'Comportamental', description: 'Avaliação Comportamental' },
-    });
+    console.log('🏗️ Criando pilares...');
 
-    // Critérios
-    const criterio1 = await prisma.criterion.create({
+    // Pilar Técnico
+    const pilarTecnico = await prisma.pillar.create({
         data: {
-            name: 'Domínio Técnico',
-            description: 'Conhecimento técnico nas ferramentas',
-            weight: 1,
-            pillarId: pilar1.id,
-        },
-    });
-    const criterio2 = await prisma.criterion.create({
-        data: {
-            name: 'Documentação',
-            description: 'Qualidade da documentação',
-            weight: 1,
-            pillarId: pilar1.id,
-        },
-    });
-    const criterio3 = await prisma.criterion.create({
-        data: {
-            name: 'Trabalho em Equipe',
-            description: 'Colaboração com o time',
-            weight: 1,
-            pillarId: pilar2.id,
+            name: 'Técnico',
+            description: 'Avaliação de competências técnicas e conhecimentos específicos',
         },
     });
 
-    // Tags
-    const tag1 = await prisma.tag.create({ data: { name: 'Backend' } });
-    const tag2 = await prisma.tag.create({ data: { name: 'Liderança' } });
-
-    // Referencias
-    const reference1 = await prisma.reference.create({
+    // Pilar Comportamental
+    const pilarComportamental = await prisma.pillar.create({
         data: {
-            fromId: user1.id,
-            toId: user2.id,
-            tags: ['Backend', 'Liderança'],
-            comment: 'Excelente trabalho em equipe',
+            name: 'Comportamental',
+            description: 'Avaliação de soft skills e comportamentos no ambiente de trabalho',
         },
     });
 
-    console.log('Seed concluída com sucesso!');
-    console.log('Usuários:', {
-        user1: { ...user1, email: 'avaliador@teste.com' },
-        user2: { ...user2, email: 'avaliado@teste.com' },
-    });
-    console.log('Pilares:', { pilar1, pilar2 });
-    console.log('Critérios:', { criterio1, criterio2, criterio3 });
-    console.log('Tags:', { tag1, tag2 });
-    console.log('Referências:', { reference1 });
+    console.log('✅ Seed concluído com sucesso!');
+    console.log('\n📊 Resumo:');
+    console.log('👥 Usuários:');
+    console.log(`   - Backend: backend@teste.com (senha: senha123) - ID: ${userBackend.id}`);
+    console.log(`   - Frontend: frontend@teste.com (senha: senha123) - ID: ${userFrontend.id}`);
+
+    console.log('\n🏗️ Pilares:');
+    console.log(`   - Técnico (ID: ${pilarTecnico.id})`);
+    console.log(`   - Comportamental (ID: ${pilarComportamental.id})`);
+
+    console.log('\n🧪 Próximos passos:');
+    console.log('1. Login como backend@teste.com ou frontend@teste.com');
+    console.log('2. Criar critérios para cada pilar');
+    console.log('3. Configurar critérios por trilha/cargo');
+    console.log('4. Testar com diferentes usuários');
 }
 
 // Executar o seed
@@ -121,7 +102,7 @@ async function main() {
     try {
         await main();
     } catch (e) {
-        console.error(e);
+        console.error('❌ Erro durante o seed:', e);
         process.exit(1);
     } finally {
         await prisma.$disconnect();

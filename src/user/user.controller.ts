@@ -1,19 +1,25 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+    Controller,
+    Get,
+    Post,
+    Body,
+    Patch,
+    Param,
+    Delete,
+    ParseIntPipe,
+    UnauthorizedException,
+} from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 
 import { UserService } from './user.service';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { UserFromJwt } from '../auth/strategies/jwt.strategy';
 import { UserRole } from '@prisma/client';
+import { AssignRoleDto } from './dto/assign-role.dto';
 
 import { ApiAuth } from 'src/common/decorators/api-auth.decorator';
-import {
-    ApiList,
-    ApiGet,
-    ApiCreate,
-    ApiUpdate,
-    ApiDelete,
-} from 'src/common/decorators/api-crud.decorator';
+import { ApiList, ApiGet, ApiUpdate, ApiDelete } from 'src/common/decorators/api-crud.decorator';
+import { ApiProfile, ApiAssignRole, ApiRemoveRole } from './decorators/api-user.decorator';
 import {
     RequireAdmin,
     RequireRH,
@@ -21,14 +27,13 @@ import {
     OnlyAdmin,
     Roles,
 } from '../auth/decorators/roles.decorator';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { UseGuards } from '@nestjs/common';
 
 export class UpdateUserDto {
     name?: string;
     email?: string;
-}
-
-export class AssignRoleDto {
-    role: UserRole;
 }
 
 @ApiTags('Users')
@@ -38,54 +43,67 @@ export class UserController {
     constructor(private readonly userService: UserService) {}
 
     @RequireRH()
+    @UseGuards(JwtAuthGuard, RolesGuard)
     @Get()
     @ApiList('usuários')
     async findAll() {
         return this.userService.findAll();
     }
 
+    @UseGuards(JwtAuthGuard)
     @Get('profile')
-    @ApiGet('perfil do usuário')
+    @ApiProfile()
     async getOwnProfile(@CurrentUser() user: UserFromJwt) {
+        if (!user || !user.id) {
+            throw new UnauthorizedException('Usuário não autenticado');
+        }
         return this.userService.findOne(user.id);
     }
 
+    @RequireAdmin()
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Post(':id/roles')
+    @ApiAssignRole()
+    async assignRole(
+        @Param('id', ParseIntPipe) userId: number,
+        @Body() assignRoleDto: AssignRoleDto,
+        @CurrentUser() admin: UserFromJwt,
+    ) {
+        if (!admin || !admin.id) {
+            throw new UnauthorizedException('Admin não autenticado');
+        }
+        return this.userService.assignRole(userId, assignRoleDto.role, admin.id);
+    }
+
+    @RequireAdmin()
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Delete(':id/roles/:role')
+    @ApiRemoveRole()
+    async removeRole(@Param('id', ParseIntPipe) userId: number, @Param('role') role: UserRole) {
+        return this.userService.removeRole(userId, role);
+    }
+
     @Roles(UserRole.RH, UserRole.ADMIN)
+    @UseGuards(JwtAuthGuard, RolesGuard)
     @Get(':id')
     @ApiGet('usuário')
-    async findOne(@Param('id') id: string) {
-        return this.userService.findOne(+id);
+    async findOne(@Param('id', ParseIntPipe) id: number) {
+        return this.userService.findOne(id);
     }
 
     @RequireManager()
+    @UseGuards(JwtAuthGuard, RolesGuard)
     @Patch(':id')
     @ApiUpdate('usuário')
-    async update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
-        return this.userService.updateUser(+id, updateUserDto);
+    async update(@Param('id', ParseIntPipe) id: number, @Body() updateUserDto: UpdateUserDto) {
+        return this.userService.updateUser(id, updateUserDto);
     }
 
     @OnlyAdmin()
+    @UseGuards(JwtAuthGuard, RolesGuard)
     @Delete(':id')
     @ApiDelete('usuário')
-    async remove(@Param('id') id: string) {
-        return this.userService.deleteUser(+id);
-    }
-
-    @RequireAdmin()
-    @Post(':id/roles')
-    @ApiCreate('role ao usuário (apenas Admin)')
-    async assignRole(
-        @Param('id') userId: string,
-        @Body() body: AssignRoleDto,
-        @CurrentUser() admin: UserFromJwt,
-    ) {
-        return this.userService.assignRole(+userId, body.role, admin.id);
-    }
-
-    @RequireAdmin()
-    @Delete(':id/roles/:role')
-    @ApiDelete('role do usuário (apenas Admin)')
-    async removeRole(@Param('id') userId: string, @Param('role') role: UserRole) {
-        return this.userService.removeRole(+userId, role);
+    async remove(@Param('id', ParseIntPipe) id: number) {
+        return this.userService.deleteUser(id);
     }
 }

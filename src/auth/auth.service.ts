@@ -1,13 +1,8 @@
-import {
-    Injectable,
-    UnauthorizedException,
-    ConflictException,
-    NotFoundException,
-} from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { EncryptionService } from 'src/encryption/encryption.service';
-import { UserRole } from '@prisma/client';
+import { UserRole, Prisma } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 export interface UserPublic {
@@ -71,11 +66,22 @@ export class AuthService {
             throw new UnauthorizedException('Credenciais inválidas');
         }
 
-        // Incluir roles no payload para o JWT
+        // Buscar dados completos do usuário incluindo track e position
+        const fullUser = await this.prisma.user.findUnique({
+            where: { id: user.id },
+            select: {
+                track: true,
+                position: true,
+            },
+        });
+
+        // Incluir roles, track e position no payload para o JWT
         const payload = {
             sub: user.id,
             email: user.email,
             roles: user.roles,
+            track: fullUser?.track ?? null,
+            position: fullUser?.position ?? null,
         };
 
         return {
@@ -135,32 +141,22 @@ export class AuthService {
         password: string,
         name: string,
         roles: UserRole[],
-        assignedBy: number,
+        assignedBy?: number,
     ): Promise<UserPublic> {
         const encryptedEmail = this.encryptionService.encrypt(email);
+        const hashedPassword = await bcrypt.hash(password, 10);
 
         // Verificar se usuário já existe
-        const existingUser = await this.prisma.user.findUnique({
+        const existing = await this.prisma.user.findUnique({
             where: { email: encryptedEmail },
         });
 
-        if (existingUser) {
+        if (existing) {
             throw new ConflictException('User already exists');
         }
 
-        const hashedPassword = await bcrypt.hash(password, 10);
-
         const result = await this.prisma.$transaction(async (tx) => {
-            const superAdmin = await tx.user.findUnique({
-                where: {
-                    id: assignedBy,
-                },
-            });
-            if (!superAdmin) {
-                throw new NotFoundException('Super-admin não existe');
-            }
-            // Criar usuário
-            const newUser = await tx.user.create({
+            const createUser = await tx.user.create({
                 data: {
                     email: encryptedEmail,
                     password: hashedPassword,
@@ -168,20 +164,24 @@ export class AuthService {
                 },
             });
 
-            // Criar roles do usuário
-
-            await tx.userRoleLink.createMany({
-                data: roles.map((role) => ({
-                    userId: newUser.id,
+            const userRoleData: Prisma.UserRoleLinkCreateManyInput[] = roles.map((role) => {
+                const data: Prisma.UserRoleLinkCreateManyInput = {
+                    userId: createUser.id,
                     role,
-                    assignedBy,
                     createdAt: new Date(),
-                })),
+                };
+                if (assignedBy !== undefined) {
+                    data.assignedBy = assignedBy;
+                }
+                return data;
             });
 
-            // Buscar usuário com roles
-            return await tx.user.findUnique({
-                where: { id: newUser.id },
+            await tx.userRoleLink.createMany({
+                data: userRoleData,
+            });
+
+            return tx.user.findUnique({
+                where: { id: createUser.id },
                 include: {
                     userRoles: {
                         where: { isActive: true },

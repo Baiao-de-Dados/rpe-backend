@@ -3,38 +3,27 @@
 
 import { Test, TestingModule } from '@nestjs/testing';
 import { EvaluationsService } from './evaluations.service';
-import { PrismaService } from '../prisma/prisma.service';
-import { CreateEvaluationDto } from './dto/create-evaluation.dto';
-import { EvaluationValidationService } from './services/evaluation-validation.service';
 import { AutoEvaluationService } from './services/auto-evaluation.service';
 import { Peer360EvaluationService } from './services/peer360-evaluation.service';
 import { MentorEvaluationService } from './services/mentor-evaluation.service';
 import { ReferenceService } from './services/reference.service';
+import { EvaluationValidationService } from './services/evaluation-validation.service';
+import { CreateEvaluationDto } from './dto/create-evaluation.dto';
 import { NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
 
 describe('EvaluationsService', () => {
     let service: EvaluationsService;
-    let mockPrismaService: any;
-    let mockValidationService: any;
     let mockAutoEvaluationService: any;
     let mockPeer360EvaluationService: any;
     let mockMentorEvaluationService: any;
     let mockReferenceService: any;
-
-    const mockEvaluation = {
-        id: 1,
-        type: 'AUTOEVALUATION',
-        evaluatorId: 1,
-        evaluateeId: 1,
-        cycle: 2024,
-        justification: 'Test justification',
-        score: 0,
-        createdAt: new Date(),
-    };
+    let mockEvaluationValidationService: any;
+    let mockPrismaService: any;
 
     const mockCreateEvaluationDto: CreateEvaluationDto = {
-        ciclo: '2024-Q1',
         colaboradorId: '1',
+        ciclo: '2024-Q1',
         autoavaliacao: {
             pilares: [
                 {
@@ -49,49 +38,24 @@ describe('EvaluationsService', () => {
                 },
             ],
         },
-        avaliacao360: [
-            {
-                avaliadoId: '2',
-                pontosFortes: 'Ótima comunicação',
-                pontosMelhoria: 'Precisa melhorar prazos',
-                justificativa: 'Avaliação baseada no trabalho em equipe',
-            },
-        ],
-        mentoring: [
-            {
-                mentorId: '3',
-                justificativa: 'Acompanhamento semanal',
-                leaderId: '4',
-                leaderJustificativa: 'Avaliação do líder',
-            },
-        ],
-        referencias: [
-            {
-                colaboradorId: '2',
-                justificativa: 'Referência técnica',
-                tagIds: [1],
-            },
-        ],
+        avaliacao360: [],
+        mentoring: [],
+        referencias: [],
+    };
+
+    const mockEvaluation = {
+        id: 1,
+        type: 'AUTOEVALUATION',
+        evaluatorId: 1,
+        evaluateeId: 1,
+        cycle: 2024,
+        justification: 'Autoavaliação',
+        score: 0,
+        createdAt: new Date(),
+        updatedAt: new Date(),
     };
 
     beforeEach(async () => {
-        // Create simple mocks
-        mockPrismaService = {
-            evaluation: {
-                create: jest.fn(),
-                findMany: jest.fn(),
-                findUnique: jest.fn(),
-            },
-            reference: {
-                findMany: jest.fn(),
-            },
-            $transaction: jest.fn(),
-        };
-
-        mockValidationService = {
-            validateEvaluationData: jest.fn(),
-        };
-
         mockAutoEvaluationService = {
             createAutoEvaluation: jest.fn(),
         };
@@ -108,6 +72,22 @@ describe('EvaluationsService', () => {
             createReferences: jest.fn(),
         };
 
+        mockEvaluationValidationService = {
+            validateEvaluationData: jest.fn(),
+        };
+
+        mockPrismaService = {
+            $transaction: jest.fn(),
+            evaluation: {
+                create: jest.fn(),
+                findMany: jest.fn(),
+                findUnique: jest.fn(),
+            },
+            reference: {
+                findMany: jest.fn(),
+            },
+        };
+
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 EvaluationsService,
@@ -117,23 +97,23 @@ describe('EvaluationsService', () => {
                 },
                 {
                     provide: EvaluationValidationService,
-                    useValue: mockValidationService,
-                },
-                {
-                    provide: AutoEvaluationService,
-                    useValue: mockAutoEvaluationService,
+                    useValue: mockEvaluationValidationService,
                 },
                 {
                     provide: Peer360EvaluationService,
                     useValue: mockPeer360EvaluationService,
                 },
                 {
-                    provide: MentorEvaluationService,
-                    useValue: mockMentorEvaluationService,
-                },
-                {
                     provide: ReferenceService,
                     useValue: mockReferenceService,
+                },
+                {
+                    provide: AutoEvaluationService,
+                    useValue: mockAutoEvaluationService,
+                },
+                {
+                    provide: MentorEvaluationService,
+                    useValue: mockMentorEvaluationService,
                 },
             ],
         }).compile();
@@ -141,110 +121,74 @@ describe('EvaluationsService', () => {
         service = module.get<EvaluationsService>(EvaluationsService);
     });
 
-    afterEach(() => {
-        jest.clearAllMocks();
+    it('should be defined', () => {
+        expect(service).toBeDefined();
     });
 
     describe('createEvaluation', () => {
         it('should create a complete evaluation successfully', async () => {
             // Arrange
-            const mockTransaction = jest.fn().mockImplementation(async (callback) => {
+            mockEvaluationValidationService.validateEvaluationData.mockResolvedValue(undefined);
+            mockPrismaService.$transaction.mockImplementation(async (callback) => {
                 return await callback(mockPrismaService);
             });
-            mockPrismaService.$transaction = mockTransaction;
-
-            mockAutoEvaluationService.createAutoEvaluation.mockResolvedValue(mockEvaluation);
-            mockPeer360EvaluationService.createPeer360Evaluations.mockResolvedValue([
-                mockEvaluation,
-            ]);
-            mockMentorEvaluationService.createMentorEvaluations.mockResolvedValue([
-                mockEvaluation,
-                mockEvaluation, // para mentor e líder
-            ]);
-            mockReferenceService.createReferences.mockResolvedValue(undefined);
             mockPrismaService.reference.findMany.mockResolvedValue([]);
+            mockAutoEvaluationService.createAutoEvaluation.mockResolvedValue(mockEvaluation);
+            mockPeer360EvaluationService.createPeer360Evaluations.mockResolvedValue([]);
+            mockMentorEvaluationService.createMentorEvaluations.mockResolvedValue([]);
+            mockReferenceService.createReferences.mockResolvedValue(undefined);
 
             // Act
-            const result = await service.createEvaluation(mockCreateEvaluationDto);
+            const result = await service.createEvaluation(
+                mockCreateEvaluationDto,
+                'Backend',
+                'Developer',
+            );
 
             // Assert
-            expect(mockValidationService.validateEvaluationData).toHaveBeenCalledWith(
+            expect(mockEvaluationValidationService.validateEvaluationData).toHaveBeenCalledWith(
                 mockCreateEvaluationDto,
             );
             expect(mockPrismaService.$transaction).toHaveBeenCalled();
             expect(mockAutoEvaluationService.createAutoEvaluation).toHaveBeenCalledWith(
                 mockPrismaService,
                 mockCreateEvaluationDto.autoavaliacao,
-                parseInt(mockCreateEvaluationDto.colaboradorId, 10),
-                mockCreateEvaluationDto.ciclo,
-            );
-            expect(mockPeer360EvaluationService.createPeer360Evaluations).toHaveBeenCalledWith(
-                mockPrismaService,
-                mockCreateEvaluationDto.avaliacao360,
-                parseInt(mockCreateEvaluationDto.colaboradorId, 10),
-                mockCreateEvaluationDto.ciclo,
-            );
-            expect(mockMentorEvaluationService.createMentorEvaluations).toHaveBeenCalledWith(
-                mockPrismaService,
-                mockCreateEvaluationDto.mentoring,
-                parseInt(mockCreateEvaluationDto.colaboradorId, 10),
-                mockCreateEvaluationDto.ciclo,
-            );
-            expect(mockReferenceService.createReferences).toHaveBeenCalledWith(
-                mockPrismaService,
-                mockCreateEvaluationDto.referencias,
-                parseInt(mockCreateEvaluationDto.colaboradorId, 10),
+                1,
+                '2024-Q1',
+                'Backend',
+                'Developer',
             );
             expect(result).toBeDefined();
         });
 
-        it('should handle empty arrays gracefully', async () => {
+        it('should handle validation errors', async () => {
             // Arrange
-            const emptyDto = {
-                ...mockCreateEvaluationDto,
-                avaliacao360: [],
-                mentoring: [],
-                referencias: [],
-            };
-
-            const mockTransaction = jest.fn().mockImplementation(async (callback) => {
-                return await callback(mockPrismaService);
-            });
-            mockPrismaService.$transaction = mockTransaction;
-
-            mockAutoEvaluationService.createAutoEvaluation.mockResolvedValue(null);
-            mockPeer360EvaluationService.createPeer360Evaluations.mockResolvedValue([]);
-            mockMentorEvaluationService.createMentorEvaluations.mockResolvedValue([]);
-            mockReferenceService.createReferences.mockResolvedValue(undefined);
-            mockPrismaService.reference.findMany.mockResolvedValue([]);
-
-            // Act
-            const result = await service.createEvaluation(emptyDto);
-
-            // Assert
-            expect(mockPeer360EvaluationService.createPeer360Evaluations).toHaveBeenCalledWith(
-                mockPrismaService,
-                [],
-                parseInt(emptyDto.colaboradorId, 10),
-                emptyDto.ciclo,
+            const validationError = new Error('Validation failed');
+            mockEvaluationValidationService.validateEvaluationData.mockRejectedValue(
+                validationError,
             );
-            expect(mockMentorEvaluationService.createMentorEvaluations).toHaveBeenCalledWith(
-                mockPrismaService,
-                [],
-                parseInt(emptyDto.colaboradorId, 10),
-                emptyDto.ciclo,
-            );
-            expect(mockReferenceService.createReferences).toHaveBeenCalledWith(
-                mockPrismaService,
-                [],
-                parseInt(emptyDto.colaboradorId, 10),
-            );
-            expect(result).toBeDefined();
+
+            // Act & Assert
+            await expect(
+                service.createEvaluation(mockCreateEvaluationDto, 'Backend', 'Developer'),
+            ).rejects.toThrow(validationError);
+        });
+
+        it('should handle service errors', async () => {
+            // Arrange
+            const serviceError = new Error('Service error');
+            mockEvaluationValidationService.validateEvaluationData.mockResolvedValue(undefined);
+            mockPrismaService.$transaction.mockRejectedValue(serviceError);
+
+            // Act & Assert
+            await expect(
+                service.createEvaluation(mockCreateEvaluationDto, 'Backend', 'Developer'),
+            ).rejects.toThrow(serviceError);
         });
     });
 
     describe('findAll', () => {
-        it('should return all evaluations with complete data', async () => {
+        it('should return all evaluations', async () => {
             // Arrange
             const mockEvaluations = [mockEvaluation];
             mockPrismaService.evaluation.findMany.mockResolvedValue(mockEvaluations);
@@ -288,20 +232,29 @@ describe('EvaluationsService', () => {
             // Assert
             expect(result).toEqual([]);
         });
+
+        it('should handle database errors', async () => {
+            // Arrange
+            const dbError = new Error('Database error');
+            mockPrismaService.evaluation.findMany.mockRejectedValue(dbError);
+
+            // Act & Assert
+            await expect(service.findAll()).rejects.toThrow(dbError);
+        });
     });
 
     describe('findOne', () => {
         it('should return a single evaluation by id', async () => {
             // Arrange
-            const evaluationId = 1;
+            const id = 1;
             mockPrismaService.evaluation.findUnique.mockResolvedValue(mockEvaluation);
 
             // Act
-            const result = await service.findOne(evaluationId);
+            const result = await service.findOne(id);
 
             // Assert
             expect(mockPrismaService.evaluation.findUnique).toHaveBeenCalledWith({
-                where: { id: evaluationId },
+                where: { id },
                 include: {
                     evaluator: true,
                     evaluatee: true,
@@ -321,14 +274,23 @@ describe('EvaluationsService', () => {
 
         it('should throw NotFoundException when evaluation not found', async () => {
             // Arrange
-            const evaluationId = 999;
+            const id = 999;
             mockPrismaService.evaluation.findUnique.mockResolvedValue(null);
 
             // Act & Assert
-            await expect(service.findOne(evaluationId)).rejects.toThrow(NotFoundException);
-            await expect(service.findOne(evaluationId)).rejects.toThrow(
-                `Avaliação com ID ${evaluationId} não encontrada`,
+            await expect(service.findOne(id)).rejects.toThrow(
+                new NotFoundException(`Avaliação com ID ${id} não encontrada`),
             );
+        });
+
+        it('should handle database errors', async () => {
+            // Arrange
+            const id = 1;
+            const dbError = new Error('Database error');
+            mockPrismaService.evaluation.findUnique.mockRejectedValue(dbError);
+
+            // Act & Assert
+            await expect(service.findOne(id)).rejects.toThrow(dbError);
         });
     });
 });

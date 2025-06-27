@@ -88,7 +88,6 @@ export class AuthController {
             'admin123',
             'System Admin',
             [UserRole.ADMIN],
-            1, // Self-assigned
         );
 
         return {

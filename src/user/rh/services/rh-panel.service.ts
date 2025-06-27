@@ -34,7 +34,7 @@ export class RhPanelService {
             return (
                 evaluation.type === EvaluationType.AUTOEVALUATION ||
                 evaluation.type === EvaluationType.PEER_360 ||
-                evaluation.type === EvaluationType.LEADER
+                evaluation.type === EvaluationType.MENTOR
             );
         }).length;
 
@@ -101,7 +101,7 @@ export class RhPanelService {
             const isCompleted =
                 evaluation.type === EvaluationType.AUTOEVALUATION ||
                 evaluation.type === EvaluationType.PEER_360 ||
-                evaluation.type === EvaluationType.LEADER;
+                evaluation.type === EvaluationType.MENTOR;
 
             return {
                 id: evaluation.evaluatee.id,
@@ -166,7 +166,7 @@ export class RhPanelService {
         const isCompleted =
             evaluation.type === EvaluationType.AUTOEVALUATION ||
             evaluation.type === EvaluationType.PEER_360 ||
-            evaluation.type === EvaluationType.LEADER;
+            evaluation.type === EvaluationType.MENTOR;
 
         return {
             id: evaluation.evaluatee.id,
@@ -222,7 +222,7 @@ export class RhPanelService {
             const isCompleted =
                 evaluation.type === EvaluationType.AUTOEVALUATION ||
                 evaluation.type === EvaluationType.PEER_360 ||
-                evaluation.type === EvaluationType.LEADER;
+                evaluation.type === EvaluationType.MENTOR;
 
             userRoles.forEach((role) => {
                 const current = roleStats.get(role) || { total: 0, completed: 0, pending: 0 };

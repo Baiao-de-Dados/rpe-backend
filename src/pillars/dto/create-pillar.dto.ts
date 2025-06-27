@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString } from 'class-validator';
+import { IsString, IsOptional } from 'class-validator';
 
 export class CreatePillarDto {
     @ApiProperty({
@@ -8,4 +8,13 @@ export class CreatePillarDto {
     })
     @IsString()
     name: string;
+
+    @ApiProperty({
+        example: 'Avaliação de competências técnicas e conhecimentos específicos',
+        description: 'Descrição detalhada do pilar',
+        required: false,
+    })
+    @IsOptional()
+    @IsString()
+    description?: string;
 }

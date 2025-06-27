@@ -183,7 +183,12 @@ export class UserService {
         if (!user) {
             throw new NotFoundException('Usuário não encontrado');
         }
-        await this.prisma.user.delete({ where: { id } });
+
+        // Com cascade configurado no Prisma, apenas deletar o usuário
+        await this.prisma.user.delete({
+            where: { id },
+        });
+
         return { message: 'Usuário deletado com sucesso' };
     }
 
