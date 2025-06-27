@@ -21,7 +21,7 @@ export class RHUserService {
 
         return users.map((user) => ({
             id: user.id,
-            name: user.name,
+            name: user.name ?? '',
             email: user.email,
             role: UserRole.RH,
             isActive: user.userRoles.some((r) => r.role === UserRole.RH && r.isActive),
@@ -42,7 +42,7 @@ export class RHUserService {
 
         return {
             id: user.id,
-            name: user.name,
+            name: user.name ?? '',
             email: user.email,
             role: UserRole.RH,
             isActive: true,
