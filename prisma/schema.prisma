@@ -16,6 +16,7 @@ model User {
     track       String?
     createdAt   DateTime      @default(now())
     updatedAt   DateTime      @updatedAt
+    lastLogged  DateTime      @updatedAt
 
     evaluator Evaluation[] @relation("Evaluator")
     evaluatee Evaluation[] @relation("Evaluatee")

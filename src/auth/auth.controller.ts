@@ -1,5 +1,5 @@
 import { Controller, Post, Body, Get, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { Public } from './decorators/public.decorator';
 import { CurrentUser } from './decorators/current-user.decorator';
@@ -7,6 +7,9 @@ import { RequireAdmin } from './decorators/roles.decorator';
 import { UserFromJwt } from './strategies/jwt.strategy';
 import { UserRole } from '@prisma/client';
 import { RolesGuard } from './guards/roles.guard';
+import { ApiAuth } from 'src/common/decorators/api-auth.decorator';
+import { ApiCreate, ApiGet } from 'src/common/decorators/api-crud.decorator';
+import { ApiStandardResponses } from 'src/common/decorators/api-standard-responses.decorator';
 
 export class LoginDto {
     email: string;
@@ -20,6 +23,7 @@ export class CreateUserDto {
     roles: UserRole[];
 }
 
+@ApiAuth()
 @ApiTags('Authentication')
 @Controller('auth')
 export class AuthController {
@@ -27,18 +31,20 @@ export class AuthController {
 
     @Public()
     @Post('login')
-    @ApiOperation({ summary: 'Login de usuário' })
-    @ApiResponse({ status: 200, description: 'Login realizado com sucesso' })
-    @ApiResponse({ status: 401, description: 'Credenciais inválidas' })
+    @ApiStandardResponses()
     async login(@Body() loginDto: LoginDto) {
         return this.authService.login(loginDto.email, loginDto.password);
     }
 
+    @Public()
+    @Post('logout')
+    @ApiStandardResponses()
+    async logout(@CurrentUser() user: UserFromJwt) {
+        return this.authService.logout(user.id);
+    }
+
     @Get('me')
-    @ApiBearerAuth('JWT-auth')
-    @ApiOperation({ summary: 'Obter perfil do usuário logado' })
-    @ApiResponse({ status: 200, description: 'Perfil do usuário retornado com sucesso' })
-    @ApiResponse({ status: 401, description: 'Não autorizado' })
+    @ApiGet('perfil')
     getProfile(@CurrentUser() user: UserFromJwt) {
         return {
             id: user.id,
@@ -53,11 +59,7 @@ export class AuthController {
     @RequireAdmin()
     @UseGuards(RolesGuard)
     @Post('create-user')
-    @ApiBearerAuth('JWT-auth')
-    @ApiOperation({ summary: 'Criar novo usuário (apenas admin)' })
-    @ApiResponse({ status: 201, description: 'Usuário criado com sucesso' })
-    @ApiResponse({ status: 401, description: 'Não autorizado' })
-    @ApiResponse({ status: 403, description: 'Acesso negado' })
+    @ApiCreate('usuário')
     async createUser(@Body() createUserDto: CreateUserDto, @CurrentUser() admin: UserFromJwt) {
         return this.authService.createUserWithRoles(
             createUserDto.email,
@@ -70,9 +72,8 @@ export class AuthController {
 
     @Public()
     @Post('setup-admin')
-    @ApiOperation({ summary: 'Configurar primeiro admin do sistema' })
-    @ApiResponse({ status: 201, description: 'Admin criado com sucesso' })
-    @ApiResponse({ status: 409, description: 'Admin já existe' })
+    @ApiCreate('admin')
+    @ApiStandardResponses()
     async setupAdmin() {
         // Verificar se já existe um admin
         const existingAdmin = await this.authService.findAdminUser();
