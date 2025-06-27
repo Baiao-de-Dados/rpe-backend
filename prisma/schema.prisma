@@ -8,33 +8,37 @@ datasource db {
 }
 
 model User {
-    id          Int           @id @default(autoincrement())
-    email       String        @unique
-    password    String
-    name        String?
-    unit        String?
-    track       String?
-    createdAt   DateTime      @default(now())
-    updatedAt   DateTime      @updatedAt
-    lastLogged  DateTime      @updatedAt
+    id              Int             @id @default(autoincrement())
+    email           String          @unique
+    password        String
+    name            String?
+    unit            String?
+    track           String?
+    createdAt       DateTime        @default(now())
+    updatedAt       DateTime        @updatedAt
+    lastLogged      DateTime        @updatedAt
 
-    evaluator Evaluation[] @relation("Evaluator")
-    evaluatee Evaluation[] @relation("Evaluatee")
-    feedbacks   Feedback[]
-    referencesFrom Reference[] @relation("RefFrom")
-    referencesTo Reference[] @relation("RefTo")
-    okrs        Okr[]
-    pdps        Pdi[]
-    userRoles   UserRoleLink[]
+    evaluator       Evaluation[]    @relation("Evaluator")
+    evaluatee       Evaluation[]    @relation("Evaluatee")
+    feedbacks       Feedback[]
+    referencesFrom  Reference[]     @relation("RefFrom")
+    referencesTo    Reference[]     @relation("RefTo")
+    okrs            Okr[]
+    pdps            Pdi[]
+    userRoles       UserRoleLink[] @relation("UserRoleUser")
+    assignedRoles   UserRoleLink[] @relation("AssignedByAdmin")
+    projectMember   ProjectMember[]
 }
 
 model UserRoleLink {
-    userId      Int
-    role        UserRole
-    isActive    Boolean   @default(true)
-    createdAt   DateTime  @default(now())
+    userId       Int
+    role         UserRole
+    isActive     Boolean   @default(true)
+    createdAt    DateTime  @default(now())
+    assignedBy   Int
 
-    user        User      @relation(fields: [userId], references: [id])
+    admin        User?     @relation("AssignedByAdmin", fields: [assignedBy], references: [id])
+    user         User      @relation("UserRoleUser", fields: [userId], references: [id])
 
     @@id([userId, role])
 }
@@ -55,6 +59,32 @@ model Evaluation {
     CriteriaAssignment CriteriaAssignment[]
 
     @@index([type], map: "EvaluationTypeIndex")
+}
+
+model Project {
+    id          Int             @id @default(autoincrement())
+    name        String
+    description String?
+    status      ProjectStatus   @default(ACTIVE)
+    startDate   DateTime?
+    endDate     DateTime?
+    createdAt   DateTime        @default(now())
+    updatedAt   DateTime        @updatedAt
+
+    members     ProjectMember[]
+}
+
+model ProjectMember {
+    id          Int         @id @default(autoincrement())
+    projectId   Int
+    userId      Int
+    role        ProjectRole
+    startDate   DateTime    @default(now())
+    endDate     DateTime?
+    createdAt   DateTime    @default(now())
+
+    project     Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+    user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Pillar {
@@ -88,7 +118,15 @@ model CriteriaAssignment {
     criterion      Criterion  @relation(fields: [criterionId], references: [id])
 
     @@id([autoEvaluationID, criterionId])
+}
 
+model Tag {
+    id          Int         @id @default(autoincrement())
+    name        String
+    createdAt   DateTime    @default(now())
+    updatedAt   DateTime    @updatedAt
+
+    tagReferences TagReference[]
 }
 
 model Reference {
@@ -101,6 +139,18 @@ model Reference {
 
     from        User      @relation("RefFrom", fields: [fromId], references: [id])
     to          User      @relation("RefTo", fields: [toId], references: [id])
+
+    tagReferences TagReference[]
+}
+
+
+model TagReference {
+    tagId   Int
+    referenceId Int
+    tag         Tag         @relation(fields: [tagId], references: [id])
+    reference   Reference   @relation(fields: [referenceId], references: [id])
+
+    @@id([tagId, referenceId])
 }
 
 model Feedback {
@@ -148,6 +198,7 @@ enum EvaluationType {
     AUTOEVALUATION
     PEER_360
     LEADER
+    MENTOR
 }
 
 enum FeedbackSource {
@@ -164,4 +215,22 @@ enum UserRole {
     COMMITTEE
     DEVELOPER
     ADMIN
+}
+
+enum ProjectStatus {
+    ACTIVE
+    INACTIVE
+    COMPLETED
+    CANCELLED
+}
+
+enum ProjectRole {
+    DEVELOPER
+    LEADER
+    MANAGER
+    ANALYST
+    TESTER
+    DESIGNER
+    ARCHITECT
+    BUSINESSMAN
 }

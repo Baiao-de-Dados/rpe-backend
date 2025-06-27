@@ -169,5 +169,15 @@ export class EvaluationValidationService {
                 );
             }
         }
+
+        if (mentoring && mentoring.length > 0) {
+            const mentoringColaboradorIds = mentoring.map((m) => m.mentorId);
+            const mentoringColaboradorIdUnico = new Set(mentoringColaboradorIds);
+            if (mentoringColaboradorIdUnico.size !== mentoringColaboradorIds.length) {
+                throw new BadRequestException(
+                    'Não é possível referenciar o mesmo mentor múltiplas vezes',
+                );
+            }
+        }
     }
 }

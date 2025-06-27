@@ -1,13 +1,13 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { EncryptionService } from 'src/encryption/encryption.service';
-import { User, UserRoleEnum } from '@prisma/client';
+import { User, UserRole } from '@prisma/client';
 
 export interface UserWithRoles {
     id: number;
     email: string;
     name: string | null;
-    roles: UserRoleEnum[];
+    roles: UserRole[];
     createdAt: Date;
     updatedAt: Date;
 }
@@ -31,7 +31,7 @@ export class UserService {
             id: number;
             email: string;
             name: string | null;
-            userRoles: { role: UserRoleEnum }[];
+            userRoles: { role: UserRole }[];
             createdAt: Date;
             updatedAt: Date;
         }>;
@@ -103,8 +103,8 @@ export class UserService {
         };
     }
 
-    async removeRole(userId: number, role: UserRoleEnum): Promise<UserWithRoles> {
-        const userRole = await this.prisma.userRole.findUnique({
+    async removeRole(userId: number, role: UserRole): Promise<UserWithRoles> {
+        const userRole = await this.prisma.userRoleLink.findUnique({
             where: {
                 userId_role: {
                     userId: userId,
@@ -118,16 +118,16 @@ export class UserService {
         }
 
         // Desativar role em vez de deletar (para auditoria)
-        await this.prisma.userRole.update({
-            where: { id: userRole.id },
+        await this.prisma.userRoleLink.update({
+            where: { userId_role: { userId: userId, role: role } },
             data: { isActive: false },
         });
 
-        return this.findOne(userId);
+        return await this.findOne(userId);
     }
 
-    async getUserRoles(userId: number): Promise<UserRoleEnum[]> {
-        const userRoles = await this.prisma.userRole.findMany({
+    async getUserRoles(userId: number): Promise<UserRole[]> {
+        const userRoles = await this.prisma.userRoleLink.findMany({
             where: {
                 userId: userId,
                 isActive: true,
@@ -138,12 +138,8 @@ export class UserService {
         return userRoles.map((ur) => ur.role);
     }
 
-    async assignRole(
-        userId: number,
-        role: UserRoleEnum,
-        assignedBy: number,
-    ): Promise<UserWithRoles> {
-        const existingRole = await this.prisma.userRole.findUnique({
+    async assignRole(userId: number, role: UserRole, assignedBy: number): Promise<UserWithRoles> {
+        const existingRole = await this.prisma.userRoleLink.findUnique({
             where: {
                 userId_role: {
                     userId: userId,
@@ -156,16 +152,25 @@ export class UserService {
             if (existingRole.isActive) {
                 throw new ConflictException('Usuário já possui esta função');
             } else {
-                await this.prisma.userRole.update({
-                    where: { id: existingRole.id },
-                    data: { isActive: true, assignedBy },
+                await this.prisma.userRoleLink.update({
+                    where: {
+                        userId_role: {
+                            userId: userId,
+                            role: role,
+                        },
+                    },
+                    data: {
+                        isActive: true,
+                        assignedBy,
+                    },
                 });
             }
         } else {
-            await this.prisma.userRole.create({
+            await this.prisma.userRoleLink.create({
                 data: {
                     userId,
                     role,
+                    isActive: true,
                     assignedBy,
                 },
             });

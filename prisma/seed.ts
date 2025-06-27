@@ -59,10 +59,10 @@ async function main() {
 
     // Pilares
     const pilar1 = await prisma.pillar.create({
-        data: { name: 'Técnico' },
+        data: { name: 'Técnico', description: 'Avaliação Técnica' },
     });
     const pilar2 = await prisma.pillar.create({
-        data: { name: 'Comportamental' },
+        data: { name: 'Comportamental', description: 'Avaliação Comportamental' },
     });
 
     // Critérios
@@ -95,6 +95,16 @@ async function main() {
     const tag1 = await prisma.tag.create({ data: { name: 'Backend' } });
     const tag2 = await prisma.tag.create({ data: { name: 'Liderança' } });
 
+    // Referencias
+    const reference1 = await prisma.reference.create({
+        data: {
+            fromId: user1.id,
+            toId: user2.id,
+            tags: ['Backend', 'Liderança'],
+            comment: 'Excelente trabalho em equipe',
+        },
+    });
+
     console.log('Seed concluída com sucesso!');
     console.log('Usuários:', {
         user1: { ...user1, email: 'avaliador@teste.com' },
@@ -103,6 +113,7 @@ async function main() {
     console.log('Pilares:', { pilar1, pilar2 });
     console.log('Critérios:', { criterio1, criterio2, criterio3 });
     console.log('Tags:', { tag1, tag2 });
+    console.log('Referências:', { reference1 });
 }
 
 // Executar o seed

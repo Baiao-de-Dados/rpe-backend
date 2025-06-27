@@ -1,11 +1,11 @@
-import { UserRoleEnum } from '@prisma/client';
+import { UserRole } from '@prisma/client';
 import { Exclude } from 'class-transformer';
 
 export interface UserWithRoles {
     id: number;
     email: string;
     name: string | null;
-    roles: UserRoleEnum[];
+    roles: UserRole[];
     createdAt: Date;
     updatedAt: Date;
 }
@@ -14,7 +14,7 @@ export class UserResponseDTO {
     id: number;
     email: string;
     name: string;
-    roles: UserRoleEnum[];
+    roles: UserRole[];
     createdAt: Date;
     updatedAt: Date;
 

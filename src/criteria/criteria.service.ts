@@ -8,8 +8,14 @@ export class CriteriaService {
     constructor(private prisma: PrismaService) {}
 
     async create(createCriterionDto: CreateCriterionDto) {
+        if (createCriterionDto.weight === undefined) {
+            throw new Error('O campo "weight" é obrigatório.');
+        }
         return this.prisma.criterion.create({
-            data: createCriterionDto,
+            data: {
+                ...createCriterionDto,
+                weight: createCriterionDto.weight,
+            },
             include: {
                 pillar: true,
             },

@@ -8,13 +8,13 @@ export class TagsService {
     constructor(private prisma: PrismaService) {}
 
     async create(createTagDto: CreateTagDto) {
-        return this.prisma.tag.create({
+        return await this.prisma.tag.create({
             data: createTagDto,
         });
     }
 
     async findAll() {
-        return this.prisma.tag.findMany();
+        return await this.prisma.tag.findMany();
     }
 
     async findOne(id: number) {
