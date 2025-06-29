@@ -70,6 +70,14 @@ export class RHService {
         return this.pillarService.create(createDto);
     }
 
+    async findAllPillars() {
+        return this.pillarService.findAll();
+    }
+
+    async findOnePillar(id: number) {
+        return this.pillarService.findOne(id);
+    }
+
     async updatePillar(id: number, updateDto: UpdatePillarDto) {
         return this.pillarService.update(id, updateDto);
     }
@@ -83,13 +91,33 @@ export class RHService {
         return this.criteriaService.create(dto);
     }
 
+    async findAllCriteria() {
+        return this.criteriaService.findAll();
+    }
+
+    async findOneCriterion(id: number) {
+        return this.criteriaService.findOne(id);
+    }
+
     async updateCriterion(id: number, dto: UpdateCriterionDto) {
         return this.criteriaService.update(id, dto);
+    }
+
+    async deleteCriterion(id: number) {
+        return this.criteriaService.remove(id);
     }
 
     // Ciclos
     async createCycle(dto: CreateCycleConfigDto) {
         return this.cycleService.create(dto);
+    }
+
+    async findAllCycles() {
+        return this.cycleService.findAll();
+    }
+
+    async findOneCycle(id: number) {
+        return this.cycleService.findOne(id);
     }
 
     async updateCycle(id: number, dto: UpdateCycleConfigDto) {
