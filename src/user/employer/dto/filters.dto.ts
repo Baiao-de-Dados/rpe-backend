@@ -5,5 +5,5 @@ export class FiltersDto {
     @IsOptional()
     @Type(() => Number)
     @IsNumber()
-    cycleId: number;
+    CycleConfigId: number;
 }
