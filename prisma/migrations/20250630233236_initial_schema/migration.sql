@@ -1,73 +1,122 @@
-/*
-  Warnings:
+-- CreateEnum
+CREATE TYPE "EvaluationType" AS ENUM ('AUTOEVALUATION', 'PEER_360', 'MENTOR');
 
-  - The values [LEADER] on the enum `EvaluationType` will be removed. If these variants are still used in the database, this will fail.
-  - You are about to drop the column `cycle` on the `Evaluation` table. All the data in the column will be lost.
-  - Added the required column `cycleConfigId` to the `Evaluation` table without a default value. This is not possible if the table is not empty.
-  - Added the required column `updatedAt` to the `Evaluation` table without a default value. This is not possible if the table is not empty.
-  - Made the column `name` on table `User` required. This step will fail if there are existing NULL values in that column.
-
-*/
 -- CreateEnum
 CREATE TYPE "EvaluationStatus" AS ENUM ('PENDING', 'IN_PROGRESS', 'COMPLETED');
 
--- AlterEnum
-BEGIN;
-CREATE TYPE "EvaluationType_new" AS ENUM ('AUTOEVALUATION', 'PEER_360', 'MENTOR');
-ALTER TABLE "Evaluation" ALTER COLUMN "type" TYPE "EvaluationType_new" USING ("type"::text::"EvaluationType_new");
-ALTER TYPE "EvaluationType" RENAME TO "EvaluationType_old";
-ALTER TYPE "EvaluationType_new" RENAME TO "EvaluationType";
-DROP TYPE "EvaluationType_old";
-COMMIT;
+-- CreateEnum
+CREATE TYPE "FeedbackSource" AS ENUM ('TEXT', 'AUDIO_TRANSCRIBED');
 
--- AlterEnum
-ALTER TYPE "ProjectRole" ADD VALUE 'BUSINESSMAN';
+-- CreateEnum
+CREATE TYPE "UserRole" AS ENUM ('EMPLOYER', 'LEADER', 'MENTOR', 'MANAGER', 'RH', 'COMMITTEE', 'DEVELOPER', 'ADMIN');
 
--- DropForeignKey
-ALTER TABLE "Evaluation" DROP CONSTRAINT "Evaluation_evaluateeId_fkey";
+-- CreateEnum
+CREATE TYPE "ProjectStatus" AS ENUM ('ACTIVE', 'INACTIVE', 'COMPLETED', 'CANCELLED');
 
--- DropForeignKey
-ALTER TABLE "Evaluation" DROP CONSTRAINT "Evaluation_evaluatorId_fkey";
+-- CreateEnum
+CREATE TYPE "ProjectRole" AS ENUM ('DEVELOPER', 'LEADER', 'MANAGER', 'ANALYST', 'TESTER', 'DESIGNER', 'ARCHITECT', 'BUSINESSMAN');
 
--- DropForeignKey
-ALTER TABLE "Feedback" DROP CONSTRAINT "Feedback_userId_fkey";
+-- CreateTable
+CREATE TABLE "User" (
+    "id" SERIAL NOT NULL,
+    "email" TEXT NOT NULL,
+    "password" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "unit" TEXT,
+    "track" TEXT,
+    "position" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "lastLogged" TIMESTAMP(3) NOT NULL,
 
--- DropForeignKey
-ALTER TABLE "Okr" DROP CONSTRAINT "Okr_userId_fkey";
+    CONSTRAINT "User_pkey" PRIMARY KEY ("id")
+);
 
--- DropForeignKey
-ALTER TABLE "Pdi" DROP CONSTRAINT "Pdi_userId_fkey";
+-- CreateTable
+CREATE TABLE "UserRoleLink" (
+    "userId" INTEGER NOT NULL,
+    "role" "UserRole" NOT NULL,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "assignedBy" INTEGER,
 
--- DropForeignKey
-ALTER TABLE "Reference" DROP CONSTRAINT "Reference_fromId_fkey";
+    CONSTRAINT "UserRoleLink_pkey" PRIMARY KEY ("userId","role")
+);
 
--- DropForeignKey
-ALTER TABLE "Reference" DROP CONSTRAINT "Reference_toId_fkey";
+-- CreateTable
+CREATE TABLE "Evaluation" (
+    "id" SERIAL NOT NULL,
+    "evaluatorId" INTEGER NOT NULL,
+    "evaluateeId" INTEGER NOT NULL,
+    "cycleConfigId" INTEGER NOT NULL,
+    "justification" TEXT NOT NULL,
+    "score" DOUBLE PRECISION,
+    "type" "EvaluationType" NOT NULL,
+    "status" "EvaluationStatus" NOT NULL DEFAULT 'PENDING',
+    "submittedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
--- DropForeignKey
-ALTER TABLE "UserRoleLink" DROP CONSTRAINT "UserRoleLink_assignedBy_fkey";
+    CONSTRAINT "Evaluation_pkey" PRIMARY KEY ("id")
+);
 
--- DropForeignKey
-ALTER TABLE "UserRoleLink" DROP CONSTRAINT "UserRoleLink_userId_fkey";
+-- CreateTable
+CREATE TABLE "Project" (
+    "id" SERIAL NOT NULL,
+    "name" TEXT NOT NULL,
+    "description" TEXT,
+    "status" "ProjectStatus" NOT NULL DEFAULT 'ACTIVE',
+    "startDate" TIMESTAMP(3),
+    "endDate" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
--- DropIndex
-DROP INDEX "ProjectMember_projectId_userId_key";
+    CONSTRAINT "Project_pkey" PRIMARY KEY ("id")
+);
 
--- AlterTable
-ALTER TABLE "Evaluation" DROP COLUMN "cycle",
-ADD COLUMN     "cycleConfigId" INTEGER NOT NULL,
-ADD COLUMN     "status" "EvaluationStatus" NOT NULL DEFAULT 'PENDING',
-ADD COLUMN     "submittedAt" TIMESTAMP(3),
-ADD COLUMN     "updatedAt" TIMESTAMP(3) NOT NULL,
-ALTER COLUMN "score" DROP NOT NULL,
-ALTER COLUMN "score" SET DATA TYPE DOUBLE PRECISION;
+-- CreateTable
+CREATE TABLE "ProjectMember" (
+    "id" SERIAL NOT NULL,
+    "projectId" INTEGER NOT NULL,
+    "userId" INTEGER NOT NULL,
+    "role" "ProjectRole" NOT NULL,
+    "startDate" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "endDate" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
--- AlterTable
-ALTER TABLE "User" ADD COLUMN     "position" TEXT,
-ALTER COLUMN "name" SET NOT NULL;
+    CONSTRAINT "ProjectMember_pkey" PRIMARY KEY ("id")
+);
 
--- AlterTable
-ALTER TABLE "UserRoleLink" ALTER COLUMN "assignedBy" DROP NOT NULL;
+-- CreateTable
+CREATE TABLE "Pillar" (
+    "id" SERIAL NOT NULL,
+    "name" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "Pillar_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Criterion" (
+    "id" SERIAL NOT NULL,
+    "pillarId" INTEGER NOT NULL,
+    "name" TEXT NOT NULL,
+    "description" TEXT,
+    "weight" DOUBLE PRECISION,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "Criterion_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "CriteriaAssignment" (
+    "autoEvaluationID" INTEGER NOT NULL,
+    "criterionId" INTEGER NOT NULL,
+    "note" DOUBLE PRECISION NOT NULL,
+    "justification" TEXT NOT NULL,
+
+    CONSTRAINT "CriteriaAssignment_pkey" PRIMARY KEY ("autoEvaluationID","criterionId")
+);
 
 -- CreateTable
 CREATE TABLE "Tag" (
@@ -80,11 +129,70 @@ CREATE TABLE "Tag" (
 );
 
 -- CreateTable
+CREATE TABLE "Reference" (
+    "id" SERIAL NOT NULL,
+    "fromId" INTEGER NOT NULL,
+    "toId" INTEGER NOT NULL,
+    "tags" TEXT[],
+    "comment" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "Reference_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "TagReference" (
     "tagId" INTEGER NOT NULL,
     "referenceId" INTEGER NOT NULL,
 
     CONSTRAINT "TagReference_pkey" PRIMARY KEY ("tagId","referenceId")
+);
+
+-- CreateTable
+CREATE TABLE "Feedback" (
+    "id" SERIAL NOT NULL,
+    "userId" INTEGER NOT NULL,
+    "text" TEXT NOT NULL,
+    "sourceType" "FeedbackSource" NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "Feedback_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Okr" (
+    "id" SERIAL NOT NULL,
+    "userId" INTEGER NOT NULL,
+    "objective" TEXT NOT NULL,
+    "keyResults" TEXT[],
+    "progress" DOUBLE PRECISION NOT NULL,
+    "cycle" INTEGER NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "Okr_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Pdi" (
+    "id" SERIAL NOT NULL,
+    "userId" INTEGER NOT NULL,
+    "title" TEXT NOT NULL,
+    "description" TEXT NOT NULL,
+    "status" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "Pdi_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Log" (
+    "id" SERIAL NOT NULL,
+    "userId" INTEGER,
+    "action" TEXT NOT NULL,
+    "metadata" JSONB NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "Log_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -155,6 +263,12 @@ CREATE TABLE "CriterionTrackConfig" (
 );
 
 -- CreateIndex
+CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
+
+-- CreateIndex
+CREATE INDEX "EvaluationTypeIndex" ON "Evaluation"("type");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "CycleConfig_name_key" ON "CycleConfig"("name");
 
 -- CreateIndex
@@ -183,6 +297,21 @@ ALTER TABLE "Evaluation" ADD CONSTRAINT "Evaluation_evaluatorId_fkey" FOREIGN KE
 
 -- AddForeignKey
 ALTER TABLE "Evaluation" ADD CONSTRAINT "Evaluation_evaluateeId_fkey" FOREIGN KEY ("evaluateeId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ProjectMember" ADD CONSTRAINT "ProjectMember_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "Project"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ProjectMember" ADD CONSTRAINT "ProjectMember_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Criterion" ADD CONSTRAINT "Criterion_pillarId_fkey" FOREIGN KEY ("pillarId") REFERENCES "Pillar"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "CriteriaAssignment" ADD CONSTRAINT "CriteriaAssignment_autoEvaluationID_fkey" FOREIGN KEY ("autoEvaluationID") REFERENCES "Evaluation"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "CriteriaAssignment" ADD CONSTRAINT "CriteriaAssignment_criterionId_fkey" FOREIGN KEY ("criterionId") REFERENCES "Criterion"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Reference" ADD CONSTRAINT "Reference_fromId_fkey" FOREIGN KEY ("fromId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;

@@ -68,7 +68,6 @@ async function main() {
     const pilarTecnico = await prisma.pillar.create({
         data: {
             name: 'Técnico',
-            description: 'Avaliação de competências técnicas e conhecimentos específicos',
         },
     });
 
@@ -76,7 +75,6 @@ async function main() {
     const pilarComportamental = await prisma.pillar.create({
         data: {
             name: 'Comportamental',
-            description: 'Avaliação de soft skills e comportamentos no ambiente de trabalho',
         },
     });
 

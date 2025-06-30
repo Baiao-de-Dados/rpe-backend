@@ -97,7 +97,6 @@ model ProjectMember {
 model Pillar {
   id          Int      @id @default(autoincrement())
   name        String
-  description String?
   createdAt   DateTime @default(now())
 
   criteria     Criterion[]
