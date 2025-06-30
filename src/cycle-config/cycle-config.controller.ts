@@ -6,6 +6,7 @@ import { UpdateCycleConfigDto } from './dto/update-cycle-config.dto';
 import { CycleConfigResponseDto } from './dto/cycle-config-response.dto';
 import { RequireRH } from '../auth/decorators/roles.decorator';
 import { ApiAuth } from '../common/decorators/api-auth.decorator';
+import { ApiCreate } from '../common/decorators/api-crud.decorator';
 
 @ApiTags('Configuração de Ciclo')
 @ApiAuth()
@@ -13,12 +14,14 @@ import { ApiAuth } from '../common/decorators/api-auth.decorator';
 export class CycleConfigController {
     constructor(private readonly cycleConfigService: CycleConfigService) {}
 
-    @RequireRH()
     @Post()
-    @ApiOperation({ summary: 'Criar ciclo de avaliação' })
-    @ApiResponse({ status: 201, type: CycleConfigResponseDto })
-    async create(@Body() dto: CreateCycleConfigDto): Promise<CycleConfigResponseDto> {
-        return this.cycleConfigService.create(dto);
+    @RequireRH()
+    @ApiCreate('ciclo de avaliação')
+    async create(@Body() createCycleConfigDto: CreateCycleConfigDto) {
+        // Validar se não há ciclo ativo antes de criar um novo
+        await this.cycleConfigService.validateCycleNotActive();
+
+        return this.cycleConfigService.create(createCycleConfigDto);
     }
 
     @RequireRH()
@@ -45,22 +48,28 @@ export class CycleConfigController {
         return this.cycleConfigService.findOne(id);
     }
 
-    @RequireRH()
     @Put(':id')
-    @ApiOperation({ summary: 'Atualizar ciclo' })
+    @RequireRH()
+    @ApiOperation({ summary: 'Atualizar ciclo de avaliação' })
     @ApiResponse({ status: 200, type: CycleConfigResponseDto })
     async update(
         @Param('id', ParseIntPipe) id: number,
-        @Body() dto: UpdateCycleConfigDto,
+        @Body() updateCycleConfigDto: UpdateCycleConfigDto,
     ): Promise<CycleConfigResponseDto> {
-        return this.cycleConfigService.update(id, dto);
+        // Validar se não há ciclo ativo antes de fazer alterações
+        await this.cycleConfigService.validateCycleNotActive();
+
+        return this.cycleConfigService.update(id, updateCycleConfigDto);
     }
 
-    @RequireRH()
     @Delete(':id')
-    @ApiOperation({ summary: 'Remover ciclo' })
-    @ApiResponse({ status: 204 })
-    async remove(@Param('id', ParseIntPipe) id: number): Promise<void> {
+    @RequireRH()
+    @ApiOperation({ summary: 'Remover ciclo de avaliação' })
+    @ApiResponse({ status: 200, description: 'Ciclo removido com sucesso' })
+    async remove(@Param('id', ParseIntPipe) id: number) {
+        // Validar se não há ciclo ativo antes de fazer alterações
+        await this.cycleConfigService.validateCycleNotActive();
+
         return this.cycleConfigService.remove(id);
     }
 }

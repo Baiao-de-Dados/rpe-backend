@@ -1,19 +1,7 @@
-import {
-    Controller,
-    Post,
-    Body,
-    Get,
-    Param,
-    ParseIntPipe,
-    Query,
-    NotFoundException,
-} from '@nestjs/common';
+import { Controller, Post, Body, Get, Param, ParseIntPipe, Query } from '@nestjs/common';
 import { EvaluationsService } from './evaluations.service';
 import { CreateEvaluationDto } from './dto/create-evaluation.dto';
-import {
-    ActiveCriteriaResponseDto,
-    ActiveCriteriaUserResponseDto,
-} from './dto/active-criteria-response.dto';
+import { ActiveCriteriaUserResponseDto } from './dto/active-criteria-response.dto';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { ApiCreate, ApiGet } from 'src/common/decorators/api-crud.decorator';
 import { ApiAuth } from 'src/common/decorators/api-auth.decorator';
@@ -47,74 +35,20 @@ export class EvaluationsController {
     @RequireRH()
     @Get()
     @ApiGet('avaliações')
-    findAll(@Query('type') type?: string) {
-        if (type) {
-            return this.evaluationsService.findByType(type);
-        }
-        return this.evaluationsService.findAll();
+    findAll(
+        @Query('type') type?: string,
+        @Query('evaluateeId') evaluateeId?: number,
+        @Query('evaluatorId') evaluatorId?: number,
+    ) {
+        // Lógica unificada para filtros
+        return this.evaluationsService.findWithFilters(type, evaluateeId, evaluatorId);
     }
 
     @RequireRH()
     @Get('type/:type')
     @ApiGet('avaliações por tipo')
     findByType(@Param('type') type: string) {
-        return this.evaluationsService.findByType(type);
-    }
-
-    @RequireRH()
-    @Get('peer360')
-    @ApiGet('avaliações peer 360')
-    findAllPeer360() {
-        return this.evaluationsService.findByType('PEER_360');
-    }
-
-    @RequireRH()
-    @Get('leader')
-    @ApiGet('avaliações de líder')
-    findAllLeader() {
-        return this.evaluationsService.findByType('LEADER');
-    }
-
-    @RequireRH()
-    @Get('mentor')
-    @ApiGet('avaliações de mentor')
-    findAllMentor() {
-        return this.evaluationsService.findByType('MENTOR');
-    }
-
-    @RequireRH()
-    @Get('auto')
-    @ApiGet('autoavaliações')
-    findAllAuto() {
-        return this.evaluationsService.findByType('AUTOEVALUATION');
-    }
-
-    @RequireRH()
-    @Get('peer360/:evaluateeId')
-    @ApiGet('avaliações peer 360 por avaliado')
-    findPeer360ByEvaluatee(@Param('evaluateeId', ParseIntPipe) evaluateeId: number) {
-        return this.evaluationsService.findByTypeAndEvaluatee('PEER_360', evaluateeId);
-    }
-
-    @RequireRH()
-    @Get('leader/:evaluateeId')
-    @ApiGet('avaliações de líder por avaliado')
-    findLeaderByEvaluatee(@Param('evaluateeId', ParseIntPipe) evaluateeId: number) {
-        return this.evaluationsService.findByTypeAndEvaluatee('LEADER', evaluateeId);
-    }
-
-    @RequireRH()
-    @Get('mentor/:evaluateeId')
-    @ApiGet('avaliações de mentor por avaliado')
-    findMentorByEvaluatee(@Param('evaluateeId', ParseIntPipe) evaluateeId: number) {
-        return this.evaluationsService.findByTypeAndEvaluatee('MENTOR', evaluateeId);
-    }
-
-    @RequireRH()
-    @Get('auto/:evaluateeId')
-    @ApiGet('autoavaliações por usuário')
-    findAutoByEvaluatee(@Param('evaluateeId', ParseIntPipe) evaluateeId: number) {
-        return this.evaluationsService.findByTypeAndEvaluatee('AUTOEVALUATION', evaluateeId);
+        return this.evaluationsService.findWithFilters(type);
     }
 
     @RequireLeader()
@@ -124,69 +58,7 @@ export class EvaluationsController {
         @Param('evaluatorId', ParseIntPipe) evaluatorId: number,
         @Query('type') type?: string,
     ) {
-        if (type) {
-            return this.evaluationsService.findByTypeAndEvaluator(type, evaluatorId);
-        }
-        // Se não especificar tipo, retorna todas as avaliações do avaliador
-        return this.evaluationsService.findByTypeAndEvaluator('LEADER', evaluatorId);
-    }
-
-    @RequireEmployer()
-    @Get('active-criteria')
-    @ApiOperation({
-        summary: 'Buscar critérios ativos do ciclo atual',
-        description:
-            'Retorna todos os critérios que estão ativos no ciclo de avaliação atual para uso em autoavaliações',
-    })
-    @ApiResponse({
-        status: 200,
-        description: 'Critérios ativos encontrados',
-        type: ActiveCriteriaResponseDto,
-    })
-    @ApiResponse({ status: 404, description: 'Nenhum ciclo ativo encontrado' })
-    async getActiveCriteria(): Promise<ActiveCriteriaResponseDto> {
-        const activeCriteria = await this.cycleConfigService.getActiveCriteria();
-        return { criteria: activeCriteria };
-    }
-
-    @RequireEmployer()
-    @Get('active-criteria/grouped')
-    @ApiOperation({
-        summary: 'Buscar critérios ativos agrupados por pilar',
-        description:
-            'Retorna os critérios ativos organizados por pilar para facilitar o uso em formulários de autoavaliação',
-    })
-    @ApiResponse({
-        status: 200,
-        description: 'Critérios ativos agrupados por pilar',
-    })
-    @ApiResponse({ status: 404, description: 'Nenhum ciclo ativo encontrado' })
-    async getActiveCriteriaGrouped() {
-        const activeCriteria = await this.cycleConfigService.getActiveCriteria();
-
-        // Agrupar critérios por pilar
-        const groupedByPillar = activeCriteria.reduce((acc, criterion) => {
-            const pillarId = criterion.pillar.id;
-            if (!acc[pillarId]) {
-                acc[pillarId] = {
-                    id: criterion.pillar.id,
-                    name: criterion.pillar.name,
-                    description: criterion.pillar.description,
-                    criterios: [],
-                };
-            }
-
-            acc[pillarId].criterios.push({
-                id: criterion.id,
-                name: criterion.name,
-                description: criterion.description,
-                weight: criterion.weight,
-            });
-
-            return acc;
-        }, {});
-
-        return Object.values(groupedByPillar);
+        return this.evaluationsService.findWithFilters(type || 'LEADER', undefined, evaluatorId);
     }
 
     @RequireEmployer()
@@ -194,7 +66,7 @@ export class EvaluationsController {
     @ApiOperation({
         summary: 'Buscar critérios ativos para o usuário logado baseado em sua trilha/cargo',
         description:
-            'Retorna apenas os critérios que estão ativos para a trilha e cargo específicos do usuário logado',
+            'Retorna apenas os critérios que estão ativos no ciclo atual E configurados para a trilha e cargo específicos do usuário logado',
     })
     @ApiResponse({
         status: 200,
@@ -208,61 +80,7 @@ export class EvaluationsController {
     async getActiveCriteriaForUser(
         @CurrentUser() user: any,
     ): Promise<ActiveCriteriaUserResponseDto> {
-        // Buscar critérios ativos para o usuário baseado em track e position
-        const userCriteria = await this.prisma.criterionTrackConfig.findMany({
-            where: {
-                track: user.track || null,
-                position: user.position || null,
-                isActive: true,
-            },
-            include: {
-                criterion: {
-                    include: {
-                        pillar: true,
-                    },
-                },
-            },
-        });
-
-        if (!userCriteria || userCriteria.length === 0) {
-            throw new NotFoundException(
-                `Nenhum critério configurado para sua trilha (${user.track}) e cargo (${user.position})`,
-            );
-        }
-
-        // Agrupar critérios por pilar
-        const groupedByPillar = userCriteria.reduce((acc, config) => {
-            const pillar = config.criterion.pillar;
-            const pillarId = pillar.id;
-
-            if (!acc[pillarId]) {
-                acc[pillarId] = {
-                    id: pillar.id,
-                    name: pillar.name,
-                    description: pillar.description,
-                    criterios: [],
-                };
-            }
-
-            acc[pillarId].criterios.push({
-                id: config.criterion.id,
-                name: config.criterion.name,
-                description: config.criterion.description,
-                weight: config.weight, // Usa o peso personalizado da configuração
-                originalWeight: config.criterion.weight, // Peso original do critério
-            });
-
-            return acc;
-        }, {});
-
-        return {
-            user: {
-                id: user.sub,
-                track: user.track,
-                position: user.position,
-            },
-            pilares: Object.values(groupedByPillar),
-        };
+        return this.evaluationsService.getActiveCriteriaForUser(user);
     }
 
     @RequireRH()

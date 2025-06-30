@@ -2,9 +2,10 @@ import { Module } from '@nestjs/common';
 import { PillarsService } from './pillars.service';
 import { PillarsController } from './pillars.controller';
 import { PrismaModule } from '../prisma/prisma.module';
+import { CycleConfigModule } from '../cycle-config/cycle-config.module';
 
 @Module({
-    imports: [PrismaModule],
+    imports: [PrismaModule, CycleConfigModule],
     controllers: [PillarsController],
     providers: [PillarsService],
     exports: [PillarsService],

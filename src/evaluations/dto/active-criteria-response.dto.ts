@@ -79,9 +79,21 @@ export class ActiveCriteriaResponseDto {
 }
 
 export class ActiveCriteriaUserResponseDto {
-    @ApiProperty({ description: 'Informações do usuário', type: UserInfoDto })
-    user: UserInfoDto;
+    @ApiProperty({ description: 'Informações do usuário' })
+    user: {
+        id: number;
+        track?: string;
+        position?: string;
+    };
 
-    @ApiProperty({ description: 'Pilares com critérios ativos', type: [PilarDto] })
-    pilares: PilarDto[];
+    @ApiProperty({ description: 'Informações do ciclo ativo' })
+    cycle: {
+        id: number;
+        name: string;
+        startDate: Date;
+        endDate: Date;
+    };
+
+    @ApiProperty({ description: 'Pilares com critérios ativos', type: [ActiveCriteriaPillarDto] })
+    pilares: ActiveCriteriaPillarDto[];
 }

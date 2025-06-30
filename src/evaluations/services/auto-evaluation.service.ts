@@ -148,9 +148,37 @@ export class AutoEvaluationService {
         }
     }
 
-    private async validateCycleCriteria(prisma: any, autoavaliacao: any) {
-        // Buscar critérios ativos do ciclo atual (comportamento original)
+    private async validateCycleCriteria(
+        prisma: any,
+        autoavaliacao: any,
+        userTrack?: string,
+        userPosition?: string,
+    ) {
+        // 1. Verificar se existe um ciclo ativo
         const activeCycle = await prisma.cycleConfig.findFirst({
+            where: { isActive: true },
+        });
+
+        if (!activeCycle) {
+            throw new BadRequestException('Nenhum ciclo de avaliação ativo encontrado');
+        }
+
+        // 2. Verificar se o ciclo está dentro do prazo
+        const now = new Date();
+        if (now > activeCycle.endDate) {
+            throw new BadRequestException(
+                `O ciclo ${activeCycle.name} expirou em ${activeCycle.endDate.toLocaleDateString()}`,
+            );
+        }
+
+        if (now < activeCycle.startDate) {
+            throw new BadRequestException(
+                `O ciclo ${activeCycle.name} ainda não começou. Início previsto para ${activeCycle.startDate.toLocaleDateString()}`,
+            );
+        }
+
+        // 3. Buscar critérios ativos no ciclo atual
+        const activeCycleCriteria = await prisma.cycleConfig.findFirst({
             where: { isActive: true },
             include: {
                 criterionConfigs: {
@@ -162,12 +190,25 @@ export class AutoEvaluationService {
             },
         });
 
-        // Criar conjunto de critérios ativos para validação rápida
         const activeCriteriaIds = new Set(
-            activeCycle.criterionConfigs.map((config: any) => config.criterionId),
+            activeCycleCriteria.criterionConfigs.map((config: any) => config.criterionId),
         );
 
-        // Validar se todos os critérios enviados estão ativos
+        // 4. Buscar critérios configurados para a trilha/cargo do usuário
+        const userTrackCriteria = await prisma.criterionTrackConfig.findMany({
+            where: {
+                track: userTrack || null,
+                position: userPosition || null,
+                isActive: true,
+            },
+            select: {
+                criterionId: true,
+            },
+        });
+
+        const userTrackCriteriaIds = new Set(userTrackCriteria.map((config) => config.criterionId));
+
+        // 5. Validar se todos os critérios enviados estão ativos no ciclo E configurados para a trilha
         for (const pilar of autoavaliacao.pilares) {
             for (const criterio of pilar.criterios) {
                 const criterionId = parseInt(criterio.criterioId, 10);
@@ -175,6 +216,12 @@ export class AutoEvaluationService {
                 if (!activeCriteriaIds.has(criterionId)) {
                     throw new BadRequestException(
                         `Critério com ID ${criterionId} não está ativo no ciclo atual`,
+                    );
+                }
+
+                if (!userTrackCriteriaIds.has(criterionId)) {
+                    throw new BadRequestException(
+                        `Critério com ID ${criterionId} não está configurado para sua trilha (${userTrack}) e cargo (${userPosition})`,
                     );
                 }
             }

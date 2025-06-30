@@ -25,17 +25,24 @@ import {
     ApiDelete,
 } from 'src/common/decorators/api-crud.decorator';
 import { ApiAuth } from 'src/common/decorators/api-auth.decorator';
+import { CycleConfigService } from '../cycle-config/cycle-config.service';
 
 @ApiTags('Critérios')
 @ApiAuth()
 @Controller('criteria')
 export class CriteriaController {
-    constructor(private readonly criteriaService: CriteriaService) {}
+    constructor(
+        private readonly criteriaService: CriteriaService,
+        private readonly cycleConfigService: CycleConfigService,
+    ) {}
 
     @Post()
     @ExactRoles(UserRole.RH)
     @ApiCreate('critério')
-    create(@Body() createCriterionDto: CreateCriterionDto) {
+    async create(@Body() createCriterionDto: CreateCriterionDto) {
+        // Validar se não há ciclo ativo antes de criar critérios
+        await this.cycleConfigService.validateCycleNotActive();
+
         return this.criteriaService.create(createCriterionDto);
     }
 
@@ -63,14 +70,23 @@ export class CriteriaController {
     @Patch(':id')
     @ExactRoles(UserRole.RH)
     @ApiUpdate('critério')
-    update(@Param('id', ParseIntPipe) id: number, @Body() updateCriterionDto: UpdateCriterionDto) {
+    async update(
+        @Param('id', ParseIntPipe) id: number,
+        @Body() updateCriterionDto: UpdateCriterionDto,
+    ) {
+        // Validar se não há ciclo ativo antes de atualizar critérios
+        await this.cycleConfigService.validateCycleNotActive();
+
         return this.criteriaService.update(id, updateCriterionDto);
     }
 
     @Delete(':id')
     @ExactRoles(UserRole.RH)
     @ApiDelete('critério')
-    remove(@Param('id', ParseIntPipe) id: number) {
+    async remove(@Param('id', ParseIntPipe) id: number) {
+        // Validar se não há ciclo ativo antes de remover critérios
+        await this.cycleConfigService.validateCycleNotActive();
+
         return this.criteriaService.remove(id);
     }
 
@@ -78,7 +94,10 @@ export class CriteriaController {
     @Post('track-config')
     @ExactRoles(UserRole.RH)
     @ApiCreate('configuração de critério por trilha/cargo')
-    createTrackConfig(@Body() createConfigDto: CreateCriterionTrackConfigDto) {
+    async createTrackConfig(@Body() createConfigDto: CreateCriterionTrackConfigDto) {
+        // Validar se não há ciclo ativo antes de configurar critérios por trilha
+        await this.cycleConfigService.validateCycleNotActive();
+
         return this.criteriaService.createTrackConfig(createConfigDto);
     }
 
@@ -106,12 +125,15 @@ export class CriteriaController {
     @Patch('track-config/:criterionId')
     @ExactRoles(UserRole.RH)
     @ApiUpdate('configuração de critério por trilha/cargo')
-    updateTrackConfig(
+    async updateTrackConfig(
         @Param('criterionId', ParseIntPipe) criterionId: number,
         @Body() updateConfigDto: UpdateCriterionTrackConfigDto,
         @Query('track') track?: string,
         @Query('position') position?: string,
     ) {
+        // Validar se não há ciclo ativo antes de atualizar configurações
+        await this.cycleConfigService.validateCycleNotActive();
+
         return this.criteriaService.updateTrackConfig(
             criterionId,
             track || null,
@@ -123,11 +145,14 @@ export class CriteriaController {
     @Delete('track-config/:criterionId')
     @ExactRoles(UserRole.RH)
     @ApiDelete('configuração de critério por trilha/cargo')
-    removeTrackConfig(
+    async removeTrackConfig(
         @Param('criterionId', ParseIntPipe) criterionId: number,
         @Query('track') track?: string,
         @Query('position') position?: string,
     ) {
+        // Validar se não há ciclo ativo antes de remover configurações
+        await this.cycleConfigService.validateCycleNotActive();
+
         return this.criteriaService.removeTrackConfig(criterionId, track || null, position || null);
     }
 }
