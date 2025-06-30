@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import {
+    Injectable,
+    NotFoundException,
+    ConflictException,
+    BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { EncryptionService } from 'src/encryption/encryption.service';
 import { User, UserRole } from '@prisma/client';
@@ -297,5 +302,65 @@ export class UserService {
             createdAt: user.createdAt,
             updatedAt: user.updatedAt,
         };
+    }
+
+    async bulkCreateUsers(dtos: CreateUserDTO[]) {
+        if (!dtos.length) throw new BadRequestException('Nenhum usuário para importar');
+
+        const results: Array<
+            | { success: true; user: UserWithRoles }
+            | { success: false; email: string; error: string }
+        > = [];
+
+        return this.prisma.$transaction(async (tx) => {
+            for (const dto of dtos) {
+                try {
+                    const encryptedEmail = this.encryptionService.encrypt(dto.email);
+                    const hashedPassword = await hash(dto.password, 10);
+
+                    const user = await tx.user.create({
+                        data: {
+                            email: encryptedEmail,
+                            password: hashedPassword,
+                            name: dto.name,
+                            unit: dto.unit,
+                            track: dto.track,
+                            position: dto.position,
+                            userRoles: {
+                                create: [{ role: dto.role }],
+                            },
+                        },
+                        include: {
+                            userRoles: {
+                                where: { isActive: true },
+                                select: { role: true },
+                            },
+                        },
+                    });
+
+                    results.push({
+                        success: true,
+                        user: {
+                            id: user.id,
+                            email: this.encryptionService.decrypt(user.email),
+                            name: user.name,
+                            unit: user.unit,
+                            track: user.track,
+                            position: user.position,
+                            roles: user.userRoles.map((ur) => ur.role),
+                            createdAt: user.createdAt,
+                            updatedAt: user.updatedAt,
+                        },
+                    });
+                } catch (err) {
+                    results.push({
+                        success: false,
+                        email: dto.email,
+                        error: err.message,
+                    });
+                }
+            }
+            return results;
+        });
     }
 }

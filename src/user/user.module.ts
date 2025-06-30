@@ -6,9 +6,9 @@ import { CryptoModule } from 'src/encryption/crypto.module';
 import { EncryptionInterceptor } from 'src/common/interceptors/encryption.interceptor';
 import { RhModule } from './rh/rh.module';
 import { EmployerModule } from './employer/employer.module';
-
+import { UserImportModule } from 'src/imports/user/user-import.module';
 @Module({
-    imports: [PrismaModule, CryptoModule, RhModule, EmployerModule],
+    imports: [PrismaModule, CryptoModule, RhModule, EmployerModule, UserImportModule],
     providers: [UserService, EncryptionInterceptor],
     controllers: [UserController],
     exports: [UserService],

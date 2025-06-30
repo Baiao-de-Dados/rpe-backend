@@ -8,6 +8,7 @@ import {
     Delete,
     ParseIntPipe,
     UnauthorizedException,
+    UploadedFile,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 
@@ -37,6 +38,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { UseGuards } from '@nestjs/common';
 import { CreateUserDTO } from './dto/create-user.dto';
+import { UserImportService } from 'src/imports/user/user-import.service';
 
 export class UpdateUserDto {
     name?: string;
@@ -47,7 +49,10 @@ export class UpdateUserDto {
 @ApiAuth()
 @Controller('users')
 export class UserController {
-    constructor(private readonly userService: UserService) {}
+    constructor(
+        private readonly userService: UserService,
+        private readonly userImportService: UserImportService,
+    ) {}
 
     @OnlyAdmin()
     @UseGuards(JwtAuthGuard, RolesGuard)
@@ -120,5 +125,14 @@ export class UserController {
     @ApiDelete('usuário')
     async remove(@Param('id', ParseIntPipe) id: number) {
         return this.userService.deleteUser(id);
+    }
+
+    @OnlyAdmin()
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Post('import')
+    @ApiCreate('usuários importados')
+    async importUser(@UploadedFile() file: Express.Multer.File) {
+        const dtos = await this.userImportService.parseExcel(file.buffer);
+        return this.userService.bulkCreateUsers(dtos);
     }
 }
