@@ -18,7 +18,13 @@ import { UserRole } from '@prisma/client';
 import { AssignRoleDto } from './dto/assign-role.dto';
 
 import { ApiAuth } from 'src/common/decorators/api-auth.decorator';
-import { ApiList, ApiGet, ApiUpdate, ApiDelete } from 'src/common/decorators/api-crud.decorator';
+import {
+    ApiCreate,
+    ApiList,
+    ApiGet,
+    ApiUpdate,
+    ApiDelete,
+} from 'src/common/decorators/api-crud.decorator';
 import { ApiProfile, ApiAssignRole, ApiRemoveRole } from './decorators/api-user.decorator';
 import {
     RequireAdmin,
@@ -30,6 +36,7 @@ import {
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { UseGuards } from '@nestjs/common';
+import { CreateUserDTO } from './dto/create-user.dto';
 
 export class UpdateUserDto {
     name?: string;
@@ -41,6 +48,14 @@ export class UpdateUserDto {
 @Controller('users')
 export class UserController {
     constructor(private readonly userService: UserService) {}
+
+    @OnlyAdmin()
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Post()
+    @ApiCreate('usuário')
+    async create(@Body() dto: CreateUserDTO) {
+        return this.userService.createUser(dto);
+    }
 
     @RequireRH()
     @UseGuards(JwtAuthGuard, RolesGuard)

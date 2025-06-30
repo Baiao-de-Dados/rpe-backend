@@ -2,11 +2,16 @@ import { Injectable, NotFoundException, ConflictException } from '@nestjs/common
 import { PrismaService } from '../prisma/prisma.service';
 import { EncryptionService } from 'src/encryption/encryption.service';
 import { User, UserRole } from '@prisma/client';
+import { CreateUserDTO } from './dto/create-user.dto';
+import { hash } from 'bcrypt';
 
 export interface UserWithRoles {
     id: number;
     email: string;
-    name: string | null;
+    name: string;
+    unit: string;
+    track: string;
+    position: string;
     roles: UserRole[];
     createdAt: Date;
     updatedAt: Date;
@@ -19,6 +24,42 @@ export class UserService {
         private encryptionService: EncryptionService,
     ) {}
 
+    async createUser(dto: CreateUserDTO): Promise<UserWithRoles> {
+        const encryptedEmail = this.encryptionService.encrypt(dto.email);
+        const hashedPassword = await hash(dto.password, 10);
+
+        const user = await this.prisma.user.create({
+            data: {
+                email: encryptedEmail,
+                password: hashedPassword,
+                name: dto.name,
+                unit: dto.unit,
+                track: dto.track,
+                position: dto.position,
+                userRoles: {
+                    create: [{ role: dto.role }],
+                },
+            },
+            include: {
+                userRoles: {
+                    where: { isActive: true },
+                    select: { role: true },
+                },
+            },
+        });
+        return {
+            id: user.id,
+            email: this.encryptionService.decrypt(user.email),
+            name: user.name,
+            unit: user.unit,
+            track: user.track,
+            position: user.position,
+            roles: user.userRoles.map((ur) => ur.role),
+            createdAt: user.createdAt,
+            updatedAt: user.updatedAt,
+        };
+    }
+
     async findAll(): Promise<UserWithRoles[]> {
         const users = (await this.prisma.user.findMany({
             include: {
@@ -30,7 +71,10 @@ export class UserService {
         })) as Array<{
             id: number;
             email: string;
-            name: string | null;
+            name: string;
+            unit: string;
+            track: string;
+            position: string;
             userRoles: { role: UserRole }[];
             createdAt: Date;
             updatedAt: Date;
@@ -40,6 +84,9 @@ export class UserService {
             id: user.id,
             email: this.encryptionService.decrypt(user.email),
             name: user.name,
+            unit: user.unit,
+            track: user.track,
+            position: user.position,
             roles: user.userRoles.map((ur) => ur.role),
             createdAt: user.createdAt,
             updatedAt: user.updatedAt,
@@ -65,6 +112,9 @@ export class UserService {
             id: user.id,
             email: this.encryptionService.decrypt(user.email),
             name: user.name,
+            unit: user.unit,
+            track: user.track,
+            position: user.position,
             roles: user.userRoles.map((ur) => ur.role),
             createdAt: user.createdAt,
             updatedAt: user.updatedAt,
@@ -92,11 +142,13 @@ export class UserService {
             },
         });
 
-        user.email = this.encryptionService.decrypt(user.email);
         return {
             id: user.id,
-            email: user.email,
+            email: this.encryptionService.decrypt(user.email),
             name: user.name,
+            unit: user.unit,
+            track: user.track,
+            position: user.position,
             roles: user.userRoles.map((ur) => ur.role),
             createdAt: user.createdAt,
             updatedAt: user.updatedAt,
@@ -207,6 +259,9 @@ export class UserService {
             id: user.id,
             email: this.encryptionService.decrypt(user.email),
             name: user.name,
+            unit: user.unit,
+            track: user.track,
+            position: user.position,
             roles: user.userRoles.map((ur) => ur.role),
             createdAt: user.createdAt,
             updatedAt: user.updatedAt,
@@ -235,6 +290,9 @@ export class UserService {
             id: user.id,
             email: this.encryptionService.decrypt(user.email),
             name: user.name,
+            unit: user.unit,
+            track: user.track,
+            position: user.position,
             roles: user.userRoles.map((ur) => ur.role),
             createdAt: user.createdAt,
             updatedAt: user.updatedAt,
