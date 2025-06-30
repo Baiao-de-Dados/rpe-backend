@@ -271,7 +271,6 @@ export class EvaluationsService {
                 acc[pillarId] = {
                     id: pillar.id,
                     name: pillar.name,
-                    description: pillar.description,
                     criterios: [],
                 };
             }
@@ -281,7 +280,7 @@ export class EvaluationsService {
                 name: config.criterion.name,
                 description: config.criterion.description,
                 weight: config.weight, // Usa o peso personalizado da configuração de trilha
-                originalWeight: config.criterion.weight, // Peso original do critério
+                originalWeight: config.criterion.weight ?? null, // Peso original do critério
             });
 
             return acc;

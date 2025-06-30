@@ -25,7 +25,7 @@ export class CreateCriterionDto {
     })
     @IsNumber()
     @IsOptional()
-    weight?: number;
+    weight?: number | null;
 
     @ApiProperty({
         example: 1,

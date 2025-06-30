@@ -17,7 +17,24 @@ describe('PillarsController', () => {
         description: 'Pilar técnico',
         createdAt: new Date(),
         updatedAt: new Date(),
-        criteria: [],
+        criteria: [
+            {
+                id: 1,
+                name: 'Critério com Peso',
+                description: 'Descrição do critério',
+                weight: 0.5,
+                pillarId: 1,
+                createdAt: new Date(),
+            },
+            {
+                id: 2,
+                name: 'Critério sem Peso',
+                description: 'Descrição do critério sem peso',
+                weight: null,
+                pillarId: 1,
+                createdAt: new Date(),
+            },
+        ],
     };
 
     const mockPillarTrackConfig = {

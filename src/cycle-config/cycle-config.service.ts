@@ -303,7 +303,6 @@ export class CycleConfigService {
             pillar: {
                 id: config.criterion.pillar.id,
                 name: config.criterion.pillar.name,
-                description: config.criterion.pillar.description,
             },
         }));
     }

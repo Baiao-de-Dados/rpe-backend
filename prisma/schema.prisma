@@ -110,7 +110,7 @@ model Criterion {
   pillarId    Int
   name        String
   description String?
-  weight      Float
+  weight      Float?
   createdAt   DateTime @default(now())
 
   pillar             Pillar                 @relation(fields: [pillarId], references: [id], onDelete: Cascade)

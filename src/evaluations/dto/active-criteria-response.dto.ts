@@ -6,9 +6,6 @@ export class ActiveCriteriaPillarDto {
 
     @ApiProperty({ example: 'Técnico', description: 'Nome do pilar' })
     name: string;
-
-    @ApiProperty({ example: 'Pilar técnico', description: 'Descrição do pilar' })
-    description?: string;
 }
 
 export class ActiveCriteriaDto {
@@ -25,7 +22,7 @@ export class ActiveCriteriaDto {
     description?: string;
 
     @ApiProperty({ example: 1.0, description: 'Peso do critério no ciclo atual' })
-    weight: number;
+    weight: number | null;
 
     @ApiProperty({ type: ActiveCriteriaPillarDto, description: 'Pilar do critério' })
     pillar: ActiveCriteriaPillarDto;
@@ -42,7 +39,7 @@ export class CriterioDto {
     description: string;
 
     @ApiProperty({ description: 'Peso personalizado para a trilha/cargo' })
-    weight: number;
+    weight: number | null;
 
     @ApiProperty({ description: 'Peso original do critério', required: false })
     originalWeight?: number;
@@ -54,9 +51,6 @@ export class PilarDto {
 
     @ApiProperty({ description: 'Nome do pilar' })
     name: string;
-
-    @ApiProperty({ description: 'Descrição do pilar' })
-    description: string;
 
     @ApiProperty({ description: 'Critérios do pilar', type: [CriterioDto] })
     criterios: CriterioDto[];
