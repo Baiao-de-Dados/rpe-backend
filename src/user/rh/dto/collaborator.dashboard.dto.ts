@@ -35,7 +35,7 @@ export class CollaboratorStatusDto {
 
     @ApiProperty({ description: 'Ciclo da avaliação' })
     @IsString()
-    cycle: string;
+    CycleConfigId: string;
 
     @ApiProperty({ description: 'Status da avaliação (finalizado/pendente)' })
     @IsString()

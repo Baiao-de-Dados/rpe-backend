@@ -1,6 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { IsNumber, IsPositive } from 'class-validator';
 
 export class SetCurrentCycleDto {
     @ApiProperty()
-    cycle: string;
+    @IsNumber()
+    @IsPositive()
+    CycleConfigId: number;
 }

@@ -20,8 +20,17 @@ export class RhPanelService {
             targetCycle = this.systemConfigService.getCurrentCycle();
         }
 
+        const cycleConfig = await this.prisma.cycleConfig.findFirst({
+            where: { name: targetCycle },
+            select: { id: true },
+        });
+
+        if (!cycleConfig) {
+            throw new NotFoundException(`Ciclo '${targetCycle}' não encontrado`);
+        }
+
         const evaluations = await this.prisma.evaluation.findMany({
-            where: { cycle: parseInt(targetCycle, 10) },
+            where: { cycleConfigId: cycleConfig.id },
             include: {
                 evaluator: true,
                 evaluatee: true,
@@ -57,7 +66,7 @@ export class RhPanelService {
                 completionPercentage,
             },
             cycle: {
-                cycle: targetCycle,
+                CycleConfigId: cycleConfig.id,
                 totalEvaluations,
                 completedEvaluations,
                 pendingEvaluations,
@@ -76,48 +85,63 @@ export class RhPanelService {
     }
 
     async getCollaboratorsStatus(): Promise<CollaboratorsStatusDto> {
-        // Obter o ciclo atual
         const currentCycle = this.systemConfigService.getCurrentCycle();
         let targetCycle = currentCycle;
 
         if (targetCycle === 'N/A') {
             const latestEvaluation = await this.prisma.evaluation.findFirst({
                 orderBy: { createdAt: 'desc' },
-                select: { cycle: true },
+                select: { cycleConfigId: true },
             });
-            targetCycle = latestEvaluation?.cycle?.toString() || 'N/A';
+            if (!latestEvaluation) {
+                throw new NotFoundException('Nenhum ciclo encontrado');
+            }
+            const latestCycle = await this.prisma.cycleConfig.findUnique({
+                where: { id: latestEvaluation.cycleConfigId },
+                select: { name: true },
+            });
+            targetCycle = latestCycle?.name ?? 'N/A';
+        }
+
+        const cycleConfig = await this.prisma.cycleConfig.findUnique({
+            where: { name: targetCycle },
+            select: { id: true },
+        });
+        if (!cycleConfig) {
+            throw new NotFoundException(`Ciclo: ${targetCycle} não encontrado`);
         }
 
         const evaluations = await this.prisma.evaluation.findMany({
-            where: { cycle: parseInt(targetCycle, 10) },
-            include: {
-                evaluator: true,
-                evaluatee: true,
-            },
+            where: { cycleConfigId: cycleConfig.id },
+            include: { evaluatee: true },
             orderBy: { createdAt: 'desc' },
         });
 
-        const collaborators = evaluations.map((evaluation) => {
+        // Deduplicate collaborators by ID, keeping the latest evaluation for each
+        const collaboratorMap = new Map<number, any>();
+        for (const ev of evaluations) {
             const isCompleted =
-                evaluation.type === EvaluationType.AUTOEVALUATION ||
-                evaluation.type === EvaluationType.PEER_360 ||
-                evaluation.type === EvaluationType.MENTOR;
+                ev.type === EvaluationType.AUTOEVALUATION ||
+                ev.type === EvaluationType.PEER_360 ||
+                ev.type === EvaluationType.MENTOR;
 
-            return {
-                id: evaluation.evaluatee.id,
-                name: evaluation.evaluatee.name || 'Sem nome',
-                email: evaluation.evaluatee.email,
-                cycle: evaluation.cycle.toString(),
-                status: isCompleted ? ('finalizado' as const) : ('pendente' as const),
+            // Always overwrite to keep the latest due to orderBy: { createdAt: 'desc' }
+            collaboratorMap.set(ev.evaluatee.id, {
+                id: ev.evaluatee.id,
+                name: ev.evaluatee.name || 'Sem nome',
+                email: ev.evaluatee.email,
+                CycleConfigId: cycleConfig.id.toString(),
+                status: isCompleted ? 'finalizado' : 'pendente',
                 breakdown: {
-                    autoEvaluation: evaluation.type === EvaluationType.AUTOEVALUATION,
-                    evaluation360: evaluation.type === EvaluationType.PEER_360,
+                    autoEvaluation: ev.type === EvaluationType.AUTOEVALUATION,
+                    evaluation360: ev.type === EvaluationType.PEER_360,
                     mentoring: false, // Ajustar depois
                     references: false,
                 },
-                createdAt: evaluation.createdAt.toISOString(),
-            };
-        });
+                createdAt: ev.createdAt.toISOString(),
+            });
+        }
+        const collaborators = Array.from(collaboratorMap.values());
 
         const total = collaborators.length;
         const completed = collaborators.filter((c) => c.status === 'finalizado').length;
@@ -140,16 +164,16 @@ export class RhPanelService {
         if (targetCycle === 'N/A') {
             const latestEvaluation = await this.prisma.evaluation.findFirst({
                 orderBy: { createdAt: 'desc' },
-                select: { cycle: true },
+                select: { cycleConfigId: true },
             });
-            targetCycle = latestEvaluation?.cycle?.toString() || 'N/A';
+            targetCycle = latestEvaluation?.cycleConfigId?.toString() || 'N/A';
         }
 
         // Buscar APENAS a avaliação do usuário no ciclo atual
         const evaluation = await this.prisma.evaluation.findFirst({
             where: {
                 evaluateeId: collaboratorId,
-                cycle: parseInt(targetCycle, 10),
+                cycleConfigId: parseInt(targetCycle, 10),
             },
             include: {
                 evaluator: true,
@@ -172,7 +196,7 @@ export class RhPanelService {
             id: evaluation.evaluatee.id,
             name: evaluation.evaluatee.name || 'Sem nome',
             email: evaluation.evaluatee.email,
-            cycle: evaluation.cycle.toString(),
+            CycleConfigId: evaluation.cycleConfigId.toString(),
             status: isCompleted ? ('finalizado' as const) : ('pendente' as const),
             breakdown: {
                 autoEvaluation: evaluation.type === EvaluationType.AUTOEVALUATION,
@@ -192,14 +216,14 @@ export class RhPanelService {
         if (targetCycle === 'N/A') {
             const latestEvaluation = await this.prisma.evaluation.findFirst({
                 orderBy: { createdAt: 'desc' },
-                select: { cycle: true },
+                select: { cycleConfigId: true },
             });
-            targetCycle = latestEvaluation?.cycle?.toString() || 'N/A';
+            targetCycle = latestEvaluation?.cycleConfigId?.toString() || 'N/A';
         }
 
         // Buscar APENAS as avaliações do ciclo atual com seus usuários e roles
         const evaluations = await this.prisma.evaluation.findMany({
-            where: { cycle: parseInt(targetCycle, 10) },
+            where: { cycleConfigId: parseInt(targetCycle, 10) },
             include: {
                 evaluatee: {
                     include: {
@@ -255,7 +279,6 @@ export class RhPanelService {
     }
 
     private getCycleEndDate(cycle: string): string {
-        // Assumindo que o ciclo está no formato "YYYY-MM" ou similar
         try {
             const [year, month] = cycle.split('-');
             if (year && month) {

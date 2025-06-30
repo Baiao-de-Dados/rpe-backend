@@ -2,10 +2,24 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { RHUserDTO } from '../dto/rh.dto';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { UserRole } from '@prisma/client';
+import { UpdatePillarDto } from 'src/pillars/dto/update-pillar.dto';
+import { CriteriaService } from 'src/criteria/criteria.service';
+import { CycleConfigService } from 'src/cycle-config/cycle-config.service';
+import { PillarsService } from 'src/pillars/pillars.service';
+import { CreatePillarDto } from 'src/pillars/dto/create-pillar.dto';
+import { CreateCriterionDto } from 'src/criteria/dto/create-criterion.dto';
+import { UpdateCriterionDto } from 'src/criteria/dto/update-criterion.dto';
+import { CreateCycleConfigDto } from 'src/cycle-config/dto/create-cycle-config.dto';
+import { UpdateCycleConfigDto } from 'src/cycle-config/dto/update-cycle-config.dto';
 
 @Injectable()
-export class RHUserService {
-    constructor(private readonly prisma: PrismaService) {}
+export class RHService {
+    constructor(
+        private readonly prisma: PrismaService,
+        private readonly criteriaService: CriteriaService,
+        private readonly cycleService: CycleConfigService,
+        private readonly pillarService: PillarsService,
+    ) {}
 
     async findAll(): Promise<RHUserDTO[]> {
         const users = await this.prisma.user.findMany({
@@ -50,16 +64,67 @@ export class RHUserService {
             updatedAt: user.updatedAt,
         };
     }
+
+    // Pilares
+    async createPillar(createDto: CreatePillarDto) {
+        return this.pillarService.create(createDto);
+    }
+
+    async findAllPillars() {
+        return this.pillarService.findAll();
+    }
+
+    async findOnePillar(id: number) {
+        return this.pillarService.findOne(id);
+    }
+
+    async updatePillar(id: number, updateDto: UpdatePillarDto) {
+        return this.pillarService.update(id, updateDto);
+    }
+
+    async deletePillar(id: number) {
+        return this.pillarService.remove(id);
+    }
+
+    // Critérios
+    async createCriterion(dto: CreateCriterionDto) {
+        return this.criteriaService.create(dto);
+    }
+
+    async findAllCriteria() {
+        return this.criteriaService.findAll();
+    }
+
+    async findOneCriterion(id: number) {
+        return this.criteriaService.findOne(id);
+    }
+
+    async updateCriterion(id: number, dto: UpdateCriterionDto) {
+        return this.criteriaService.update(id, dto);
+    }
+
+    async deleteCriterion(id: number) {
+        return this.criteriaService.remove(id);
+    }
+
+    // Ciclos
+    async createCycle(dto: CreateCycleConfigDto) {
+        return this.cycleService.create(dto);
+    }
+
+    async findAllCycles() {
+        return this.cycleService.findAll();
+    }
+
+    async findOneCycle(id: number) {
+        return this.cycleService.findOne(id);
+    }
+
+    async updateCycle(id: number, dto: UpdateCycleConfigDto) {
+        return this.cycleService.update(id, dto);
+    }
+
+    async deleteCycle(id: number) {
+        return this.cycleService.remove(id);
+    }
 }
-
-// Crud pilar e criterio
-
-// tabela ciclo:
-/**
- * id
- * isACtive bool
- *  cycle String
- * createdAt DateTime
- * endDate DateTime
- *
- */

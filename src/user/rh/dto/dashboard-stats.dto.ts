@@ -23,7 +23,7 @@ export class BreakdownDto {
 export class CycleStatsDto {
     @ApiProperty({ description: 'Identificador do ciclo' })
     @IsString()
-    cycle: string;
+    CycleConfigId: number;
 
     @ApiProperty({ description: 'Total de avaliações no ciclo' })
     @IsNumber()

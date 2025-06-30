@@ -15,10 +15,10 @@ export class SystemConfigService {
 
     async getAllCycles(): Promise<string[]> {
         const evaluations = await this.prisma.evaluation.findMany({
-            select: { cycle: true },
-            distinct: ['cycle'],
-            orderBy: { cycle: 'desc' },
+            select: { cycleConfig: { select: { name: true } } },
+            distinct: ['cycleConfigId'],
+            orderBy: { createdAt: 'desc' },
         });
-        return evaluations.map((evaluation) => evaluation.cycle.toString());
+        return evaluations.map((evaluation) => evaluation.cycleConfig.name);
     }
 }
