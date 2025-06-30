@@ -7,8 +7,20 @@ import { EncryptionInterceptor } from 'src/common/interceptors/encryption.interc
 import { RhModule } from './rh/rh.module';
 import { EmployerModule } from './employer/employer.module';
 import { UserImportModule } from 'src/imports/user/user-import.module';
+import { MulterModule } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
 @Module({
-    imports: [PrismaModule, CryptoModule, RhModule, EmployerModule, UserImportModule],
+    imports: [
+        PrismaModule,
+        CryptoModule,
+        RhModule,
+        EmployerModule,
+        UserImportModule,
+        MulterModule.register({
+            storage: memoryStorage(),
+            limits: { fileSize: 30 * 1024 * 1024 }, // até 30 MB
+        }),
+    ],
     providers: [UserService, EncryptionInterceptor],
     controllers: [UserController],
     exports: [UserService],
