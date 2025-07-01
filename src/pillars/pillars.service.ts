@@ -114,7 +114,7 @@ export class PillarsService {
 
         if (trackConfigsCount > 0) {
             throw new BadRequestException(
-                `Não é possível remover o pilar "${pillar.name}" pois está configurado em ${trackConfigsCount} trilha(s)/cargo(s). Remova as configurações de trilha primeiro.`,
+                `Não é possível remover o pilar "${pillar.name}" pois está configurado em ${trackConfigsCount} trilha(s). Remova as configurações de trilha primeiro.`,
             );
         }
 
@@ -123,13 +123,12 @@ export class PillarsService {
         });
     }
 
-    // Métodos para configuração de pilares por trilha e cargo
+    // Métodos para configuração de pilares por trilha
     async createTrackConfig(createConfigDto: CreatePillarTrackConfigDto) {
         return await this.prisma.pillarTrackConfig.create({
             data: {
                 pillarId: createConfigDto.pillarId,
                 track: createConfigDto.track,
-                position: createConfigDto.position,
                 isActive: createConfigDto.isActive ?? true,
             },
             include: {
@@ -154,11 +153,10 @@ export class PillarsService {
         });
     }
 
-    async findTrackConfigsByTrackAndPosition(track?: string, position?: string) {
+    async findTrackConfigsByTrack(track: string) {
         return await this.prisma.pillarTrackConfig.findMany({
             where: {
-                track: track || null,
-                position: position || null,
+                track: track,
                 isActive: true,
             },
             include: {
@@ -172,21 +170,24 @@ export class PillarsService {
     }
 
     async findActivePillarsForUser(userId: number) {
-        // Buscar o usuário para obter track e position
+        // Buscar o usuário para obter track
         const user = await this.prisma.user.findUnique({
             where: { id: userId },
-            select: { track: true, position: true },
+            select: { track: true },
         });
 
         if (!user) {
             throw new NotFoundException(`Usuário com ID ${userId} não encontrado`);
         }
 
-        // Buscar pilares ativos para o usuário baseado em track e position
+        if (!user.track) {
+            throw new BadRequestException(`Usuário com ID ${userId} não possui trilha definida`);
+        }
+
+        // Buscar pilares ativos para o usuário baseado em track
         return await this.prisma.pillarTrackConfig.findMany({
             where: {
-                track: user.track || null,
-                position: user.position || null,
+                track: user.track,
                 isActive: true,
             },
             include: {
@@ -201,16 +202,14 @@ export class PillarsService {
 
     async updateTrackConfig(
         pillarId: number,
-        track: string | null,
-        position: string | null,
+        track: string,
         updateConfigDto: UpdatePillarTrackConfigDto,
     ) {
         const config = await this.prisma.pillarTrackConfig.findUnique({
             where: {
-                pillarId_track_position: {
+                pillarId_track: {
                     pillarId,
-                    track: track as any,
-                    position: position as any,
+                    track: track,
                 },
             },
         });
@@ -221,10 +220,9 @@ export class PillarsService {
 
         return await this.prisma.pillarTrackConfig.update({
             where: {
-                pillarId_track_position: {
+                pillarId_track: {
                     pillarId,
-                    track: track as any,
-                    position: position as any,
+                    track: track,
                 },
             },
             data: updateConfigDto,
@@ -238,13 +236,12 @@ export class PillarsService {
         });
     }
 
-    async removeTrackConfig(pillarId: number, track: string | null, position: string | null) {
+    async removeTrackConfig(pillarId: number, track: string) {
         const config = await this.prisma.pillarTrackConfig.findUnique({
             where: {
-                pillarId_track_position: {
+                pillarId_track: {
                     pillarId,
-                    track: track as any,
-                    position: position as any,
+                    track: track,
                 },
             },
         });
@@ -255,10 +252,9 @@ export class PillarsService {
 
         return await this.prisma.pillarTrackConfig.delete({
             where: {
-                pillarId_track_position: {
+                pillarId_track: {
                     pillarId,
-                    track: track as any,
-                    position: position as any,
+                    track: track,
                 },
             },
         });

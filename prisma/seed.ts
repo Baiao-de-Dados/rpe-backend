@@ -41,6 +41,7 @@ async function main() {
             email: encryptedEmailBackend,
             password: hashedPassword,
             name: 'João Backend',
+            track: 'Backend',
             userRoles: {
                 create: [{ role: 'EMPLOYER' }],
             },
@@ -53,6 +54,7 @@ async function main() {
             email: encryptedEmailFrontend,
             password: hashedPassword,
             name: 'Maria Frontend',
+            track: 'Frontend',
             userRoles: {
                 create: [{ role: 'EMPLOYER' }],
             },
@@ -65,6 +67,7 @@ async function main() {
             email: encryptedEmailRh,
             password: hashedPassword,
             name: 'Ana RH',
+            track: 'RH',
             userRoles: {
                 create: [{ role: 'RH' }],
             },

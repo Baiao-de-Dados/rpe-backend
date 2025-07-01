@@ -6,17 +6,11 @@ export class CreatePillarTrackConfigDto {
     @IsInt()
     pillarId: number;
 
-    @ApiProperty({ description: 'Trilha do usuário', required: false })
-    @IsOptional()
+    @ApiProperty({ description: 'Trilha do usuário', required: true })
     @IsString()
-    track?: string;
+    track: string;
 
-    @ApiProperty({ description: 'Cargo do usuário', required: false })
-    @IsOptional()
-    @IsString()
-    position?: string;
-
-    @ApiProperty({ description: 'Se o pilar está ativo para esta trilha/cargo', default: true })
+    @ApiProperty({ description: 'Se o pilar está ativo para esta trilha', default: true })
     @IsOptional()
     @IsBoolean()
     isActive?: boolean;

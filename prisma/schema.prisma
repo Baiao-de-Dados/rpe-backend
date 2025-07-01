@@ -13,8 +13,7 @@ model User {
   password   String
   name       String
   unit       String?
-  track      String?
-  position   String?
+  track      String
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
   lastLogged DateTime @updatedAt
@@ -252,22 +251,20 @@ model CriterionCycleConfig {
 model PillarTrackConfig {
   id        Int      @id @default(autoincrement())
   pillarId  Int
-  track     String? // trilha
-  position  String? // cargo
+  track     String // trilha
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   pillar Pillar @relation(fields: [pillarId], references: [id], onDelete: Cascade)
 
-  @@unique([pillarId, track, position])
+  @@unique([pillarId, track])
 }
 
 model CriterionTrackConfig {
   id          Int      @id @default(autoincrement())
   criterionId Int
-  track       String? // trilha
-  position    String? // cargo
+  track       String // trilha
   isActive    Boolean  @default(true)
   weight      Int    @default(1)
   createdAt   DateTime @default(now())
@@ -275,7 +272,7 @@ model CriterionTrackConfig {
 
   criterion Criterion @relation(fields: [criterionId], references: [id], onDelete: Cascade)
 
-  @@unique([criterionId, track, position])
+  @@unique([criterionId, track])
 }
 
 enum EvaluationType {

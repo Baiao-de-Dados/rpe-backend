@@ -12,7 +12,6 @@ export interface JwtPayload {
     email: string;
     roles?: UserRole[];
     track?: string | null;
-    position?: string | null;
     iat?: number;
     exp?: number;
 }
@@ -23,7 +22,6 @@ export interface UserFromJwt {
     name: string | null;
     roles: UserRole[];
     track?: string | null;
-    position?: string | null;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -45,13 +43,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     }
 
     async validate(payload: JwtPayload): Promise<UserFromJwt> {
-        const { sub: userId, roles: payloadRoles, track, position } = payload;
+        const { sub: userId, roles: payloadRoles, track } = payload;
 
         console.log('JWT Strategy - Validating token with payload:', {
             userId,
             payloadHasRoles: !!payloadRoles,
             track,
-            position,
         });
 
         // Buscar o usuário somente pelo ID
@@ -83,7 +80,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
             name: user.name,
             roles,
             track: track || user.track,
-            position: position || user.position,
             createdAt: user.createdAt,
             updatedAt: user.updatedAt,
         };

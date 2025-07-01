@@ -11,7 +11,6 @@ export class AutoEvaluationService {
         colaboradorId: number,
         ciclo: string,
         userTrack?: string,
-        userPosition?: string,
     ) {
         if (autoavaliacao && autoavaliacao.pilares && autoavaliacao.pilares.length > 0) {
             // Verificar se já existe uma autoavaliação para este usuário no ciclo
@@ -43,12 +42,12 @@ export class AutoEvaluationService {
                 );
             }
 
-            // Se temos informações de trilha/cargo do usuário, validar critérios específicos
-            if (userTrack && userPosition) {
-                await this.validateUserCriteria(prisma, autoavaliacao, userTrack, userPosition);
+            // Se temos informações de trilha do usuário, validar critérios específicos
+            if (userTrack) {
+                await this.validateUserCriteria(prisma, autoavaliacao, userTrack);
             } else {
                 // Fallback: validar critérios ativos do ciclo atual (comportamento original)
-                await this.validateCycleCriteria(prisma, autoavaliacao);
+                await this.validateCycleCriteria(prisma, autoavaliacao, userTrack);
             }
 
             const autoEvaluation = await prisma.evaluation.create({
@@ -81,17 +80,11 @@ export class AutoEvaluationService {
         return null;
     }
 
-    private async validateUserCriteria(
-        prisma: any,
-        autoavaliacao: any,
-        userTrack: string,
-        userPosition: string,
-    ) {
-        // Buscar critérios ativos para a trilha/cargo específica do usuário
+    private async validateUserCriteria(prisma: any, autoavaliacao: any, userTrack: string) {
+        // Buscar critérios ativos para a trilha específica do usuário
         const userCriterionConfigs = await prisma.criterionTrackConfig.findMany({
             where: {
                 track: userTrack,
-                position: userPosition,
                 isActive: true,
             },
             include: {
@@ -101,7 +94,7 @@ export class AutoEvaluationService {
 
         if (!userCriterionConfigs || userCriterionConfigs.length === 0) {
             throw new BadRequestException(
-                `Nenhum critério configurado para sua trilha (${userTrack}) e cargo (${userPosition})`,
+                `Nenhum critério configurado para sua trilha (${userTrack})`,
             );
         }
 
@@ -127,7 +120,7 @@ export class AutoEvaluationService {
 
         if (unauthorizedCriteria.length > 0) {
             throw new BadRequestException(
-                `Critérios não autorizados para sua trilha (${userTrack}) e cargo (${userPosition}): ${unauthorizedCriteria.join(', ')}`,
+                `Critérios não autorizados para sua trilha (${userTrack}): ${unauthorizedCriteria.join(', ')}`,
             );
         }
 
@@ -143,17 +136,12 @@ export class AutoEvaluationService {
                 .join(', ');
 
             throw new BadRequestException(
-                `Você deve avaliar todos os critérios obrigatórios para sua trilha/cargo. Critérios faltando: ${missingCriteriaNames}`,
+                `Você deve avaliar todos os critérios obrigatórios para sua trilha. Critérios faltando: ${missingCriteriaNames}`,
             );
         }
     }
 
-    private async validateCycleCriteria(
-        prisma: any,
-        autoavaliacao: any,
-        userTrack?: string,
-        userPosition?: string,
-    ) {
+    private async validateCycleCriteria(prisma: any, autoavaliacao: any, userTrack?: string) {
         // 1. Verificar se existe um ciclo ativo
         const activeCycle = await prisma.cycleConfig.findFirst({
             where: { isActive: true },
@@ -194,11 +182,10 @@ export class AutoEvaluationService {
             activeCycleCriteria.criterionConfigs.map((config: any) => config.criterionId),
         );
 
-        // 4. Buscar critérios configurados para a trilha/cargo do usuário
+        // 4. Buscar critérios configurados para a trilha do usuário
         const userTrackCriteria = await prisma.criterionTrackConfig.findMany({
             where: {
-                track: userTrack || null,
-                position: userPosition || null,
+                track: userTrack || undefined,
                 isActive: true,
             },
             select: {
@@ -221,7 +208,7 @@ export class AutoEvaluationService {
 
                 if (!userTrackCriteriaIds.has(criterionId)) {
                     throw new BadRequestException(
-                        `Critério com ID ${criterionId} não está configurado para sua trilha (${userTrack}) e cargo (${userPosition})`,
+                        `Critério com ID ${criterionId} não está configurado para sua trilha (${userTrack})`,
                     );
                 }
             }

@@ -21,11 +21,7 @@ export class EvaluationsService {
         private readonly cycleConfigService: CycleConfigService,
     ) {}
 
-    async createEvaluation(
-        createEvaluationDto: CreateEvaluationDto,
-        userTrack?: string,
-        userPosition?: string,
-    ) {
+    async createEvaluation(createEvaluationDto: CreateEvaluationDto, userTrack?: string) {
         const { ciclo, colaboradorId, autoavaliacao, avaliacao360, mentoring, referencias } =
             createEvaluationDto;
 
@@ -39,14 +35,13 @@ export class EvaluationsService {
         return await this.prisma.$transaction(async (prisma) => {
             const evaluations: any[] = [];
 
-            // 1. Cria a autoavaliação usando o service (com validação de trilha/cargo)
+            // 1. Cria a autoavaliação usando o service (com validação de trilha)
             const autoEvaluation = await this.autoEvaluationService.createAutoEvaluation(
                 prisma,
                 autoavaliacao,
                 colaboradorIdNumber,
                 ciclo,
                 userTrack,
-                userPosition,
             );
             if (autoEvaluation) {
                 evaluations.push(autoEvaluation);
@@ -62,14 +57,16 @@ export class EvaluationsService {
             evaluations.push(...peerEvaluations);
 
             // 3. Cria as avaliações de mentor e líder (MENTOR/LEADER) usando o service
-            const mentorAndLeaderEvaluations =
-                await this.mentorEvaluationService.createMentorEvaluations(
+            if (mentoring && mentoring.mentorId) {
+                const mentorEvaluation = await this.mentorEvaluationService.createMentorEvaluation(
                     prisma,
-                    mentoring,
+                    parseInt(mentoring.mentorId, 10),
                     colaboradorIdNumber,
+                    mentoring.justificativa,
                     ciclo,
                 );
-            evaluations.push(...mentorAndLeaderEvaluations);
+                evaluations.push(mentorEvaluation);
+            }
 
             // 4. Cria as referências usando o service
             await this.referenceService.createReferences(prisma, referencias, colaboradorIdNumber);
@@ -229,11 +226,10 @@ export class EvaluationsService {
         const activeCycleCriteria = await this.cycleConfigService.getActiveCriteria();
         const activeCriteriaIds = new Set(activeCycleCriteria.map((c) => c.id));
 
-        // 4. Buscar critérios configurados para a trilha/cargo do usuário
+        // 4. Buscar critérios configurados para a trilha do usuário
         const userTrackCriteria = await this.prisma.criterionTrackConfig.findMany({
             where: {
-                track: user.track || null,
-                position: user.position || null,
+                track: user.track,
                 isActive: true,
             },
             include: {
@@ -247,7 +243,7 @@ export class EvaluationsService {
 
         if (!userTrackCriteria || userTrackCriteria.length === 0) {
             throw new NotFoundException(
-                `Nenhum critério configurado para sua trilha (${user.track}) e cargo (${user.position})`,
+                `Nenhum critério configurado para sua trilha (${user.track})`,
             );
         }
 
@@ -258,7 +254,7 @@ export class EvaluationsService {
 
         if (validUserCriteria.length === 0) {
             throw new NotFoundException(
-                `Nenhum critério ativo no ciclo atual para sua trilha (${user.track}) e cargo (${user.position})`,
+                `Nenhum critério ativo no ciclo atual para sua trilha (${user.track})`,
             );
         }
 
@@ -279,7 +275,7 @@ export class EvaluationsService {
                 id: config.criterion.id,
                 name: config.criterion.name,
                 description: config.criterion.description,
-                weight: config.weight, // Peso da configuração de trilha/cargo
+                weight: config.weight, // Peso da configuração de trilha
                 originalWeight: null, // Critério base não tem peso
             });
 
@@ -290,7 +286,6 @@ export class EvaluationsService {
             user: {
                 id: user.sub,
                 track: user.track,
-                position: user.position,
             },
             cycle: {
                 id: activeCycle.id,

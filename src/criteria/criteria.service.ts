@@ -2,9 +2,9 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCriterionDto } from './dto/create-criterion.dto';
 import { UpdateCriterionDto } from './dto/update-criterion.dto';
-import { CreateCriterionTrackConfigDto } from './dto/create-criterion-track-config.dto';
 import { UpdateCriterionTrackConfigDto } from './dto/update-criterion-track-config.dto';
 import { BatchUpdateCriteriaDto } from './dto/batch-update-criteria.dto';
+import { TrackConfigDto } from './dto/track-config.dto';
 
 @Injectable()
 export class CriteriaService {
@@ -133,26 +133,6 @@ export class CriteriaService {
         });
     }
 
-    // Métodos para configuração de critérios por trilha e cargo
-    async createTrackConfig(createConfigDto: CreateCriterionTrackConfigDto) {
-        return await this.prisma.criterionTrackConfig.create({
-            data: {
-                criterionId: createConfigDto.criterionId,
-                track: createConfigDto.track,
-                position: createConfigDto.position,
-                isActive: createConfigDto.isActive ?? true,
-                weight: createConfigDto.weight ?? 1.0,
-            },
-            include: {
-                criterion: {
-                    include: {
-                        pillar: true,
-                    },
-                },
-            },
-        });
-    }
-
     async findAllTrackConfigs() {
         return await this.prisma.criterionTrackConfig.findMany({
             include: {
@@ -165,11 +145,10 @@ export class CriteriaService {
         });
     }
 
-    async findTrackConfigsByTrackAndPosition(track?: string, position?: string) {
+    async findTrackConfigsByTrack(track: string) {
         return await this.prisma.criterionTrackConfig.findMany({
             where: {
-                track: track || null,
-                position: position || null,
+                track: track,
                 isActive: true,
             },
             include: {
@@ -183,21 +162,24 @@ export class CriteriaService {
     }
 
     async findActiveCriteriaForUser(userId: number) {
-        // Buscar o usuário para obter track e position
+        // Buscar o usuário para obter track
         const user = await this.prisma.user.findUnique({
             where: { id: userId },
-            select: { track: true, position: true },
+            select: { track: true },
         });
 
         if (!user) {
             throw new NotFoundException(`Usuário com ID ${userId} não encontrado`);
         }
 
-        // Buscar critérios ativos para o usuário baseado em track e position
+        if (!user.track) {
+            throw new BadRequestException(`Usuário com ID ${userId} não possui trilha definida`);
+        }
+
+        // Buscar critérios ativos para o usuário baseado em track
         return this.prisma.criterionTrackConfig.findMany({
             where: {
-                track: user.track || null,
-                position: user.position || null,
+                track: user.track,
                 isActive: true,
             },
             include: {
@@ -212,16 +194,14 @@ export class CriteriaService {
 
     async updateTrackConfig(
         criterionId: number,
-        track: string | null,
-        position: string | null,
+        track: string,
         updateConfigDto: UpdateCriterionTrackConfigDto,
     ) {
         const config = await this.prisma.criterionTrackConfig.findUnique({
             where: {
-                criterionId_track_position: {
+                criterionId_track: {
                     criterionId,
-                    track: track as any,
-                    position: position as any,
+                    track: track,
                 },
             },
         });
@@ -232,10 +212,9 @@ export class CriteriaService {
 
         return await this.prisma.criterionTrackConfig.update({
             where: {
-                criterionId_track_position: {
+                criterionId_track: {
                     criterionId,
-                    track: track as any,
-                    position: position as any,
+                    track: track,
                 },
             },
             data: updateConfigDto,
@@ -249,13 +228,12 @@ export class CriteriaService {
         });
     }
 
-    async removeTrackConfig(criterionId: number, track: string | null, position: string | null) {
+    async removeTrackConfig(criterionId: number, track: string) {
         const config = await this.prisma.criterionTrackConfig.findUnique({
             where: {
-                criterionId_track_position: {
+                criterionId_track: {
                     criterionId,
-                    track: track as any,
-                    position: position as any,
+                    track: track,
                 },
             },
         });
@@ -266,10 +244,9 @@ export class CriteriaService {
 
         return await this.prisma.criterionTrackConfig.delete({
             where: {
-                criterionId_track_position: {
+                criterionId_track: {
                     criterionId,
-                    track: track as any,
-                    position: position as any,
+                    track: track,
                 },
             },
         });
@@ -362,6 +339,87 @@ export class CriteriaService {
         }
 
         return results;
+    }
+
+    async createTrackConfigBulk(trackConfigs: TrackConfigDto[]) {
+        const results: any[] = [];
+
+        for (const trackConfig of trackConfigs) {
+            const trackId = trackConfig.id;
+            const trackResults = {
+                track: trackId,
+                pillars: [] as any[],
+            };
+
+            for (const pillar of trackConfig.pillars) {
+                const pillarResults = {
+                    pillar: pillar.id,
+                    criteria: [] as any[],
+                };
+
+                for (const criterion of pillar.criteria) {
+                    // Validar se o ID é um número válido
+                    const criterionId = parseInt(criterion.id);
+                    if (isNaN(criterionId)) {
+                        throw new BadRequestException(
+                            `ID do critério "${criterion.id}" não é um número válido. Use o ID numérico do critério.`,
+                        );
+                    }
+
+                    // Verificar se o critério existe
+                    const existingCriterion = await this.prisma.criterion.findUnique({
+                        where: { id: criterionId },
+                    });
+
+                    if (!existingCriterion) {
+                        throw new BadRequestException(
+                            `Critério com ID ${criterionId} não encontrado. Verifique se o critério existe.`,
+                        );
+                    }
+
+                    const config = await this.prisma.criterionTrackConfig.upsert({
+                        where: {
+                            criterionId_track: {
+                                criterionId: criterionId,
+                                track: trackId,
+                            },
+                        },
+                        update: {
+                            weight: criterion.weight,
+                            isActive: true,
+                        },
+                        create: {
+                            criterionId: criterionId,
+                            track: trackId,
+                            weight: criterion.weight,
+                            isActive: true,
+                        },
+                        include: {
+                            criterion: {
+                                include: {
+                                    pillar: true,
+                                },
+                            },
+                        },
+                    });
+
+                    pillarResults.criteria.push({
+                        id: criterion.id,
+                        weight: criterion.weight,
+                        name: config.criterion.name,
+                    });
+                }
+
+                trackResults.pillars.push(pillarResults);
+            }
+
+            results.push(trackResults);
+        }
+
+        return {
+            message: 'Configurações de trilhas criadas/atualizadas com sucesso',
+            data: results,
+        };
     }
 
     private normalizeCriterionName(name: string): string {

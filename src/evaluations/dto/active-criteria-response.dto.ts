@@ -38,7 +38,7 @@ export class CriterioDto {
     @ApiProperty({ description: 'Descrição do critério' })
     description: string;
 
-    @ApiProperty({ description: 'Peso personalizado para a trilha/cargo' })
+    @ApiProperty({ description: 'Peso personalizado para a trilha' })
     weight: number | null;
 
     @ApiProperty({ description: 'Peso original do critério (sempre null agora)', required: false })
@@ -62,9 +62,6 @@ export class UserInfoDto {
 
     @ApiProperty({ description: 'Trilha do usuário' })
     track: string;
-
-    @ApiProperty({ description: 'Cargo do usuário' })
-    position: string;
 }
 
 export class ActiveCriteriaResponseDto {
@@ -76,8 +73,7 @@ export class ActiveCriteriaUserResponseDto {
     @ApiProperty({ description: 'Informações do usuário' })
     user: {
         id: number;
-        track?: string;
-        position?: string;
+        track: string;
     };
 
     @ApiProperty({ description: 'Informações do ciclo ativo' })
