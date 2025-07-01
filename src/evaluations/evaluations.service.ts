@@ -279,8 +279,8 @@ export class EvaluationsService {
                 id: config.criterion.id,
                 name: config.criterion.name,
                 description: config.criterion.description,
-                weight: config.weight, // Usa o peso personalizado da configuração de trilha
-                originalWeight: config.criterion.weight ?? null, // Peso original do critério
+                weight: config.weight, // Peso da configuração de trilha/cargo
+                originalWeight: null, // Critério base não tem peso
             });
 
             return acc;

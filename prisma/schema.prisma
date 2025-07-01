@@ -109,7 +109,6 @@ model Criterion {
   pillarId    Int
   name        String
   description String?
-  weight      Float?
   createdAt   DateTime @default(now())
 
   pillar             Pillar                 @relation(fields: [pillarId], references: [id], onDelete: Cascade)
@@ -225,7 +224,7 @@ model PillarCycleConfig {
   cycleId   Int
   pillarId  Int
   isActive  Boolean  @default(true)
-  weight    Float    @default(1.0)
+  weight     Int    @default(1)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -240,7 +239,7 @@ model CriterionCycleConfig {
   cycleId     Int
   criterionId Int
   isActive    Boolean  @default(true)
-  weight      Float    @default(1.0)
+  weight      Int    @default(1)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -270,7 +269,7 @@ model CriterionTrackConfig {
   track       String? // trilha
   position    String? // cargo
   isActive    Boolean  @default(true)
-  weight      Float    @default(1.0)
+  weight      Int    @default(1)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

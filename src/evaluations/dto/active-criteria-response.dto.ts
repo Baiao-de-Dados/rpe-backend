@@ -41,8 +41,8 @@ export class CriterioDto {
     @ApiProperty({ description: 'Peso personalizado para a trilha/cargo' })
     weight: number | null;
 
-    @ApiProperty({ description: 'Peso original do critério', required: false })
-    originalWeight?: number;
+    @ApiProperty({ description: 'Peso original do critério (sempre null agora)', required: false })
+    originalWeight?: number | null;
 }
 
 export class PilarDto {
