@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreatePillarDto } from './dto/create-pillar.dto';
 import { UpdatePillarDto } from './dto/update-pillar.dto';
@@ -10,6 +10,19 @@ export class PillarsService {
     constructor(private prisma: PrismaService) {}
 
     async create(createPillarDto: CreatePillarDto) {
+        // Verificar se já existe um pilar com o mesmo nome
+        const existingPillar = await this.prisma.pillar.findFirst({
+            where: {
+                name: createPillarDto.name,
+            },
+        });
+
+        if (existingPillar) {
+            throw new BadRequestException(
+                `Já existe um pilar com o nome "${createPillarDto.name}". Nomes de pilares devem ser únicos.`,
+            );
+        }
+
         return this.prisma.pillar.create({
             data: createPillarDto,
             include: {
@@ -44,6 +57,22 @@ export class PillarsService {
     async update(id: number, updatePillarDto: UpdatePillarDto) {
         await this.findOne(id); // Verifica se existe
 
+        // Se está atualizando o nome, verificar se já existe outro pilar com o mesmo nome
+        if (updatePillarDto.name) {
+            const existingPillar = await this.prisma.pillar.findFirst({
+                where: {
+                    name: updatePillarDto.name,
+                    id: { not: id }, // Excluir o pilar atual da busca
+                },
+            });
+
+            if (existingPillar) {
+                throw new BadRequestException(
+                    `Já existe um pilar com o nome "${updatePillarDto.name}". Nomes de pilares devem ser únicos.`,
+                );
+            }
+        }
+
         return this.prisma.pillar.update({
             where: { id },
             data: updatePillarDto,
@@ -54,7 +83,40 @@ export class PillarsService {
     }
 
     async remove(id: number) {
-        await this.findOne(id); // Verifica se existe
+        const pillar = await this.findOne(id); // Verifica se existe
+
+        // Verificar se há critérios associados
+        const criteriaCount = await this.prisma.criterion.count({
+            where: { pillarId: id },
+        });
+
+        if (criteriaCount > 0) {
+            throw new BadRequestException(
+                `Não é possível remover o pilar "${pillar.name}" pois possui ${criteriaCount} critério(s) associado(s). Remova os critérios primeiro.`,
+            );
+        }
+
+        // Verificar se há configurações de ciclo associadas
+        const cycleConfigsCount = await this.prisma.pillarCycleConfig.count({
+            where: { pillarId: id },
+        });
+
+        if (cycleConfigsCount > 0) {
+            throw new BadRequestException(
+                `Não é possível remover o pilar "${pillar.name}" pois está configurado em ${cycleConfigsCount} ciclo(s). Remova as configurações de ciclo primeiro.`,
+            );
+        }
+
+        // Verificar se há configurações de trilha associadas
+        const trackConfigsCount = await this.prisma.pillarTrackConfig.count({
+            where: { pillarId: id },
+        });
+
+        if (trackConfigsCount > 0) {
+            throw new BadRequestException(
+                `Não é possível remover o pilar "${pillar.name}" pois está configurado em ${trackConfigsCount} trilha(s)/cargo(s). Remova as configurações de trilha primeiro.`,
+            );
+        }
 
         return this.prisma.pillar.delete({
             where: { id },

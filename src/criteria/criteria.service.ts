@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCriterionDto } from './dto/create-criterion.dto';
 import { UpdateCriterionDto } from './dto/update-criterion.dto';
@@ -10,6 +10,19 @@ export class CriteriaService {
     constructor(private prisma: PrismaService) {}
 
     async create(createCriterionDto: CreateCriterionDto) {
+        // Verificar se já existe um critério com o mesmo nome
+        const existingCriterion = await this.prisma.criterion.findFirst({
+            where: {
+                name: createCriterionDto.name,
+            },
+        });
+
+        if (existingCriterion) {
+            throw new BadRequestException(
+                `Já existe um critério com o nome "${createCriterionDto.name}". Nomes de critérios devem ser únicos.`,
+            );
+        }
+
         return this.prisma.criterion.create({
             data: createCriterionDto,
             include: {
@@ -44,6 +57,22 @@ export class CriteriaService {
     async update(id: number, updateCriterionDto: UpdateCriterionDto) {
         await this.findOne(id); // Verifica se existe
 
+        // Se está atualizando o nome, verificar se já existe outro critério com o mesmo nome
+        if (updateCriterionDto.name) {
+            const existingCriterion = await this.prisma.criterion.findFirst({
+                where: {
+                    name: updateCriterionDto.name,
+                    id: { not: id }, // Excluir o critério atual da busca
+                },
+            });
+
+            if (existingCriterion) {
+                throw new BadRequestException(
+                    `Já existe um critério com o nome "${updateCriterionDto.name}". Nomes de critérios devem ser únicos.`,
+                );
+            }
+        }
+
         return this.prisma.criterion.update({
             where: { id },
             data: updateCriterionDto,
@@ -54,7 +83,40 @@ export class CriteriaService {
     }
 
     async remove(id: number) {
-        await this.findOne(id); // Verifica se existe
+        const criterion = await this.findOne(id); // Verifica se existe
+
+        // Verificar se há avaliações associadas
+        const evaluationsCount = await this.prisma.criteriaAssignment.count({
+            where: { criterionId: id },
+        });
+
+        if (evaluationsCount > 0) {
+            throw new BadRequestException(
+                `Não é possível remover o critério "${criterion.name}" pois existem ${evaluationsCount} avaliação(ões) associada(s). Remova as avaliações primeiro.`,
+            );
+        }
+
+        // Verificar se há configurações de ciclo associadas
+        const cycleConfigsCount = await this.prisma.criterionCycleConfig.count({
+            where: { criterionId: id },
+        });
+
+        if (cycleConfigsCount > 0) {
+            throw new BadRequestException(
+                `Não é possível remover o critério "${criterion.name}" pois está configurado em ${cycleConfigsCount} ciclo(s). Remova as configurações de ciclo primeiro.`,
+            );
+        }
+
+        // Verificar se há configurações de trilha associadas
+        const trackConfigsCount = await this.prisma.criterionTrackConfig.count({
+            where: { criterionId: id },
+        });
+
+        if (trackConfigsCount > 0) {
+            throw new BadRequestException(
+                `Não é possível remover o critério "${criterion.name}" pois está configurado em ${trackConfigsCount} trilha(s)/cargo(s). Remova as configurações de trilha primeiro.`,
+            );
+        }
 
         return this.prisma.criterion.delete({
             where: { id },

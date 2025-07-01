@@ -96,7 +96,7 @@ model ProjectMember {
 
 model Pillar {
   id          Int      @id @default(autoincrement())
-  name        String
+  name        String   @unique
   createdAt   DateTime @default(now())
 
   criteria     Criterion[]
@@ -107,7 +107,7 @@ model Pillar {
 model Criterion {
   id          Int      @id @default(autoincrement())
   pillarId    Int
-  name        String
+  name        String   @unique
   description String?
   createdAt   DateTime @default(now())
 
