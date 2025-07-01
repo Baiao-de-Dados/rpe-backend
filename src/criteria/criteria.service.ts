@@ -134,19 +134,78 @@ export class CriteriaService {
     }
 
     async findAllTrackConfigs() {
-        return await this.prisma.criterionTrackConfig.findMany({
+        // Buscar todas as configurações de critérios por trilha
+        const trackConfigs = await this.prisma.criterionTrackConfig.findMany({
             include: {
                 criterion: {
                     include: {
-                        pillar: true,
+                        pillar: {
+                            include: {
+                                trackConfigs: true,
+                            },
+                        },
                     },
                 },
             },
         });
+
+        // Organizar dados por trilha
+        const tracksMap = new Map();
+
+        // Processar configurações de critérios
+        trackConfigs.forEach((config) => {
+            const track = config.track;
+            const pillar = config.criterion.pillar;
+            const criterion = config.criterion;
+
+            if (!tracksMap.has(track)) {
+                tracksMap.set(track, {
+                    name: track,
+                    pillars: new Map(),
+                });
+            }
+
+            const trackData = tracksMap.get(track);
+
+            if (!trackData.pillars.has(pillar.id)) {
+                trackData.pillars.set(pillar.id, {
+                    id: pillar.id,
+                    name: pillar.name,
+                    criteria: [],
+                });
+            }
+
+            const pillarData = trackData.pillars.get(pillar.id);
+            pillarData.criteria.push({
+                id: criterion.id,
+                name: criterion.name,
+                description: criterion.description,
+                weight: config.weight,
+            });
+        });
+
+        // Converter para array e ordenar
+        const result = Array.from(tracksMap.values())
+            .map((track) => ({
+                name: track.name,
+                pillars: Array.from(track.pillars.values())
+                    .map((pillar: any) => ({
+                        id: pillar.id,
+                        name: pillar.name,
+                        criteria: pillar.criteria.sort((a: any, b: any) =>
+                            a.name.localeCompare(b.name),
+                        ),
+                    }))
+                    .sort((a: any, b: any) => a.name.localeCompare(b.name)),
+            }))
+            .sort((a: any, b: any) => a.name.localeCompare(b.name));
+
+        return result;
     }
 
     async findTrackConfigsByTrack(track: string) {
-        return await this.prisma.criterionTrackConfig.findMany({
+        // Buscar configurações de critérios para a trilha específica
+        const trackConfigs = await this.prisma.criterionTrackConfig.findMany({
             where: {
                 track: track,
                 isActive: true,
@@ -154,11 +213,55 @@ export class CriteriaService {
             include: {
                 criterion: {
                     include: {
-                        pillar: true,
+                        pillar: {
+                            include: {
+                                trackConfigs: true,
+                            },
+                        },
                     },
                 },
             },
         });
+
+        // Organizar dados por pilar
+        const pillarsMap = new Map();
+
+        trackConfigs.forEach((config) => {
+            const pillar = config.criterion.pillar;
+            const criterion = config.criterion;
+
+            if (!pillarsMap.has(pillar.id)) {
+                pillarsMap.set(pillar.id, {
+                    id: pillar.id,
+                    name: pillar.name,
+                    criteria: [],
+                });
+            }
+
+            const pillarData = pillarsMap.get(pillar.id);
+            pillarData.criteria.push({
+                id: criterion.id,
+                name: criterion.name,
+                description: criterion.description,
+                weight: config.weight,
+            });
+        });
+
+        // Converter para array e ordenar
+        const result = {
+            name: track,
+            pillars: Array.from(pillarsMap.values())
+                .map((pillar: any) => ({
+                    id: pillar.id,
+                    name: pillar.name,
+                    criteria: pillar.criteria.sort((a: any, b: any) =>
+                        a.name.localeCompare(b.name),
+                    ),
+                }))
+                .sort((a: any, b: any) => a.name.localeCompare(b.name)),
+        };
+
+        return result;
     }
 
     async findActiveCriteriaForUser(userId: number) {
@@ -177,7 +280,7 @@ export class CriteriaService {
         }
 
         // Buscar critérios ativos para o usuário baseado em track
-        return this.prisma.criterionTrackConfig.findMany({
+        const trackConfigs = await this.prisma.criterionTrackConfig.findMany({
             where: {
                 track: user.track,
                 isActive: true,
@@ -185,11 +288,55 @@ export class CriteriaService {
             include: {
                 criterion: {
                     include: {
-                        pillar: true,
+                        pillar: {
+                            include: {
+                                trackConfigs: true,
+                            },
+                        },
                     },
                 },
             },
         });
+
+        // Organizar dados por pilar
+        const pillarsMap = new Map();
+
+        trackConfigs.forEach((config) => {
+            const pillar = config.criterion.pillar;
+            const criterion = config.criterion;
+
+            if (!pillarsMap.has(pillar.id)) {
+                pillarsMap.set(pillar.id, {
+                    id: pillar.id,
+                    name: pillar.name,
+                    criteria: [],
+                });
+            }
+
+            const pillarData = pillarsMap.get(pillar.id);
+            pillarData.criteria.push({
+                id: criterion.id,
+                name: criterion.name,
+                description: criterion.description,
+                weight: config.weight,
+            });
+        });
+
+        // Converter para array e ordenar
+        const result = {
+            name: user.track,
+            pillars: Array.from(pillarsMap.values())
+                .map((pillar: any) => ({
+                    id: pillar.id,
+                    name: pillar.name,
+                    criteria: pillar.criteria.sort((a: any, b: any) =>
+                        a.name.localeCompare(b.name),
+                    ),
+                }))
+                .sort((a: any, b: any) => a.name.localeCompare(b.name)),
+        };
+
+        return result;
     }
 
     async updateTrackConfig(

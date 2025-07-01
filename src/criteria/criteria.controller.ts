@@ -15,6 +15,7 @@ import { CreateCriterionDto } from './dto/create-criterion.dto';
 import { UpdateCriterionTrackConfigDto } from './dto/update-criterion-track-config.dto';
 import { BatchUpdateCriteriaDto } from './dto/batch-update-criteria.dto';
 import { TrackConfigDto } from './dto/track-config.dto';
+import { TrackConfigResponseDto } from './dto/track-config-response.dto';
 import { ExactRoles } from 'src/auth/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
 import {
@@ -90,21 +91,23 @@ export class CriteriaController {
     @Get('track-config/all')
     @ExactRoles(UserRole.RH)
     @ApiList('configurações de critérios por trilha')
-    findAllTrackConfigs() {
+    async findAllTrackConfigs(): Promise<TrackConfigResponseDto[]> {
         return this.criteriaService.findAllTrackConfigs();
     }
 
     @Get('track-config/filter')
     @ExactRoles(UserRole.RH)
     @ApiGet('configurações de critérios por trilha filtradas')
-    findTrackConfigsByFilter(@Query('track') track: string) {
+    async findTrackConfigsByFilter(@Query('track') track: string): Promise<TrackConfigResponseDto> {
         return this.criteriaService.findTrackConfigsByTrack(track);
     }
 
     @Get('track-config/user/:userId')
     @ExactRoles(UserRole.RH)
     @ApiGet('critérios ativos para usuário')
-    findActiveCriteriaForUser(@Param('userId', ParseIntPipe) userId: number) {
+    async findActiveCriteriaForUser(
+        @Param('userId', ParseIntPipe) userId: number,
+    ): Promise<TrackConfigResponseDto> {
         return this.criteriaService.findActiveCriteriaForUser(userId);
     }
 
