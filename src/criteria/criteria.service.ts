@@ -4,6 +4,7 @@ import { CreateCriterionDto } from './dto/create-criterion.dto';
 import { UpdateCriterionDto } from './dto/update-criterion.dto';
 import { CreateCriterionTrackConfigDto } from './dto/create-criterion-track-config.dto';
 import { UpdateCriterionTrackConfigDto } from './dto/update-criterion-track-config.dto';
+import { BatchUpdateCriteriaDto } from './dto/batch-update-criteria.dto';
 
 @Injectable()
 export class CriteriaService {
@@ -272,5 +273,101 @@ export class CriteriaService {
                 },
             },
         });
+    }
+
+    async batchUpdate(batchUpdateDto: BatchUpdateCriteriaDto) {
+        // Normalizar os nomes dos critérios
+        const normalizedCriteria = batchUpdateDto.criteria.map((criterion) => ({
+            ...criterion,
+            name: this.normalizeCriterionName(criterion.name),
+        }));
+
+        // Verificar se há conflitos de nomes entre os critérios que estão sendo atualizados
+        const nameConflicts = new Set();
+        for (let i = 0; i < normalizedCriteria.length; i++) {
+            const criterion1 = normalizedCriteria[i];
+
+            for (let j = i + 1; j < normalizedCriteria.length; j++) {
+                const criterion2 = normalizedCriteria[j];
+
+                // Se dois critérios diferentes terão o mesmo nome após a atualização
+                if (criterion1.name === criterion2.name) {
+                    nameConflicts.add(criterion1.name);
+                }
+            }
+        }
+
+        // Se há conflitos, lançar erro
+        if (nameConflicts.size > 0) {
+            const conflictNames = Array.from(nameConflicts).join(', ');
+            throw new BadRequestException(
+                `Não é possível atualizar critérios com nomes duplicados: ${conflictNames}. Nomes de critérios devem ser únicos.`,
+            );
+        }
+
+        // Buscar todos os critérios que serão atualizados
+        const criteriaToUpdate: any[] = [];
+        for (const criterionData of normalizedCriteria) {
+            const criterion = await this.prisma.criterion.findUnique({
+                where: { id: criterionData.id },
+            });
+
+            if (!criterion) {
+                throw new BadRequestException(
+                    `Critério com ID ${criterionData.id} não encontrado.`,
+                );
+            }
+
+            criteriaToUpdate.push({
+                original: criterion,
+                update: criterionData,
+            });
+        }
+
+        // Verificar se algum nome já existe em outros critérios (não da requisição)
+        for (const { original: criterion, update: updateData } of criteriaToUpdate) {
+            if (updateData.name !== criterion.name) {
+                const existingCriterion = await this.prisma.criterion.findFirst({
+                    where: {
+                        name: updateData.name,
+                        id: {
+                            notIn: criteriaToUpdate.map((c) => c.original.id),
+                        },
+                    },
+                });
+
+                if (existingCriterion) {
+                    throw new BadRequestException(
+                        `Já existe um critério com o nome "${updateData.name}". Nomes de critérios devem ser únicos.`,
+                    );
+                }
+            }
+        }
+
+        // Atualizar todos os critérios
+        const results: any[] = [];
+        for (const { original: criterion, update: updateData } of criteriaToUpdate) {
+            const updatedCriterion = await this.prisma.criterion.update({
+                where: { id: criterion.id },
+                data: {
+                    name: updateData.name,
+                    description: updateData.description,
+                },
+                include: {
+                    pillar: true,
+                },
+            });
+
+            results.push(updatedCriterion);
+        }
+
+        return results;
+    }
+
+    private normalizeCriterionName(name: string): string {
+        return name
+            .trim() // Remove espaços no início e fim
+            .replace(/\s+/g, ' ') // Substitui múltiplos espaços por um só
+            .toUpperCase(); // Converte para maiúsculas
     }
 }

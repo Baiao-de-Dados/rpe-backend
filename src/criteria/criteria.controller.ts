@@ -12,9 +12,9 @@ import {
 import { ApiTags } from '@nestjs/swagger';
 import { CriteriaService } from './criteria.service';
 import { CreateCriterionDto } from './dto/create-criterion.dto';
-import { UpdateCriterionDto } from './dto/update-criterion.dto';
 import { CreateCriterionTrackConfigDto } from './dto/create-criterion-track-config.dto';
 import { UpdateCriterionTrackConfigDto } from './dto/update-criterion-track-config.dto';
+import { BatchUpdateCriteriaDto } from './dto/batch-update-criteria.dto';
 import { ExactRoles } from 'src/auth/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
 import {
@@ -67,17 +67,14 @@ export class CriteriaController {
         return this.criteriaService.findOne(id);
     }
 
-    @Patch(':id')
+    @Patch()
     @ExactRoles(UserRole.RH)
-    @ApiUpdate('critério')
-    async update(
-        @Param('id', ParseIntPipe) id: number,
-        @Body() updateCriterionDto: UpdateCriterionDto,
-    ) {
+    @ApiUpdate('critérios em lote')
+    async batchUpdate(@Body() batchUpdateDto: BatchUpdateCriteriaDto) {
         // Validar se não há ciclo ativo antes de atualizar critérios
         await this.cycleConfigService.validateCycleNotActive();
 
-        return this.criteriaService.update(id, updateCriterionDto);
+        return this.criteriaService.batchUpdate(batchUpdateDto);
     }
 
     @Delete(':id')
