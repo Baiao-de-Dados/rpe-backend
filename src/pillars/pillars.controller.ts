@@ -24,17 +24,24 @@ import {
 } from 'src/common/decorators/api-crud.decorator';
 import { ApiAuth } from 'src/common/decorators/api-auth.decorator';
 import { OnlyRH } from 'src/auth/decorators/roles.decorator';
+import { CycleConfigService } from '../cycle-config/cycle-config.service';
 
 @ApiTags('Pilares')
 @ApiAuth()
 @Controller('pillars')
 export class PillarsController {
-    constructor(private readonly pillarsService: PillarsService) {}
+    constructor(
+        private readonly pillarsService: PillarsService,
+        private readonly cycleConfigService: CycleConfigService,
+    ) {}
 
     @OnlyRH()
     @Post()
     @ApiCreate('pilar')
-    create(@Body() createPillarDto: CreatePillarDto) {
+    async create(@Body() createPillarDto: CreatePillarDto) {
+        // Validar se não há ciclo ativo antes de criar pilares
+        await this.cycleConfigService.validateCycleNotActive();
+
         return this.pillarsService.create(createPillarDto);
     }
 
@@ -55,37 +62,46 @@ export class PillarsController {
     @OnlyRH()
     @Patch(':id')
     @ApiUpdate('pilar')
-    update(@Param('id', ParseIntPipe) id: number, @Body() updatePillarDto: UpdatePillarDto) {
+    async update(@Param('id', ParseIntPipe) id: number, @Body() updatePillarDto: UpdatePillarDto) {
+        // Validar se não há ciclo ativo antes de atualizar pilares
+        await this.cycleConfigService.validateCycleNotActive();
+
         return this.pillarsService.update(id, updatePillarDto);
     }
 
     @OnlyRH()
     @Delete(':id')
     @ApiDelete('pilar')
-    remove(@Param('id', ParseIntPipe) id: number) {
+    async remove(@Param('id', ParseIntPipe) id: number) {
+        // Validar se não há ciclo ativo antes de remover pilares
+        await this.cycleConfigService.validateCycleNotActive();
+
         return this.pillarsService.remove(id);
     }
 
-    // Endpoints para configuração de pilares por trilha e cargo
+    // Endpoints para configuração de pilares por trilha
     @OnlyRH()
     @Post('track-config')
-    @ApiCreate('configuração de pilar por trilha/cargo')
-    createTrackConfig(@Body() createConfigDto: CreatePillarTrackConfigDto) {
+    @ApiCreate('configuração de pilar por trilha')
+    async createTrackConfig(@Body() createConfigDto: CreatePillarTrackConfigDto) {
+        // Validar se não há ciclo ativo antes de configurar pilares por trilha
+        await this.cycleConfigService.validateCycleNotActive();
+
         return this.pillarsService.createTrackConfig(createConfigDto);
     }
 
     @OnlyRH()
     @Get('track-config/all')
-    @ApiList('configurações de pilares por trilha/cargo')
+    @ApiList('configurações de pilares por trilha')
     findAllTrackConfigs() {
         return this.pillarsService.findAllTrackConfigs();
     }
 
     @OnlyRH()
     @Get('track-config/filter')
-    @ApiGet('configurações de pilares por trilha/cargo filtradas')
-    findTrackConfigsByFilter(@Query('track') track?: string, @Query('position') position?: string) {
-        return this.pillarsService.findTrackConfigsByTrackAndPosition(track, position);
+    @ApiGet('configurações de pilares por trilha filtradas')
+    findTrackConfigsByFilter(@Query('track') track: string) {
+        return this.pillarsService.findTrackConfigsByTrack(track);
     }
 
     @OnlyRH()
@@ -97,29 +113,28 @@ export class PillarsController {
 
     @OnlyRH()
     @Patch('track-config/:pillarId')
-    @ApiUpdate('configuração de pilar por trilha/cargo')
-    updateTrackConfig(
+    @ApiUpdate('configuração de pilar por trilha')
+    async updateTrackConfig(
         @Param('pillarId', ParseIntPipe) pillarId: number,
         @Body() updateConfigDto: UpdatePillarTrackConfigDto,
-        @Query('track') track?: string,
-        @Query('position') position?: string,
+        @Query('track') track: string,
     ) {
-        return this.pillarsService.updateTrackConfig(
-            pillarId,
-            track || null,
-            position || null,
-            updateConfigDto,
-        );
+        // Validar se não há ciclo ativo antes de atualizar configurações
+        await this.cycleConfigService.validateCycleNotActive();
+
+        return this.pillarsService.updateTrackConfig(pillarId, track, updateConfigDto);
     }
 
     @OnlyRH()
     @Delete('track-config/:pillarId')
-    @ApiDelete('configuração de pilar por trilha/cargo')
-    removeTrackConfig(
+    @ApiDelete('configuração de pilar por trilha')
+    async removeTrackConfig(
         @Param('pillarId', ParseIntPipe) pillarId: number,
-        @Query('track') track?: string,
-        @Query('position') position?: string,
+        @Query('track') track: string,
     ) {
-        return this.pillarsService.removeTrackConfig(pillarId, track || null, position || null);
+        // Validar se não há ciclo ativo antes de remover configurações
+        await this.cycleConfigService.validateCycleNotActive();
+
+        return this.pillarsService.removeTrackConfig(pillarId, track);
     }
 }
