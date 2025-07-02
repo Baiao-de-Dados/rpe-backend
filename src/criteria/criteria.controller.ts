@@ -9,7 +9,7 @@ import {
     ParseIntPipe,
     Query,
 } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiTags, ApiBody } from '@nestjs/swagger';
 import { CriteriaService } from './criteria.service';
 import { CreateCriterionDto } from './dto/create-criterion.dto';
 import { UpdateCriterionTrackConfigDto } from './dto/update-criterion-track-config.dto';
@@ -98,8 +98,10 @@ export class CriteriaController {
     @Get('track-config/filter')
     @ExactRoles(UserRole.RH)
     @ApiGet('configurações de critérios por trilha filtradas')
-    async findTrackConfigsByFilter(@Query('track') track: string): Promise<TrackConfigResponseDto> {
-        return this.criteriaService.findTrackConfigsByTrack(track);
+    async findTrackConfigsByFilter(
+        @Query('track', ParseIntPipe) trackId: number,
+    ): Promise<TrackConfigResponseDto> {
+        return this.criteriaService.findTrackConfigsByTrack(trackId);
     }
 
     @Get('track-config/user/:userId')
@@ -117,12 +119,9 @@ export class CriteriaController {
     async updateTrackConfig(
         @Param('criterionId', ParseIntPipe) criterionId: number,
         @Body() updateConfigDto: UpdateCriterionTrackConfigDto,
-        @Query('track') track: string,
+        @Query('track', ParseIntPipe) trackId: number,
     ) {
-        // Validar se não há ciclo ativo antes de atualizar configurações
-        await this.cycleConfigService.validateCycleNotActive();
-
-        return this.criteriaService.updateTrackConfig(criterionId, track, updateConfigDto);
+        return this.criteriaService.updateTrackConfig(criterionId, trackId, updateConfigDto);
     }
 
     @Delete('track-config/:criterionId')
@@ -130,17 +129,15 @@ export class CriteriaController {
     @ApiDelete('configuração de critério por trilha')
     async removeTrackConfig(
         @Param('criterionId', ParseIntPipe) criterionId: number,
-        @Query('track') track: string,
+        @Query('track', ParseIntPipe) trackId: number,
     ) {
-        // Validar se não há ciclo ativo antes de remover configurações
-        await this.cycleConfigService.validateCycleNotActive();
-
-        return this.criteriaService.removeTrackConfig(criterionId, track);
+        return this.criteriaService.removeTrackConfig(criterionId, trackId);
     }
 
     @Post('track-config')
     @ExactRoles(UserRole.RH)
     @ApiCreate('configuração de critérios por trilha em lote')
+    @ApiBody({ type: TrackConfigDto, isArray: true })
     async createTrackConfigBulk(@Body() trackConfigs: TrackConfigDto[]) {
         return await this.criteriaService.createTrackConfigBulk(trackConfigs);
     }

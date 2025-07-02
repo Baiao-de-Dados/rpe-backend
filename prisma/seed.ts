@@ -35,14 +35,18 @@ async function main() {
 
     console.log('👥 Criando usuários...');
 
+    console.log('🚀 Criando trilhas...');
+    const trackBackend = await prisma.track.create({ data: { name: 'Backend' } });
+    const trackFrontend = await prisma.track.create({ data: { name: 'Frontend' } });
+    const trackRH = await prisma.track.create({ data: { name: 'RH' } });
+
     // Usuário Backend/Desenvolvedor
     const userBackend = await prisma.user.create({
         data: {
             email: encryptedEmailBackend,
             password: hashedPassword,
             name: 'João Backend',
-            track: 'Backend',
-            position: 'Java Developer',
+            trackId: trackBackend.id,
             userRoles: {
                 create: [{ role: 'EMPLOYER' }],
             },
@@ -55,8 +59,7 @@ async function main() {
             email: encryptedEmailFrontend,
             password: hashedPassword,
             name: 'Maria Frontend',
-            track: 'Frontend',
-            position: 'React Developer',
+            trackId: trackFrontend.id,
             userRoles: {
                 create: [{ role: 'EMPLOYER' }],
             },
@@ -69,8 +72,7 @@ async function main() {
             email: encryptedEmailRh,
             password: hashedPassword,
             name: 'Ana RH',
-            track: 'RH',
-            position: 'Tester Planner',
+            trackId: trackRH.id,
             userRoles: {
                 create: [{ role: 'RH' }],
             },

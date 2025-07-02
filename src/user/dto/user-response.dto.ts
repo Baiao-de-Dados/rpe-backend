@@ -5,8 +5,7 @@ export interface UserWithRoles {
     id: number;
     email: string;
     name: string;
-    track: string;
-    position: string;
+    track: string | null;
     roles: UserRole[];
     createdAt: Date;
     updatedAt: Date;
@@ -17,8 +16,7 @@ export class UserResponseDTO {
     email: string;
     name: string;
     roles: UserRole[];
-    track: string;
-    position: string;
+    track: string | null;
     createdAt: Date;
     updatedAt: Date;
 
@@ -31,7 +29,6 @@ export class UserResponseDTO {
         this.name = user.name;
         this.roles = user.roles;
         this.track = user.track;
-        this.position = user.position;
         this.createdAt = user.createdAt;
         this.updatedAt = user.updatedAt;
     }

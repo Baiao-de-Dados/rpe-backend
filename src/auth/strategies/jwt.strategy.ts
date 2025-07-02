@@ -21,8 +21,7 @@ export interface UserFromJwt {
     email: string;
     name: string | null;
     roles: UserRole[];
-    track: string;
-    position: string;
+    track: string | null;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -60,6 +59,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
                     where: { isActive: true },
                     select: { role: true },
                 },
+                track: true,
             },
         });
 
@@ -80,8 +80,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
             email: decryptedEmail,
             name: user.name,
             roles,
-            track: user.track,
-            position: user.position,
+            track:
+                track !== undefined
+                    ? track
+                    : user.track && typeof user.track === 'object'
+                      ? user.track.name
+                      : null,
             createdAt: user.createdAt,
             updatedAt: user.updatedAt,
         };

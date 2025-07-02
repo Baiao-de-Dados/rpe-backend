@@ -21,10 +21,6 @@ export class CreateUserDTO {
     @IsNotEmpty()
     track: string;
 
-    @IsString()
-    @IsNotEmpty()
-    position: string;
-
     @IsEnum(UserRole)
     role: UserRole;
 }

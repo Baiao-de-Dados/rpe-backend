@@ -22,18 +22,28 @@ export class UserService {
         const encryptedEmail = this.encryptionService.encrypt(dto.email);
         const hashedPassword = await hash(dto.password, 10);
 
+        let track = await this.prisma.track.findUnique({
+            where: { name: dto.name },
+        });
+
+        if (!track) {
+            track = await this.prisma.track.create({
+                data: { name: dto.track },
+            });
+        }
+
         const user = await this.prisma.user.create({
             data: {
                 email: encryptedEmail,
                 password: hashedPassword,
                 name: dto.name,
-                track: dto.track,
-                position: dto.position,
+                trackId: track.id,
                 userRoles: {
                     create: [{ role: dto.role }],
                 },
             },
             include: {
+                track: true,
                 userRoles: {
                     where: { isActive: true },
                     select: { role: true },
@@ -44,8 +54,7 @@ export class UserService {
             id: user.id,
             email: this.encryptionService.decrypt(user.email),
             name: user.name,
-            track: user.track,
-            position: user.position,
+            track: user.track ? user.track.name : null,
             roles: user.userRoles.map((ur) => ur.role),
             createdAt: user.createdAt,
             updatedAt: user.updatedAt,
@@ -53,30 +62,21 @@ export class UserService {
     }
 
     async findAll(): Promise<UserWithRoles[]> {
-        const users = (await this.prisma.user.findMany({
+        const users = await this.prisma.user.findMany({
             include: {
+                track: true,
                 userRoles: {
                     where: { isActive: true },
                     select: { role: true },
                 },
             },
-        })) as Array<{
-            id: number;
-            email: string;
-            name: string;
-            track: string;
-            position: string;
-            userRoles: { role: UserRole }[];
-            createdAt: Date;
-            updatedAt: Date;
-        }>;
+        });
 
         return users.map((user) => ({
             id: user.id,
             email: this.encryptionService.decrypt(user.email),
             name: user.name,
-            track: user.track,
-            position: user.position,
+            track: user.track ? user.track.name : null,
             roles: user.userRoles.map((ur) => ur.role),
             createdAt: user.createdAt,
             updatedAt: user.updatedAt,
@@ -87,6 +87,7 @@ export class UserService {
         const user = await this.prisma.user.findUnique({
             where: { id },
             include: {
+                track: true,
                 userRoles: {
                     where: { isActive: true },
                     select: { role: true },
@@ -102,8 +103,7 @@ export class UserService {
             id: user.id,
             email: this.encryptionService.decrypt(user.email),
             name: user.name,
-            track: user.track,
-            position: user.position,
+            track: user.track ? user.track.name : null,
             roles: user.userRoles.map((ur) => ur.role),
             createdAt: user.createdAt,
             updatedAt: user.updatedAt,
@@ -124,6 +124,7 @@ export class UserService {
             where: { id },
             data: dataToUpdate,
             include: {
+                track: true,
                 userRoles: {
                     where: { isActive: true },
                     select: { role: true },
@@ -135,8 +136,7 @@ export class UserService {
             id: user.id,
             email: this.encryptionService.decrypt(user.email),
             name: user.name,
-            track: user.track,
-            position: user.position,
+            track: user.track ? user.track.name : null,
             roles: user.userRoles.map((ur) => ur.role),
             createdAt: user.createdAt,
             updatedAt: user.updatedAt,
@@ -236,6 +236,7 @@ export class UserService {
         const users = await this.prisma.user.findMany({
             where: { name: { contains: name, mode: 'insensitive' } },
             include: {
+                track: true,
                 userRoles: {
                     where: { isActive: true },
                     select: { role: true },
@@ -247,8 +248,7 @@ export class UserService {
             id: user.id,
             email: this.encryptionService.decrypt(user.email),
             name: user.name,
-            track: user.track,
-            position: user.position,
+            track: user.track ? user.track.name : null,
             roles: user.userRoles.map((ur) => ur.role),
             createdAt: user.createdAt,
             updatedAt: user.updatedAt,
@@ -259,6 +259,7 @@ export class UserService {
         // Buscar todos os usuários e comparar emails descriptografados
         const users = await this.prisma.user.findMany({
             include: {
+                track: true,
                 userRoles: {
                     where: { isActive: true },
                     select: { role: true },
@@ -277,8 +278,7 @@ export class UserService {
             id: user.id,
             email: this.encryptionService.decrypt(user.email),
             name: user.name,
-            track: user.track,
-            position: user.position,
+            track: user.track ? user.track.name : null,
             roles: user.userRoles.map((ur) => ur.role),
             createdAt: user.createdAt,
             updatedAt: user.updatedAt,
@@ -299,18 +299,28 @@ export class UserService {
                     const encryptedEmail = this.encryptionService.encrypt(dto.email);
                     const hashedPassword = await hash(dto.password, 10);
 
+                    let track = await tx.track.findUnique({
+                        where: { name: dto.track },
+                    });
+
+                    if (!track) {
+                        track = await tx.track.create({
+                            data: { name: dto.track },
+                        });
+                    }
+
                     const user = await tx.user.create({
                         data: {
                             email: encryptedEmail,
                             password: hashedPassword,
                             name: dto.name,
-                            track: dto.track,
-                            position: dto.position,
+                            trackId: track.id,
                             userRoles: {
                                 create: [{ role: dto.role }],
                             },
                         },
                         include: {
+                            track: true,
                             userRoles: {
                                 where: { isActive: true },
                                 select: { role: true },
@@ -324,8 +334,7 @@ export class UserService {
                             id: user.id,
                             email: this.encryptionService.decrypt(user.email),
                             name: user.name,
-                            track: user.track,
-                            position: user.position,
+                            track: user.track ? user.track.name : null,
                             roles: user.userRoles.map((ur) => ur.role),
                             createdAt: user.createdAt,
                             updatedAt: user.updatedAt,

@@ -20,6 +20,7 @@ export class ErpService {
                         isActive: true,
                     },
                 },
+                track: true,
             },
         });
 
@@ -43,7 +44,7 @@ export class ErpService {
             return {
                 id: user.id,
                 nome: user.name || 'Nome não informado',
-                trilha: user.track || 'Trilha não informada',
+                trilha: user.track?.name || 'Trilha não informada',
                 cargo,
                 projetos,
             };
