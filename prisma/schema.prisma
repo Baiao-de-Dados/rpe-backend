@@ -12,9 +12,8 @@ model User {
   email      String   @unique
   password   String
   name       String
-  unit       String   @default("Não informado")
-  track      String   @default("Não informado")
-  position   String   @default("Não informado")
+  track      String
+  position   String 
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
   lastLogged DateTime @updatedAt
@@ -85,7 +84,6 @@ model ProjectMember {
   id        Int         @id @default(autoincrement())
   projectId Int
   userId    Int
-  role      ProjectRole
   startDate DateTime    @default(now())
   endDate   DateTime?
   createdAt DateTime    @default(now())
@@ -96,8 +94,7 @@ model ProjectMember {
 
 model Pillar {
   id          Int      @id @default(autoincrement())
-  name        String
-  description String?
+  name        String   @unique
   createdAt   DateTime @default(now())
 
   criteria     Criterion[]
@@ -108,9 +105,8 @@ model Pillar {
 model Criterion {
   id          Int      @id @default(autoincrement())
   pillarId    Int
-  name        String
+  name        String   @unique
   description String?
-  weight      Float
   createdAt   DateTime @default(now())
 
   pillar             Pillar                 @relation(fields: [pillarId], references: [id], onDelete: Cascade)
@@ -226,7 +222,7 @@ model PillarCycleConfig {
   cycleId   Int
   pillarId  Int
   isActive  Boolean  @default(true)
-  weight    Float    @default(1.0)
+  weight     Int    @default(1)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -241,7 +237,7 @@ model CriterionCycleConfig {
   cycleId     Int
   criterionId Int
   isActive    Boolean  @default(true)
-  weight      Float    @default(1.0)
+  weight      Int    @default(1)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -254,30 +250,28 @@ model CriterionCycleConfig {
 model PillarTrackConfig {
   id        Int      @id @default(autoincrement())
   pillarId  Int
-  track     String? // trilha
-  position  String? // cargo
+  track     String // trilha
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   pillar Pillar @relation(fields: [pillarId], references: [id], onDelete: Cascade)
 
-  @@unique([pillarId, track, position])
+  @@unique([pillarId, track])
 }
 
 model CriterionTrackConfig {
   id          Int      @id @default(autoincrement())
   criterionId Int
-  track       String? // trilha
-  position    String? // cargo
+  track       String // trilha
   isActive    Boolean  @default(true)
-  weight      Float    @default(1.0)
+  weight      Int    @default(1)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   criterion Criterion @relation(fields: [criterionId], references: [id], onDelete: Cascade)
 
-  @@unique([criterionId, track, position])
+  @@unique([criterionId, track])
 }
 
 enum EvaluationType {
@@ -315,13 +309,3 @@ enum ProjectStatus {
   CANCELLED
 }
 
-enum ProjectRole {
-  DEVELOPER
-  LEADER
-  MANAGER
-  ANALYST
-  TESTER
-  DESIGNER
-  ARCHITECT
-  BUSINESSMAN
-}
