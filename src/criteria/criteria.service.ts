@@ -406,10 +406,10 @@ export class CriteriaService {
     }
 
     async batchUpdate(batchUpdateDto: BatchUpdateCriteriaDto) {
-        // Normalizar os nomes dos critérios
+        // Normalizar os nomes dos critérios apenas para verificação
         const normalizedCriteria = batchUpdateDto.criteria.map((criterion) => ({
             ...criterion,
-            name: this.normalizeCriterionName(criterion.name),
+            normalizedName: this.normalizeCriterionName(criterion.name),
         }));
 
         // Verificar se há conflitos de nomes entre os critérios que estão sendo atualizados
@@ -420,9 +420,9 @@ export class CriteriaService {
             for (let j = i + 1; j < normalizedCriteria.length; j++) {
                 const criterion2 = normalizedCriteria[j];
 
-                // Se dois critérios diferentes terão o mesmo nome após a atualização
-                if (criterion1.name === criterion2.name) {
-                    nameConflicts.add(criterion1.name);
+                // Se dois critérios diferentes terão o mesmo nome após a atualização (normalizado)
+                if (criterion1.normalizedName === criterion2.normalizedName) {
+                    nameConflicts.add(criterion1.normalizedName);
                 }
             }
         }
@@ -456,7 +456,10 @@ export class CriteriaService {
 
         // Verificar se algum nome já existe em outros critérios (não da requisição)
         for (const { original: criterion, update: updateData } of criteriaToUpdate) {
-            if (updateData.name !== criterion.name) {
+            if (
+                this.normalizeCriterionName(updateData.name) !==
+                this.normalizeCriterionName(criterion.name)
+            ) {
                 const existingCriterion = await this.prisma.criterion.findFirst({
                     where: {
                         name: updateData.name,
@@ -480,7 +483,7 @@ export class CriteriaService {
             const updatedCriterion = await this.prisma.criterion.update({
                 where: { id: criterion.id },
                 data: {
-                    name: updateData.name,
+                    name: updateData.name, // Salva o nome original, não o normalizado
                     description: updateData.description,
                 },
                 include: {
