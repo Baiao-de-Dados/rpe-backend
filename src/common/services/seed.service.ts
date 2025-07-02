@@ -28,14 +28,33 @@ export class SeedService {
         const encryptedEmailFrontend = encrypt('frontend@teste.com');
         const encryptedEmailRh = encrypt('rh@teste.com');
 
-        // Trilhas
-        const trackBackend = await this.prisma.track.create({ data: { name: 'Backend' } });
-        const trackFrontend = await this.prisma.track.create({ data: { name: 'Frontend' } });
-        const trackRH = await this.prisma.track.create({ data: { name: 'RH' } });
+        // Trilhas (usar upsert)
+        const trackBackend = await this.prisma.track.upsert({
+            where: { name: 'Backend' },
+            update: {},
+            create: { name: 'Backend' },
+        });
+        const trackFrontend = await this.prisma.track.upsert({
+            where: { name: 'Frontend' },
+            update: {},
+            create: { name: 'Frontend' },
+        });
+        const trackRH = await this.prisma.track.upsert({
+            where: { name: 'RH' },
+            update: {},
+            create: { name: 'RH' },
+        });
+        const trackDefault = await this.prisma.track.upsert({
+            where: { name: 'Default' },
+            update: {},
+            create: { name: 'Default' },
+        });
 
-        // Usuários
-        await this.prisma.user.create({
-            data: {
+        // Usuários normais (usar upsert)
+        await this.prisma.user.upsert({
+            where: { email: encryptedEmailBackend },
+            update: {},
+            create: {
                 email: encryptedEmailBackend,
                 password: hashedPassword,
                 name: 'João Backend',
@@ -43,8 +62,10 @@ export class SeedService {
                 userRoles: { create: [{ role: 'EMPLOYER' }] },
             },
         });
-        await this.prisma.user.create({
-            data: {
+        await this.prisma.user.upsert({
+            where: { email: encryptedEmailFrontend },
+            update: {},
+            create: {
                 email: encryptedEmailFrontend,
                 password: hashedPassword,
                 name: 'Maria Frontend',
@@ -52,8 +73,10 @@ export class SeedService {
                 userRoles: { create: [{ role: 'EMPLOYER' }] },
             },
         });
-        await this.prisma.user.create({
-            data: {
+        await this.prisma.user.upsert({
+            where: { email: encryptedEmailRh },
+            update: {},
+            create: {
                 email: encryptedEmailRh,
                 password: hashedPassword,
                 name: 'Ana RH',
@@ -62,13 +85,35 @@ export class SeedService {
             },
         });
 
-        // Pilares
-        const pilarComportamento = await this.prisma.pillar.create({
-            data: { name: 'COMPORTAMENTO' },
+        // Usuário admin (usar upsert)
+        const encryptedEmailAdmin = encrypt('admin@test.com');
+        await this.prisma.user.upsert({
+            where: { email: encryptedEmailAdmin },
+            update: {},
+            create: {
+                email: encryptedEmailAdmin,
+                password: await bcrypt.hash('admin123', 10),
+                name: 'System Admin',
+                trackId: trackDefault.id,
+                userRoles: { create: [{ role: 'ADMIN' }] },
+            },
         });
-        const pilarExecucao = await this.prisma.pillar.create({ data: { name: 'EXECUÇÃO' } });
-        const pilarGestao = await this.prisma.pillar.create({
-            data: { name: 'GESTÃO E LIDERANÇA' },
+
+        // Pilares (usar upsert)
+        const pilarComportamento = await this.prisma.pillar.upsert({
+            where: { name: 'COMPORTAMENTO' },
+            update: {},
+            create: { name: 'COMPORTAMENTO' },
+        });
+        const pilarExecucao = await this.prisma.pillar.upsert({
+            where: { name: 'EXECUÇÃO' },
+            update: {},
+            create: { name: 'EXECUÇÃO' },
+        });
+        const pilarGestao = await this.prisma.pillar.upsert({
+            where: { name: 'GESTÃO E LIDERANÇA' },
+            update: {},
+            create: { name: 'GESTÃO E LIDERANÇA' },
         });
 
         // Critérios Comportamento
