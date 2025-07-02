@@ -153,13 +153,16 @@ export class AuthService {
             throw new ConflictException('User already exists');
         }
 
+        const defaultTrack = await this.prisma.track.findUnique({ where: { name: 'Default' } });
+        if (!defaultTrack) throw new Error('Track padrão não encontrada');
+
         const result = await this.prisma.$transaction(async (tx) => {
             const createUser = await tx.user.create({
                 data: {
                     email: encryptedEmail,
                     password: hashedPassword,
                     name,
-                    track: 'Default', // Track padrão para novos usuários
+                    trackId: defaultTrack.id,
                 },
             });
 

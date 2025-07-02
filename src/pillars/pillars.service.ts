@@ -125,7 +125,37 @@ export class PillarsService {
 
     // Métodos para configuração de pilares por trilha
     async createTrackConfig(createConfigDto: CreatePillarTrackConfigDto) {
-        return await this.prisma.pillarTrackConfig.create({
+        const existing = await this.prisma.pillarTrackConfig.findUnique({
+            where: {
+                pillarId_track: {
+                    pillarId: createConfigDto.pillarId,
+                    track: createConfigDto.track,
+                },
+            },
+        });
+
+        if (existing) {
+            // Alterna o isActive (toggle)
+            return this.prisma.pillarTrackConfig.update({
+                where: {
+                    pillarId_track: {
+                        pillarId: createConfigDto.pillarId,
+                        track: createConfigDto.track,
+                    },
+                },
+                data: {
+                    isActive: !existing.isActive,
+                },
+                include: {
+                    pillar: {
+                        include: { criteria: true },
+                    },
+                },
+            });
+        }
+
+        // Cria normalmente
+        return this.prisma.pillarTrackConfig.create({
             data: {
                 pillarId: createConfigDto.pillarId,
                 track: createConfigDto.track,
@@ -133,9 +163,7 @@ export class PillarsService {
             },
             include: {
                 pillar: {
-                    include: {
-                        criteria: true,
-                    },
+                    include: { criteria: true },
                 },
             },
         });
@@ -170,24 +198,30 @@ export class PillarsService {
     }
 
     async findActivePillarsForUser(userId: number) {
-        // Buscar o usuário para obter track
+        // Buscar o usuário para obter trackId
         const user = await this.prisma.user.findUnique({
             where: { id: userId },
-            select: { track: true },
+            select: { trackId: true },
         });
 
         if (!user) {
             throw new NotFoundException(`Usuário com ID ${userId} não encontrado`);
         }
 
-        if (!user.track) {
+        if (!user.trackId) {
             throw new BadRequestException(`Usuário com ID ${userId} não possui trilha definida`);
         }
 
-        // Buscar pilares ativos para o usuário baseado em track
+        // Buscar o nome da trilha
+        const track = await this.prisma.track.findUnique({ where: { id: user.trackId } });
+        if (!track) {
+            throw new NotFoundException(`Trilha com ID ${user.trackId} não encontrada`);
+        }
+
+        // Buscar pilares ativos para o usuário baseado em track (string)
         return await this.prisma.pillarTrackConfig.findMany({
             where: {
-                track: user.track,
+                track: track.name,
                 isActive: true,
             },
             include: {

@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsNumber, IsString, ValidateNested, Min, Max } from 'class-validator';
+import { IsArray, IsNumber, ValidateNested, Min, Max } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class TrackConfigCriterionDto {
@@ -34,9 +34,9 @@ export class TrackConfigPillarDto {
 }
 
 export class TrackConfigDto {
-    @ApiProperty({ description: 'Nome da trilha', example: 'design' })
-    @IsString()
-    track: string;
+    @ApiProperty({ description: 'ID da trilha', example: 1 })
+    @IsNumber()
+    trackId: number;
 
     @ApiProperty({
         type: [TrackConfigPillarDto],

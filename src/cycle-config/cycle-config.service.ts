@@ -28,6 +28,30 @@ export class CycleConfigService {
             });
         }
 
+        // Buscar todos os CriterionTrackConfig ativos para preencher o ciclo
+        const activeTrackConfigs = await this.prisma.criterionTrackConfig.findMany({
+            where: { isActive: true },
+        });
+
+        // Montar configs de critério para o ciclo, sem duplicar os já enviados no payload
+        const existingCriterionIds = new Set(
+            (createCycleConfigDto.criterionConfigs || []).map((c) => c.criterionId),
+        );
+        const autoCriterionConfigs = activeTrackConfigs
+            .filter((config) => !existingCriterionIds.has(config.criterionId))
+            .map((config) => ({
+                criterionId: config.criterionId,
+                isActive: false,
+                weight: config.weight,
+            }));
+
+        // Unir os configs do payload com os auto-gerados
+        const allCriterionConfigs = [
+            ...(createCycleConfigDto.criterionConfigs || []),
+            ...autoCriterionConfigs,
+        ];
+        createCycleConfigDto.criterionConfigs = allCriterionConfigs;
+
         // Criar o ciclo e suas configurações em uma transação
         return await this.prisma.$transaction(async (prisma) => {
             const cycle = await prisma.cycleConfig.create({

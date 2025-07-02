@@ -59,6 +59,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
                     where: { isActive: true },
                     select: { role: true },
                 },
+                track: true,
             },
         });
 
@@ -79,7 +80,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
             email: decryptedEmail,
             name: user.name,
             roles,
-            track: track || user.track,
+            track:
+                track ||
+                (user.track && typeof user.track === 'object' ? user.track.name : undefined),
             createdAt: user.createdAt,
             updatedAt: user.updatedAt,
         };

@@ -146,6 +146,7 @@ export class CriteriaService {
                         },
                     },
                 },
+                track: true,
             },
         });
 
@@ -154,18 +155,20 @@ export class CriteriaService {
 
         // Processar configurações de critérios
         trackConfigs.forEach((config) => {
-            const track = config.track;
+            const trackId = config.trackId;
+            const trackName = config.track?.name || '';
             const pillar = config.criterion.pillar;
             const criterion = config.criterion;
 
-            if (!tracksMap.has(track)) {
-                tracksMap.set(track, {
-                    name: track,
+            if (!tracksMap.has(trackId)) {
+                tracksMap.set(trackId, {
+                    id: trackId,
+                    name: trackName,
                     pillars: new Map(),
                 });
             }
 
-            const trackData = tracksMap.get(track);
+            const trackData = tracksMap.get(trackId);
 
             if (!trackData.pillars.has(pillar.id)) {
                 trackData.pillars.set(pillar.id, {
@@ -187,6 +190,7 @@ export class CriteriaService {
         // Converter para array e ordenar
         const result = Array.from(tracksMap.values())
             .map((track) => ({
+                id: track.id,
                 name: track.name,
                 pillars: Array.from(track.pillars.values())
                     .map((pillar: any) => ({
@@ -203,45 +207,41 @@ export class CriteriaService {
         return result;
     }
 
-    async findTrackConfigsByTrack(track: string) {
-        // Buscar todas as configurações de critérios para a trilha específica
-        const trackConfigs = await this.prisma.criterionTrackConfig.findMany({
-            where: {
-                track: track,
-                //isActive: true,
-            },
+    async findTrackConfigsByTrack(trackId: number) {
+        // Buscar configurações de critérios para a trilha específica
+        const track = await this.prisma.track.findUnique({
+            where: { id: trackId },
             include: {
-                criterion: {
+                criterionTrackConfigs: {
                     include: {
-                        pillar: true,
+                        criterion: {
+                            include: {
+                                pillar: true,
+                            },
+                        },
                     },
                 },
             },
         });
-
-        // Organizar dados por trilha > pilares > critérios (mesmo padrão do findAllTrackConfigs)
-        const tracksMap = new Map();
-        if (!tracksMap.has(track)) {
-            tracksMap.set(track, {
-                name: track,
-                pillars: new Map(),
-            });
+        if (!track) {
+            throw new NotFoundException(`Trilha com ID ${trackId} não encontrada`);
         }
-        const trackData = tracksMap.get(track);
 
-        trackConfigs.forEach((config) => {
+        // Organizar dados por pilar
+        const pillarsMap = new Map();
+        track.criterionTrackConfigs.forEach((config) => {
             const pillar = config.criterion.pillar;
             const criterion = config.criterion;
 
-            if (!trackData.pillars.has(pillar.id)) {
-                trackData.pillars.set(pillar.id, {
+            if (!pillarsMap.has(pillar.id)) {
+                pillarsMap.set(pillar.id, {
                     id: pillar.id,
                     name: pillar.name,
                     criteria: [],
                 });
             }
 
-            const pillarData = trackData.pillars.get(pillar.id);
+            const pillarData = pillarsMap.get(pillar.id);
             pillarData.criteria.push({
                 id: criterion.id,
                 name: criterion.name,
@@ -252,8 +252,9 @@ export class CriteriaService {
 
         // Converter para array e ordenar
         const result = {
-            name: trackData.name,
-            pillars: Array.from(trackData.pillars.values())
+            id: track.id,
+            name: track.name,
+            pillars: Array.from(pillarsMap.values())
                 .map((pillar: any) => ({
                     id: pillar.id,
                     name: pillar.name,
@@ -268,93 +269,34 @@ export class CriteriaService {
     }
 
     async findActiveCriteriaForUser(userId: number) {
-        // Buscar o usuário para obter track
+        // Buscar o usuário para obter trackId
         const user = await this.prisma.user.findUnique({
             where: { id: userId },
-            select: { track: true },
+            select: { trackId: true },
         });
 
         if (!user) {
             throw new NotFoundException(`Usuário com ID ${userId} não encontrado`);
         }
 
-        if (!user.track) {
+        if (!user.trackId) {
             throw new BadRequestException(`Usuário com ID ${userId} não possui trilha definida`);
         }
 
-        // Buscar todas as configurações de critérios para a trilha do usuário
-        const trackConfigs = await this.prisma.criterionTrackConfig.findMany({
-            where: {
-                track: user.track,
-                isActive: true,
-            },
-            include: {
-                criterion: {
-                    include: {
-                        pillar: true,
-                    },
-                },
-            },
-        });
-
-        // Organizar dados por trilha > pilares > critérios (mesmo padrão do findAllTrackConfigs)
-        const tracksMap = new Map();
-        if (!tracksMap.has(user.track)) {
-            tracksMap.set(user.track, {
-                name: user.track,
-                pillars: new Map(),
-            });
-        }
-        const trackData = tracksMap.get(user.track);
-
-        trackConfigs.forEach((config) => {
-            const pillar = config.criterion.pillar;
-            const criterion = config.criterion;
-
-            if (!trackData.pillars.has(pillar.id)) {
-                trackData.pillars.set(pillar.id, {
-                    id: pillar.id,
-                    name: pillar.name,
-                    criteria: [],
-                });
-            }
-
-            const pillarData = trackData.pillars.get(pillar.id);
-            pillarData.criteria.push({
-                id: criterion.id,
-                name: criterion.name,
-                description: criterion.description,
-                weight: config.weight,
-            });
-        });
-
-        // Converter para array e ordenar
-        const result = {
-            name: trackData.name,
-            pillars: Array.from(trackData.pillars.values())
-                .map((pillar: any) => ({
-                    id: pillar.id,
-                    name: pillar.name,
-                    criteria: pillar.criteria.sort((a: any, b: any) =>
-                        a.name.localeCompare(b.name),
-                    ),
-                }))
-                .sort((a: any, b: any) => a.name.localeCompare(b.name)),
-        };
-
-        return result;
+        // Buscar configurações de critérios para a trilha do usuário
+        return this.findTrackConfigsByTrack(user.trackId);
     }
 
     async updateTrackConfig(
         criterionId: number,
-        track: string,
+        trackId: number,
         updateConfigDto: UpdateCriterionTrackConfigDto,
     ) {
         const config = await this.prisma.criterionTrackConfig.findUnique({
             where: {
-                criterionId_track: {
+                criterionId_trackId: {
                     criterionId,
-                    track: track,
+                    trackId,
                 },
             },
         });
@@ -365,9 +307,9 @@ export class CriteriaService {
 
         return await this.prisma.criterionTrackConfig.update({
             where: {
-                criterionId_track: {
+                criterionId_trackId: {
                     criterionId,
-                    track: track,
+                    trackId,
                 },
             },
             data: updateConfigDto,
@@ -381,12 +323,12 @@ export class CriteriaService {
         });
     }
 
-    async removeTrackConfig(criterionId: number, track: string) {
+    async removeTrackConfig(criterionId: number, trackId: number) {
         const config = await this.prisma.criterionTrackConfig.findUnique({
             where: {
-                criterionId_track: {
+                criterionId_trackId: {
                     criterionId,
-                    track: track,
+                    trackId,
                 },
             },
         });
@@ -397,9 +339,9 @@ export class CriteriaService {
 
         return await this.prisma.criterionTrackConfig.delete({
             where: {
-                criterionId_track: {
+                criterionId_trackId: {
                     criterionId,
-                    track: track,
+                    trackId,
                 },
             },
         });
@@ -501,27 +443,25 @@ export class CriteriaService {
         const results: any[] = [];
 
         for (const trackConfig of trackConfigs) {
-            const trackId = trackConfig.track;
+            const trackId = trackConfig.trackId;
+            const track = await this.prisma.track.findUnique({ where: { id: trackId } });
+            if (!track) {
+                throw new BadRequestException(`Trilha com ID ${trackId} não encontrada.`);
+            }
             const trackResults = {
                 track: trackId,
                 pillars: [] as any[],
             };
 
             for (const pillar of trackConfig.pillars) {
+                const pillarId = pillar.id;
                 const pillarResults = {
-                    pillar: pillar.id,
+                    pillar: pillarId,
                     criteria: [] as any[],
                 };
 
                 for (const criterion of pillar.criteria) {
-                    // Validar se o ID do critério é um número válido
-                    if (typeof criterion.id !== 'number' || isNaN(criterion.id)) {
-                        throw new BadRequestException(
-                            `ID do critério "${criterion.id}" não é um número válido. Use o ID numérico do critério.`,
-                        );
-                    }
                     const criterionId = criterion.id;
-
                     // Verificar se o critério existe
                     const existingCriterion = await this.prisma.criterion.findUnique({
                         where: { id: criterionId },
@@ -535,9 +475,9 @@ export class CriteriaService {
 
                     const config = await this.prisma.criterionTrackConfig.upsert({
                         where: {
-                            criterionId_track: {
+                            criterionId_trackId: {
                                 criterionId: criterionId,
-                                track: trackId,
+                                trackId: trackId,
                             },
                         },
                         update: {
@@ -546,7 +486,7 @@ export class CriteriaService {
                         },
                         create: {
                             criterionId: criterionId,
-                            track: trackId,
+                            trackId: trackId,
                             weight: criterion.weight,
                             isActive: true,
                         },

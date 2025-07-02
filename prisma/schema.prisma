@@ -13,7 +13,8 @@ model User {
   password   String
   name       String
   unit       String?
-  track      String
+  trackId    Int    
+  track      Track?   @relation(fields: [trackId], references: [id])
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
   lastLogged DateTime @updatedAt
@@ -100,7 +101,7 @@ model Pillar {
 
   criteria     Criterion[]
   cycleConfigs PillarCycleConfig[]
-  trackConfigs PillarTrackConfig[]
+  //trackConfigs PillarTrackConfig[]
 }
 
 model Criterion {
@@ -247,7 +248,7 @@ model CriterionCycleConfig {
 
   @@unique([cycleId, criterionId])
 }
-
+/*
 model PillarTrackConfig {
   id        Int      @id @default(autoincrement())
   pillarId  Int
@@ -260,19 +261,29 @@ model PillarTrackConfig {
 
   @@unique([pillarId, track])
 }
+*/
+
+model Track {
+  id    Int    @id @default(autoincrement())
+  name  String @unique
+  criterionTrackConfigs CriterionTrackConfig[]
+  users User[]
+
+}
 
 model CriterionTrackConfig {
   id          Int      @id @default(autoincrement())
   criterionId Int
-  track       String // trilha
+  trackId     Int
   isActive    Boolean  @default(true)
   weight      Int    @default(1)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   criterion Criterion @relation(fields: [criterionId], references: [id], onDelete: Cascade)
+  track     Track     @relation(fields: [trackId], references: [id], onDelete: Cascade)
 
-  @@unique([criterionId, track])
+  @@unique([criterionId, trackId])
 }
 
 enum EvaluationType {
