@@ -19,6 +19,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
 import { TrackModule } from './track/track.module';
+import { ImportUsersModule } from './import-export/import-users/import-users.module';
 
 @Module({
     imports: [
@@ -49,6 +50,7 @@ import { TrackModule } from './track/track.module';
         CycleConfigModule,
         CommonModule,
         TrackModule,
+        ImportUsersModule,
     ],
     controllers: [AppController],
     providers: [
