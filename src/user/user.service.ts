@@ -8,19 +8,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EncryptionService } from 'src/encryption/encryption.service';
 import { User, UserRole } from '@prisma/client';
 import { CreateUserDTO } from './dto/create-user.dto';
+import { UserWithRoles } from './dto/user-response.dto';
 import { hash } from 'bcrypt';
-
-export interface UserWithRoles {
-    id: number;
-    email: string;
-    name: string;
-    unit: string;
-    track: string;
-    position: string;
-    roles: UserRole[];
-    createdAt: Date;
-    updatedAt: Date;
-}
 
 @Injectable()
 export class UserService {
@@ -38,7 +27,6 @@ export class UserService {
                 email: encryptedEmail,
                 password: hashedPassword,
                 name: dto.name,
-                unit: dto.unit,
                 track: dto.track,
                 position: dto.position,
                 userRoles: {
@@ -56,7 +44,6 @@ export class UserService {
             id: user.id,
             email: this.encryptionService.decrypt(user.email),
             name: user.name,
-            unit: user.unit,
             track: user.track,
             position: user.position,
             roles: user.userRoles.map((ur) => ur.role),
@@ -77,7 +64,6 @@ export class UserService {
             id: number;
             email: string;
             name: string;
-            unit: string;
             track: string;
             position: string;
             userRoles: { role: UserRole }[];
@@ -89,7 +75,6 @@ export class UserService {
             id: user.id,
             email: this.encryptionService.decrypt(user.email),
             name: user.name,
-            unit: user.unit,
             track: user.track,
             position: user.position,
             roles: user.userRoles.map((ur) => ur.role),
@@ -117,7 +102,6 @@ export class UserService {
             id: user.id,
             email: this.encryptionService.decrypt(user.email),
             name: user.name,
-            unit: user.unit,
             track: user.track,
             position: user.position,
             roles: user.userRoles.map((ur) => ur.role),
@@ -151,7 +135,6 @@ export class UserService {
             id: user.id,
             email: this.encryptionService.decrypt(user.email),
             name: user.name,
-            unit: user.unit,
             track: user.track,
             position: user.position,
             roles: user.userRoles.map((ur) => ur.role),
@@ -264,7 +247,6 @@ export class UserService {
             id: user.id,
             email: this.encryptionService.decrypt(user.email),
             name: user.name,
-            unit: user.unit,
             track: user.track,
             position: user.position,
             roles: user.userRoles.map((ur) => ur.role),
@@ -295,7 +277,6 @@ export class UserService {
             id: user.id,
             email: this.encryptionService.decrypt(user.email),
             name: user.name,
-            unit: user.unit,
             track: user.track,
             position: user.position,
             roles: user.userRoles.map((ur) => ur.role),
@@ -323,7 +304,6 @@ export class UserService {
                             email: encryptedEmail,
                             password: hashedPassword,
                             name: dto.name,
-                            unit: dto.unit,
                             track: dto.track,
                             position: dto.position,
                             userRoles: {
@@ -344,7 +324,6 @@ export class UserService {
                             id: user.id,
                             email: this.encryptionService.decrypt(user.email),
                             name: user.name,
-                            unit: user.unit,
                             track: user.track,
                             position: user.position,
                             roles: user.userRoles.map((ur) => ur.role),

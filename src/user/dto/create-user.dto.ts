@@ -19,10 +19,6 @@ export class CreateUserDTO {
 
     @IsString()
     @IsNotEmpty()
-    unit: string;
-
-    @IsString()
-    @IsNotEmpty()
     track: string;
 
     @IsString()
