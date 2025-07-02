@@ -101,7 +101,7 @@ model Pillar {
 
   criteria     Criterion[]
   cycleConfigs PillarCycleConfig[]
-  //trackConfigs PillarTrackConfig[]
+  trackConfigs PillarTrackConfig[]
 }
 
 model Criterion {
@@ -248,7 +248,7 @@ model CriterionCycleConfig {
 
   @@unique([cycleId, criterionId])
 }
-/*
+
 model PillarTrackConfig {
   id        Int      @id @default(autoincrement())
   pillarId  Int
@@ -261,7 +261,7 @@ model PillarTrackConfig {
 
   @@unique([pillarId, track])
 }
-*/
+
 
 model Track {
   id    Int    @id @default(autoincrement())
