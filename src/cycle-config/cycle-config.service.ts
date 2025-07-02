@@ -303,9 +303,36 @@ export class CycleConfigService {
             pillar: {
                 id: config.criterion.pillar.id,
                 name: config.criterion.pillar.name,
-                description: config.criterion.pillar.description,
             },
         }));
+    }
+
+    async getActiveCycle() {
+        return await this.prisma.cycleConfig.findFirst({
+            where: { isActive: true },
+        });
+    }
+
+    async isCycleActive(): Promise<boolean> {
+        const activeCycle = await this.getActiveCycle();
+        if (!activeCycle) {
+            return false;
+        }
+
+        const now = new Date();
+        return now >= activeCycle.startDate && now <= activeCycle.endDate;
+    }
+
+    async validateCycleNotActive() {
+        const isActive = await this.isCycleActive();
+        if (isActive) {
+            const activeCycle = await this.getActiveCycle();
+            if (activeCycle) {
+                throw new BadRequestException(
+                    `Não é possível fazer alterações enquanto o ciclo ${activeCycle.name} estiver ativo. Desative o ciclo atual antes de fazer modificações.`,
+                );
+            }
+        }
     }
 
     private mapToResponseDto(cycle: any): CycleConfigResponseDto {
