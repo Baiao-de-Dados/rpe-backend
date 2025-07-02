@@ -66,22 +66,20 @@ export class AuthService {
             throw new UnauthorizedException('Credenciais inválidas');
         }
 
-        // Buscar dados completos do usuário incluindo track e position
+        // Buscar dados completos do usuário incluindo track
         const fullUser = await this.prisma.user.findUnique({
             where: { id: user.id },
             select: {
                 track: true,
-                position: true,
             },
         });
 
-        // Incluir roles, track e position no payload para o JWT
+        // Incluir roles e track no payload para o JWT
         const payload = {
             sub: user.id,
             email: user.email,
             roles: user.roles,
             track: fullUser?.track ?? null,
-            position: fullUser?.position ?? null,
         };
 
         return {
@@ -161,6 +159,8 @@ export class AuthService {
                     email: encryptedEmail,
                     password: hashedPassword,
                     name,
+                    track: 'Default', // Track padrão para novos usuários
+                    position: 'Default',
                 },
             });
 
