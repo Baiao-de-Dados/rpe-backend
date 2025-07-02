@@ -18,6 +18,7 @@ import { LoggerModule } from 'nestjs-pino';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
+import { ImportUsersModule } from './import-export/import-users/import-users.module';
 
 @Module({
     imports: [
@@ -47,6 +48,7 @@ import { RolesGuard } from './auth/guards/roles.guard';
         ErpModule,
         CycleConfigModule,
         CommonModule,
+        ImportUsersModule,
     ],
     controllers: [AppController],
     providers: [
