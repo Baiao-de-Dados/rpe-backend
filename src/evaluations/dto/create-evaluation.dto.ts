@@ -97,10 +97,10 @@ export class CreateEvaluationDto {
     @Type(() => Avaliacao360Dto)
     avaliacao360: Avaliacao360Dto[];
 
-    @IsArray()
-    @ValidateNested({ each: true })
+    @IsDefined()
+    @ValidateNested()
     @Type(() => MentoringDto)
-    mentoring: MentoringDto[];
+    mentoring: MentoringDto;
 
     @IsArray()
     @ValidateNested({ each: true })

@@ -245,7 +245,7 @@ describe('CreateEvaluationDto', () => {
                     ],
                 },
                 avaliacao360: [],
-                mentoring: [],
+                mentoring: {},
                 referencias: [],
             });
 
@@ -281,7 +281,7 @@ describe('CreateEvaluationDto', () => {
                         justificativa: 'Avaliação baseada no trabalho em equipe',
                     },
                 ],
-                mentoring: [],
+                mentoring: {},
                 referencias: [],
             });
 

@@ -20,12 +20,10 @@ export class EvaluationValidationService {
             this.validateColaborador(colaboradorIdNum),
             this.validateCriterios(autoavaliacao),
             this.validateAvaliacao360(avaliacao360, colaboradorIdNum),
-            this.validateMentoring(Array.isArray(mentoring) ? mentoring : [], colaboradorIdNum),
+            this.validateMentoring(mentoring, colaboradorIdNum),
             this.validateReferencias(referencias, colaboradorIdNum),
-            this.validateDuplicates(avaliacao360, mentoring, referencias),
+            this.validateDuplicates(avaliacao360, referencias),
         ]);
-
-        console.log('Todas as validações passaram com sucesso');
     }
 
     private async validateColaborador(colaboradorId: number): Promise<void> {
@@ -83,36 +81,20 @@ export class EvaluationValidationService {
         }
     }
 
-    private async validateMentoring(
-        mentoring: MentoringDto[],
-        colaboradorId: number,
-    ): Promise<void> {
-        if (!mentoring || mentoring.length === 0) {
+    private async validateMentoring(mentoring: MentoringDto, colaboradorId: number): Promise<void> {
+        if (!mentoring) {
             return;
         }
 
-        for (const m of mentoring) {
-            if (m.mentorId) {
-                const mentor = await this.prisma.user.findUnique({
-                    where: { id: parseInt(m.mentorId, 10) },
-                });
-                if (!mentor) {
-                    throw new NotFoundException(`Mentor com ID ${m.mentorId} não encontrado`);
-                }
-                if (parseInt(m.mentorId, 10) === colaboradorId) {
-                    throw new BadRequestException('O colaborador não pode ser seu próprio mentor');
-                }
+        if (mentoring.mentorId) {
+            const mentor = await this.prisma.user.findUnique({
+                where: { id: parseInt(mentoring.mentorId, 10) },
+            });
+            if (!mentor) {
+                throw new NotFoundException(`Mentor com ID ${mentoring.mentorId} não encontrado`);
             }
-            if (m.leaderId) {
-                const leader = await this.prisma.user.findUnique({
-                    where: { id: parseInt(m.leaderId, 10) },
-                });
-                if (!leader) {
-                    throw new NotFoundException(`Líder com ID ${m.leaderId} não encontrado`);
-                }
-                if (parseInt(m.leaderId, 10) === colaboradorId) {
-                    throw new BadRequestException('O colaborador não pode ser seu próprio líder');
-                }
+            if (parseInt(mentoring.mentorId, 10) === colaboradorId) {
+                throw new BadRequestException('O colaborador não pode ser seu próprio mentor');
             }
         }
     }
@@ -147,7 +129,6 @@ export class EvaluationValidationService {
 
     private validateDuplicates(
         avaliacao360: Avaliacao360Dto[],
-        mentoring: MentoringDto[] | null | undefined,
         referencias: ReferenciaDto[],
     ): void {
         if (avaliacao360 && avaliacao360.length > 0) {
@@ -166,16 +147,6 @@ export class EvaluationValidationService {
             if (referenciaColaboradorIdsUnicos.size !== referenciaColaboradorIds.length) {
                 throw new BadRequestException(
                     'Não é possível referenciar o mesmo colaborador múltiplas vezes',
-                );
-            }
-        }
-
-        if (mentoring && mentoring.length > 0) {
-            const mentoringColaboradorIds = mentoring.map((m) => m.mentorId);
-            const mentoringColaboradorIdUnico = new Set(mentoringColaboradorIds);
-            if (mentoringColaboradorIdUnico.size !== mentoringColaboradorIds.length) {
-                throw new BadRequestException(
-                    'Não é possível referenciar o mesmo mentor múltiplas vezes',
                 );
             }
         }
