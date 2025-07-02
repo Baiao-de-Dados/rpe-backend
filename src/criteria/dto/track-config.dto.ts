@@ -3,9 +3,9 @@ import { IsArray, IsNumber, IsString, ValidateNested, Min, Max } from 'class-val
 import { Type } from 'class-transformer';
 
 export class TrackConfigCriterionDto {
-    @ApiProperty({ description: 'ID do critério', example: '4' })
-    @IsString()
-    id: string;
+    @ApiProperty({ description: 'ID do critério', example: 4 })
+    @IsNumber()
+    id: number;
 
     @ApiProperty({ description: 'Peso do critério (0-100)', example: 10 })
     @IsNumber()
@@ -16,15 +16,15 @@ export class TrackConfigCriterionDto {
 
 export class TrackConfigPillarDto {
     @ApiProperty({ description: 'ID do pilar', example: 1 })
-    @IsString()
-    id: string;
+    @IsNumber()
+    id: number;
 
     @ApiProperty({
         type: [TrackConfigCriterionDto],
         description: 'Critérios do pilar',
         example: [
-            { id: '4', weight: 10 },
-            { id: '5', weight: 20 },
+            { id: 4, weight: 10 },
+            { id: 5, weight: 20 },
         ],
     })
     @IsArray()
@@ -45,13 +45,13 @@ export class TrackConfigDto {
             {
                 id: 1,
                 criteria: [
-                    { id: '4', weight: 10 },
-                    { id: '5', weight: 20 },
+                    { id: 4, weight: 10 },
+                    { id: 5, weight: 20 },
                 ],
             },
             {
                 id: 2,
-                criteria: [{ id: '6', weight: 30 }],
+                criteria: [{ id: 6, weight: 30 }],
             },
         ],
     })

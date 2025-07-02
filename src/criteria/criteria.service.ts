@@ -514,13 +514,13 @@ export class CriteriaService {
                 };
 
                 for (const criterion of pillar.criteria) {
-                    // Validar se o ID é um número válido
-                    const criterionId = parseInt(criterion.id);
-                    if (isNaN(criterionId)) {
+                    // Validar se o ID do critério é um número válido
+                    if (typeof criterion.id !== 'number' || isNaN(criterion.id)) {
                         throw new BadRequestException(
                             `ID do critério "${criterion.id}" não é um número válido. Use o ID numérico do critério.`,
                         );
                     }
+                    const criterionId = criterion.id;
 
                     // Verificar se o critério existe
                     const existingCriterion = await this.prisma.criterion.findUnique({
@@ -560,7 +560,7 @@ export class CriteriaService {
                     });
 
                     pillarResults.criteria.push({
-                        id: criterion.id,
+                        id: criterionId,
                         weight: criterion.weight,
                         name: config.criterion.name,
                     });
