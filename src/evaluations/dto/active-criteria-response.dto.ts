@@ -6,9 +6,6 @@ export class ActiveCriteriaPillarDto {
 
     @ApiProperty({ example: 'Técnico', description: 'Nome do pilar' })
     name: string;
-
-    @ApiProperty({ example: 'Pilar técnico', description: 'Descrição do pilar' })
-    description?: string;
 }
 
 export class ActiveCriteriaDto {
@@ -25,7 +22,7 @@ export class ActiveCriteriaDto {
     description?: string;
 
     @ApiProperty({ example: 1.0, description: 'Peso do critério no ciclo atual' })
-    weight: number;
+    weight: number | null;
 
     @ApiProperty({ type: ActiveCriteriaPillarDto, description: 'Pilar do critério' })
     pillar: ActiveCriteriaPillarDto;
@@ -41,11 +38,11 @@ export class CriterioDto {
     @ApiProperty({ description: 'Descrição do critério' })
     description: string;
 
-    @ApiProperty({ description: 'Peso personalizado para a trilha/cargo' })
-    weight: number;
+    @ApiProperty({ description: 'Peso personalizado para a trilha' })
+    weight: number | null;
 
-    @ApiProperty({ description: 'Peso original do critério', required: false })
-    originalWeight?: number;
+    @ApiProperty({ description: 'Peso original do critério (sempre null agora)', required: false })
+    originalWeight?: number | null;
 }
 
 export class PilarDto {
@@ -54,9 +51,6 @@ export class PilarDto {
 
     @ApiProperty({ description: 'Nome do pilar' })
     name: string;
-
-    @ApiProperty({ description: 'Descrição do pilar' })
-    description: string;
 
     @ApiProperty({ description: 'Critérios do pilar', type: [CriterioDto] })
     criterios: CriterioDto[];
@@ -68,9 +62,6 @@ export class UserInfoDto {
 
     @ApiProperty({ description: 'Trilha do usuário' })
     track: string;
-
-    @ApiProperty({ description: 'Cargo do usuário' })
-    position: string;
 }
 
 export class ActiveCriteriaResponseDto {
@@ -79,9 +70,20 @@ export class ActiveCriteriaResponseDto {
 }
 
 export class ActiveCriteriaUserResponseDto {
-    @ApiProperty({ description: 'Informações do usuário', type: UserInfoDto })
-    user: UserInfoDto;
+    @ApiProperty({ description: 'Informações do usuário' })
+    user: {
+        id: number;
+        track: string;
+    };
 
-    @ApiProperty({ description: 'Pilares com critérios ativos', type: [PilarDto] })
-    pilares: PilarDto[];
+    @ApiProperty({ description: 'Informações do ciclo ativo' })
+    cycle: {
+        id: number;
+        name: string;
+        startDate: Date;
+        endDate: Date;
+    };
+
+    @ApiProperty({ description: 'Pilares com critérios ativos', type: [ActiveCriteriaPillarDto] })
+    pilares: ActiveCriteriaPillarDto[];
 }

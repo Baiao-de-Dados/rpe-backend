@@ -19,15 +19,6 @@ export class CreateCriterionDto {
     description?: string;
 
     @ApiProperty({
-        example: 0.4,
-        description: 'Peso do critério (0.0 a 1.0)',
-        required: false,
-    })
-    @IsNumber()
-    @IsOptional()
-    weight?: number;
-
-    @ApiProperty({
         example: 1,
         description: 'ID do pilar ao qual o critério pertence',
     })
