@@ -204,41 +204,44 @@ export class CriteriaService {
     }
 
     async findTrackConfigsByTrack(track: string) {
-        // Buscar configurações de critérios para a trilha específica
+        // Buscar todas as configurações de critérios para a trilha específica
         const trackConfigs = await this.prisma.criterionTrackConfig.findMany({
             where: {
                 track: track,
-                isActive: true,
+                //isActive: true,
             },
             include: {
                 criterion: {
                     include: {
-                        pillar: {
-                            include: {
-                                trackConfigs: true,
-                            },
-                        },
+                        pillar: true,
                     },
                 },
             },
         });
 
-        // Organizar dados por pilar
-        const pillarsMap = new Map();
+        // Organizar dados por trilha > pilares > critérios (mesmo padrão do findAllTrackConfigs)
+        const tracksMap = new Map();
+        if (!tracksMap.has(track)) {
+            tracksMap.set(track, {
+                name: track,
+                pillars: new Map(),
+            });
+        }
+        const trackData = tracksMap.get(track);
 
         trackConfigs.forEach((config) => {
             const pillar = config.criterion.pillar;
             const criterion = config.criterion;
 
-            if (!pillarsMap.has(pillar.id)) {
-                pillarsMap.set(pillar.id, {
+            if (!trackData.pillars.has(pillar.id)) {
+                trackData.pillars.set(pillar.id, {
                     id: pillar.id,
                     name: pillar.name,
                     criteria: [],
                 });
             }
 
-            const pillarData = pillarsMap.get(pillar.id);
+            const pillarData = trackData.pillars.get(pillar.id);
             pillarData.criteria.push({
                 id: criterion.id,
                 name: criterion.name,
@@ -249,8 +252,8 @@ export class CriteriaService {
 
         // Converter para array e ordenar
         const result = {
-            name: track,
-            pillars: Array.from(pillarsMap.values())
+            name: trackData.name,
+            pillars: Array.from(trackData.pillars.values())
                 .map((pillar: any) => ({
                     id: pillar.id,
                     name: pillar.name,
@@ -279,7 +282,7 @@ export class CriteriaService {
             throw new BadRequestException(`Usuário com ID ${userId} não possui trilha definida`);
         }
 
-        // Buscar critérios ativos para o usuário baseado em track
+        // Buscar todas as configurações de critérios para a trilha do usuário
         const trackConfigs = await this.prisma.criterionTrackConfig.findMany({
             where: {
                 track: user.track,
@@ -288,32 +291,35 @@ export class CriteriaService {
             include: {
                 criterion: {
                     include: {
-                        pillar: {
-                            include: {
-                                trackConfigs: true,
-                            },
-                        },
+                        pillar: true,
                     },
                 },
             },
         });
 
-        // Organizar dados por pilar
-        const pillarsMap = new Map();
+        // Organizar dados por trilha > pilares > critérios (mesmo padrão do findAllTrackConfigs)
+        const tracksMap = new Map();
+        if (!tracksMap.has(user.track)) {
+            tracksMap.set(user.track, {
+                name: user.track,
+                pillars: new Map(),
+            });
+        }
+        const trackData = tracksMap.get(user.track);
 
         trackConfigs.forEach((config) => {
             const pillar = config.criterion.pillar;
             const criterion = config.criterion;
 
-            if (!pillarsMap.has(pillar.id)) {
-                pillarsMap.set(pillar.id, {
+            if (!trackData.pillars.has(pillar.id)) {
+                trackData.pillars.set(pillar.id, {
                     id: pillar.id,
                     name: pillar.name,
                     criteria: [],
                 });
             }
 
-            const pillarData = pillarsMap.get(pillar.id);
+            const pillarData = trackData.pillars.get(pillar.id);
             pillarData.criteria.push({
                 id: criterion.id,
                 name: criterion.name,
@@ -324,8 +330,8 @@ export class CriteriaService {
 
         // Converter para array e ordenar
         const result = {
-            name: user.track,
-            pillars: Array.from(pillarsMap.values())
+            name: trackData.name,
+            pillars: Array.from(trackData.pillars.values())
                 .map((pillar: any) => ({
                     id: pillar.id,
                     name: pillar.name,
@@ -492,7 +498,7 @@ export class CriteriaService {
         const results: any[] = [];
 
         for (const trackConfig of trackConfigs) {
-            const trackId = trackConfig.id;
+            const trackId = trackConfig.track;
             const trackResults = {
                 track: trackId,
                 pillars: [] as any[],

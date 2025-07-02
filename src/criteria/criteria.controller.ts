@@ -9,7 +9,7 @@ import {
     ParseIntPipe,
     Query,
 } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiTags, ApiBody } from '@nestjs/swagger';
 import { CriteriaService } from './criteria.service';
 import { CreateCriterionDto } from './dto/create-criterion.dto';
 import { UpdateCriterionTrackConfigDto } from './dto/update-criterion-track-config.dto';
@@ -120,7 +120,7 @@ export class CriteriaController {
         @Query('track') track: string,
     ) {
         // Validar se não há ciclo ativo antes de atualizar configurações
-        await this.cycleConfigService.validateCycleNotActive();
+        //await this.cycleConfigService.validateCycleNotActive();
 
         return this.criteriaService.updateTrackConfig(criterionId, track, updateConfigDto);
     }
@@ -133,7 +133,7 @@ export class CriteriaController {
         @Query('track') track: string,
     ) {
         // Validar se não há ciclo ativo antes de remover configurações
-        await this.cycleConfigService.validateCycleNotActive();
+        //await this.cycleConfigService.validateCycleNotActive();
 
         return this.criteriaService.removeTrackConfig(criterionId, track);
     }
@@ -141,6 +141,7 @@ export class CriteriaController {
     @Post('track-config')
     @ExactRoles(UserRole.RH)
     @ApiCreate('configuração de critérios por trilha em lote')
+    @ApiBody({ type: TrackConfigDto, isArray: true })
     async createTrackConfigBulk(@Body() trackConfigs: TrackConfigDto[]) {
         return await this.criteriaService.createTrackConfigBulk(trackConfigs);
     }
