@@ -5,7 +5,18 @@ import {
     ApiList,
     ApiUpdate,
 } from 'src/common/decorators/api-crud.decorator';
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Put } from '@nestjs/common';
+import {
+    Body,
+    Controller,
+    Delete,
+    Get,
+    Param,
+    ParseIntPipe,
+    Patch,
+    Post,
+    Put,
+    Query,
+} from '@nestjs/common';
 import { ApiAuth } from 'src/common/decorators/api-auth.decorator';
 import { RequireRH } from 'src/auth/decorators/roles.decorator';
 import { RHService } from '../services/rh.service';
@@ -18,6 +29,8 @@ import { CreateCycleConfigDto } from 'src/cycle-config/dto/create-cycle-config.d
 import { UpdateCriterionDto } from 'src/criteria/dto/update-criterion.dto';
 import { UpdateCycleConfigDto } from 'src/cycle-config/dto/update-cycle-config.dto';
 import { CycleConfigResponseDto } from 'src/cycle-config/dto/cycle-config-response.dto';
+import { CreatePillarTrackConfigDto } from 'src/pillars/dto/create-pillar-track-config.dto';
+import { UpdatePillarTrackConfigDto } from 'src/pillars/dto/update-pillar-track-config.dto';
 
 @ApiTags('Admin RH')
 @ApiAuth()
@@ -27,35 +40,76 @@ export class RHController {
     constructor(private readonly rh: RHService) {}
 
     // Pilares
-    @Post('pillars')
+    @Post('pillar')
     @ApiCreate('Pilar')
-    createPillar(@Body() dto: CreatePillarDto) {
+    async createPillar(@Body() dto: CreatePillarDto) {
+        await this.rh.validateCycleActive();
         return this.rh.createPillar(dto);
     }
 
-    @Get('pillars')
+    @Get('pillar')
     @ApiList('Pilares')
-    findAllPillars() {
+    async findAllPillars() {
         return this.rh.findAllPillars();
     }
 
-    @Get('pillars/:id')
+    @Get('pillar/:id')
     @ApiGet('Pilar')
-    findOnePillar(@Param('id', ParseIntPipe) id: number) {
+    async findOnePillar(@Param('id', ParseIntPipe) id: number) {
         return this.rh.findOnePillar(id);
     }
 
-    @Put('pillars/:id')
+    @Put('pillar/:id')
     @ApiUpdate('Pilar')
-    updatePillar(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdatePillarDto) {
+    async updatePillar(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdatePillarDto) {
         return this.rh.updatePillar(id, dto);
     }
 
-    @Delete('pillars/:id')
+    @Delete('pillar/:id')
     @ApiDelete('Pilar')
-    deletePillar(@Param('id', ParseIntPipe) id: number) {
+    async deletePillar(@Param('id', ParseIntPipe) id: number) {
+        await this.rh.validateCycleActive();
         return this.rh.deletePillar(id);
     }
+
+    @Post('pillar/track-config')
+    @ApiCreate('Pilar por trilha')
+    async createPillarTrackConfig(@Body() dto: CreatePillarTrackConfigDto) {
+        await this.rh.validateCycleActive();
+        return this.rh.createPillarTrackConfig(dto);
+    }
+
+    @Post('pillar/track-config/all')
+    @ApiList('Pilares por trilha')
+    async findAllPillarTrackConfigs() {
+        return this.rh.findAllPillarTrackConfigs();
+    }
+
+    @Get('pillar/track-config/filter')
+    @ApiGet('Pilar por trilha')
+    async findTrackCOnfigsByFilter(@Query('track') track: string) {
+        return this.rh.findPillarTracksConfigByFilter(track);
+    }
+
+    @Get('pillar/track-config/user/:userId')
+    @ApiGet('Usuário por trilha')
+    async findActivePillarsForUser(@Param('userId', ParseIntPipe) userId: number) {
+        return this.rh.findActivePillarsForUser(userId);
+    }
+
+    @Patch('pillar/track-config/:pillarId')
+    @ApiUpdate('Pilar por trilha')
+    async updatePillarTrackConfig(
+        @Param('pillarId', ParseIntPipe) pillarId: number,
+        @Body() dto: UpdatePillarTrackConfigDto,
+        @Query('track') track: string,
+    ) {
+        await this.rh.validateCycleActive();
+        return this.rh.updatePillarTrackConfig(pillarId, track, dto);
+    }
+
+    @Delete('pillar/track-config/:pillarId')
+    @ApiDelete('Pilar po')
 
     // Critérios
     @Post('criteria')

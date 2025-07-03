@@ -12,6 +12,8 @@ import { UpdateCriterionDto } from 'src/criteria/dto/update-criterion.dto';
 import { CreateCycleConfigDto } from 'src/cycle-config/dto/create-cycle-config.dto';
 import { UpdateCycleConfigDto } from 'src/cycle-config/dto/update-cycle-config.dto';
 import { CycleConfigResponseDto } from 'src/cycle-config/dto/cycle-config-response.dto';
+import { CreatePillarTrackConfigDto } from 'src/pillars/dto/create-pillar-track-config.dto';
+import { UpdatePillarTrackConfigDto } from 'src/pillars/dto/update-pillar-track-config.dto';
 
 @Injectable()
 export class RHService {
@@ -85,6 +87,34 @@ export class RHService {
 
     async deletePillar(id: number) {
         return this.pillarService.remove(id);
+    }
+
+    async createPillarTrackConfig(dto: CreatePillarTrackConfigDto) {
+        return this.pillarService.createTrackConfig(dto);
+    }
+
+    async findAllPillarTrackConfigs() {
+        return this.pillarService.findAllTrackConfigs();
+    }
+
+    async findPillarTracksConfigByFilter(track: string) {
+        return this.pillarService.findTrackConfigsByTrack(track);
+    }
+
+    async findActivePillarsForUser(userId: number) {
+        return this.pillarService.findActivePillarsForUser(userId);
+    }
+
+    async updatePillarTrackConfig(
+        pillarId: number,
+        track: string,
+        dto: UpdatePillarTrackConfigDto,
+    ) {
+        return this.pillarService.updateTrackConfig(pillarId, track, dto);
+    }
+
+    async removePillarTrackConfig(pillarId: number, track: string) {
+        return this.pillarService.removeTrackConfig(pillarId, track);
     }
 
     // Critérios
