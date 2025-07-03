@@ -101,42 +101,42 @@ export class SeedService {
 
         // Pilares (usar upsert)
         const pilarComportamento = await this.prisma.pillar.upsert({
-            where: { name: 'COMPORTAMENTO' },
+            where: { name: 'Comportamento' },
             update: {},
-            create: { name: 'COMPORTAMENTO' },
+            create: { name: 'Comportamento' },
         });
         const pilarExecucao = await this.prisma.pillar.upsert({
-            where: { name: 'EXECUÇÃO' },
+            where: { name: 'Execução' },
             update: {},
-            create: { name: 'EXECUÇÃO' },
+            create: { name: 'Execução' },
         });
         const pilarGestao = await this.prisma.pillar.upsert({
-            where: { name: 'GESTÃO E LIDERANÇA' },
+            where: { name: 'Gestão e Liderança' },
             update: {},
-            create: { name: 'GESTÃO E LIDERANÇA' },
+            create: { name: 'Gestão e Liderança' },
         });
 
         // Critérios Comportamento
         const criteriosComportamento = [
             {
-                name: 'SENTIMENTO DE DONO',
+                name: 'Sentimento de Dono',
                 description:
                     'Demonstra responsabilidade e senso de pertencimento nas tarefas e resultados.',
             },
             {
-                name: 'RESILIENCIA NAS ADVERSIDADES',
+                name: 'Resiliencia nas adversidades',
                 description: 'Mantém a calma e persevera diante de desafios e mudanças.',
             },
             {
-                name: 'ORGANIZAÇÃO NO TRABALHO',
+                name: 'Organização no Trabalho',
                 description: 'Organiza tarefas, prazos e prioridades de forma eficiente.',
             },
             {
-                name: 'CAPACIDADE DE APRENDER',
+                name: 'Capacidade de aprender',
                 description: 'Busca aprendizado contínuo e aplica novos conhecimentos.',
             },
             {
-                name: 'SER TEAM PLAYER',
+                name: 'Ser "team player"',
                 description: 'Colabora, compartilha e contribui para o sucesso do time.',
             },
         ];
@@ -152,19 +152,19 @@ export class SeedService {
         // Critérios Execução
         const criteriosExecucao = [
             {
-                name: 'ENTREGAR COM QUALIDADE',
+                name: 'Entregar com qualidade',
                 description: 'Produz trabalhos com excelência e atenção aos detalhes.',
             },
             {
-                name: 'ATENDER AOS PRAZOS',
+                name: 'Atender aos prazos',
                 description: 'Cumpre compromissos e entregas dentro dos prazos estabelecidos.',
             },
             {
-                name: 'FAZER MAIS COM MENOS',
+                name: 'Fazer mais com menos',
                 description: 'Otimiza recursos e processos para maximizar resultados.',
             },
             {
-                name: 'PENSAR FORA DA CAIXA',
+                name: 'Pensar fora da caixa',
                 description: 'Proporciona soluções criativas e inovadoras para os desafios.',
             },
         ];
@@ -179,13 +179,13 @@ export class SeedService {
         }
         // Critérios Gestão
         const criteriosGestao = [
-            { name: 'GENTE', description: 'Desenvolve e lidera pessoas de forma efetiva.' },
+            { name: 'Gente', description: 'Desenvolve e lidera pessoas de forma efetiva.' },
             {
-                name: 'RESULTADOS',
+                name: 'Resultados',
                 description: 'Foca em entregar resultados consistentes e mensuráveis.',
             },
             {
-                name: 'EVOLUÇÃO DA ROCKET CORP',
+                name: 'Evolução da Rocket Corp',
                 description: 'Contribui para o crescimento e evolução da empresa.',
             },
         ];
