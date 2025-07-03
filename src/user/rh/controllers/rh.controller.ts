@@ -17,6 +17,7 @@ import { CreateCriterionDto } from 'src/criteria/dto/create-criterion.dto';
 import { CreateCycleConfigDto } from 'src/cycle-config/dto/create-cycle-config.dto';
 import { UpdateCriterionDto } from 'src/criteria/dto/update-criterion.dto';
 import { UpdateCycleConfigDto } from 'src/cycle-config/dto/update-cycle-config.dto';
+import { CycleConfigResponseDto } from 'src/cycle-config/dto/cycle-config-response.dto';
 
 @ApiTags('Admin RH')
 @ApiAuth()
@@ -24,19 +25,6 @@ import { UpdateCycleConfigDto } from 'src/cycle-config/dto/update-cycle-config.d
 @Controller('rh')
 export class RHController {
     constructor(private readonly rh: RHService) {}
-
-    // Usuário do tipo RH
-    @Get()
-    @ApiList('usuários RH')
-    async findAll(): Promise<RHUserDTO[]> {
-        return this.rh.findAll();
-    }
-
-    @Get(':id')
-    @ApiGet('usuário RH')
-    async findOne(@Param('id', ParseIntPipe) id: number): Promise<RHUserDTO> {
-        return this.rh.findOne(id);
-    }
 
     // Pilares
     @Post('pillars')
@@ -103,31 +91,56 @@ export class RHController {
     // Ciclo
     @Post('cycle')
     @ApiCreate('Ciclo')
-    createCycle(@Body() dto: CreateCycleConfigDto) {
+    async createCycle(@Body() dto: CreateCycleConfigDto) {
+        await this.rh.validateCycleActive();
         return this.rh.createCycle(dto);
     }
 
-    @Get('cycles')
+    @Get('cycle')
     @ApiList('Ciclos')
-    findAllCycles() {
+    async findAllCycles(): Promise<CycleConfigResponseDto[]> {
         return this.rh.findAllCycles();
     }
 
-    @Get('cycles/:id')
+    @Get('cycle/active')
+    @ApiGet('ciclo ativo')
+    async findActive(): Promise<CycleConfigResponseDto | null> {
+        return this.rh.findActiveCycle();
+    }
+
+    @Get('cycle/:id')
     @ApiGet('Ciclo')
-    findOneCycle(@Param('id', ParseIntPipe) id: number) {
+    async findOneCycle(@Param('id', ParseIntPipe) id: number): Promise<CycleConfigResponseDto> {
         return this.rh.findOneCycle(id);
     }
 
-    @Put('cycles/:id')
+    @Put('cycle/:id')
     @ApiUpdate('Ciclo')
-    updateCycle(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateCycleConfigDto) {
+    async updateCycle(
+        @Param('id', ParseIntPipe) id: number,
+        @Body() dto: UpdateCycleConfigDto,
+    ): Promise<CycleConfigResponseDto> {
+        await this.rh.validateCycleActive();
         return this.rh.updateCycle(id, dto);
     }
 
-    @Delete('cycles/:id')
+    @Delete('cycle/:id')
     @ApiDelete('Ciclo')
-    deleteCycle(@Param('id', ParseIntPipe) id: number) {
+    async deleteCycle(@Param('id', ParseIntPipe) id: number) {
+        await this.rh.validateCycleActive();
         return this.rh.deleteCycle(id);
+    }
+
+    // Usuário do tipo RH
+    @Get()
+    @ApiList('usuários RH')
+    async findAll(): Promise<RHUserDTO[]> {
+        return this.rh.findAll();
+    }
+
+    @Get(':id')
+    @ApiGet('usuário RH')
+    async findOne(@Param('id', ParseIntPipe) id: number): Promise<RHUserDTO> {
+        return this.rh.findOne(id);
     }
 }

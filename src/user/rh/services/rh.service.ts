@@ -11,6 +11,7 @@ import { CreateCriterionDto } from 'src/criteria/dto/create-criterion.dto';
 import { UpdateCriterionDto } from 'src/criteria/dto/update-criterion.dto';
 import { CreateCycleConfigDto } from 'src/cycle-config/dto/create-cycle-config.dto';
 import { UpdateCycleConfigDto } from 'src/cycle-config/dto/update-cycle-config.dto';
+import { CycleConfigResponseDto } from 'src/cycle-config/dto/cycle-config-response.dto';
 
 @Injectable()
 export class RHService {
@@ -108,19 +109,28 @@ export class RHService {
     }
 
     // Ciclos
-    async createCycle(dto: CreateCycleConfigDto) {
+
+    async validateCycleActive() {
+        return this.cycleService.validateCycleNotActive();
+    }
+
+    async createCycle(dto: CreateCycleConfigDto): Promise<CycleConfigResponseDto> {
         return this.cycleService.create(dto);
     }
 
-    async findAllCycles() {
+    async findActiveCycle(): Promise<CycleConfigResponseDto | null> {
+        return this.cycleService.findActive();
+    }
+
+    async findAllCycles(): Promise<CycleConfigResponseDto[]> {
         return this.cycleService.findAll();
     }
 
-    async findOneCycle(id: number) {
+    async findOneCycle(id: number): Promise<CycleConfigResponseDto> {
         return this.cycleService.findOne(id);
     }
 
-    async updateCycle(id: number, dto: UpdateCycleConfigDto) {
+    async updateCycle(id: number, dto: UpdateCycleConfigDto): Promise<CycleConfigResponseDto> {
         return this.cycleService.update(id, dto);
     }
 
