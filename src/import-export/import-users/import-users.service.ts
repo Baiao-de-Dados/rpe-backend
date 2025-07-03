@@ -2,6 +2,7 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import * as ExcelJS from 'exceljs';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../prisma/prisma.service';
+import { UserRole } from '@prisma/client';
 
 @Injectable()
 export class ImportUsersService {
@@ -23,15 +24,15 @@ export class ImportUsersService {
         const users: {
             name: string;
             email: string;
-            projectRole: string;
-            userRole: string;
+            track: string;
+            role: string;
             password: string;
         }[] = [];
 
         worksheet.eachRow((row, rowNumber) => {
             if (rowNumber === 1) return; // Ignora o cabeçalho
             const values = Array.isArray(row.values) ? row.values : [];
-            const [name, email, projectRole, userRole, password] = values
+            const [name, email, track, role, password] = values
                 .slice(1)
                 .map((value) => (typeof value === 'string' ? value.trim() : ''));
 
@@ -41,18 +42,30 @@ export class ImportUsersService {
                 .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
                 .join(' ');
 
-            users.push({ name: formattedName, email, projectRole, userRole, password });
+            users.push({ name: formattedName, email, track, role, password });
         });
 
         for (const user of users) {
             const hashedPassword = await bcrypt.hash(user.password, 10);
+
+            let track = await this.prisma.track.findUnique({
+                where: { name: user.track || 'Não informado' },
+            });
+
+            if (!track) {
+                track = await this.prisma.track.create({
+                    data: { name: user.track || 'Não informado' },
+                });
+            }
             await this.prisma.user.create({
                 data: {
                     email: user.email,
                     password: hashedPassword,
                     name: user.name,
-                    track: user.projectRole || 'Não informado',
-                    position: user.userRole || 'Não informado',
+                    trackId: track.id,
+                    userRoles: {
+                        create: [{ role: user.role as UserRole }],
+                    },
                 },
             });
         }
