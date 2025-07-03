@@ -338,51 +338,6 @@ export class CycleConfigService {
         return this.mapToResponseDto(updatedCycle);
     }
 
-    async getCycleTracksWithPillarsAndCriteria(cycleId: number) {
-        // Buscar todas as trilhas
-        const tracks = await this.prisma.track.findMany();
-        // Buscar todos os pilares
-        const pillars = await this.prisma.pillar.findMany();
-        // Buscar todas as configs de critério do ciclo
-        const criterionConfigs = await this.prisma.criterionTrackCycleConfig.findMany({
-            where: { cycleId },
-            include: {
-                criterion: true,
-                track: true,
-            },
-        });
-
-        // Montar estrutura agrupada
-        const trackMap = new Map<number, any>();
-        for (const track of tracks) {
-            trackMap.set(track.id, {
-                trackId: track.id,
-                trackName: track.name,
-                pillars: pillars.map((pillar) => ({
-                    id: pillar.id,
-                    name: pillar.name,
-                    criteria: [],
-                })),
-            });
-        }
-
-        for (const cfg of criterionConfigs) {
-            const trackObj = trackMap.get(cfg.trackId);
-            if (!trackObj) continue;
-            const pillarObj = trackObj.pillars.find((p: any) => p.id === cfg.criterion.pillarId);
-            if (!pillarObj) continue;
-            pillarObj.criteria.push({
-                id: cfg.criterion.id,
-                name: cfg.criterion.name,
-                description: cfg.criterion.description,
-                weight: cfg.weight,
-                isActive: cfg.isActive,
-            });
-        }
-
-        return Array.from(trackMap.values());
-    }
-
     private async mapToResponseDto(cycle: any): Promise<CycleConfigResponseDto> {
         // Buscar configs de critério do ciclo
         const criterionConfigs = await this.prisma.criterionTrackCycleConfig.findMany({
