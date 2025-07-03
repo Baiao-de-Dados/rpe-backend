@@ -9,8 +9,8 @@ import {
 } from 'class-validator';
 
 class CriterioDto {
-    @IsString()
-    criterioId: string;
+    @IsNumber()
+    criterioId: number;
 
     @IsNumber()
     nota: number;
@@ -20,8 +20,8 @@ class CriterioDto {
 }
 
 class PilarDto {
-    @IsString()
-    pilarId: string;
+    @IsNumber()
+    pilarId: number;
 
     @IsArray()
     @ValidateNested({ each: true })
@@ -37,8 +37,8 @@ class AutoAvaliacaoDto {
 }
 
 class Avaliacao360Dto {
-    @IsString()
-    avaliadoId: string;
+    @IsNumber()
+    avaliadoId: number;
 
     @IsString()
     @IsOptional()
@@ -53,15 +53,15 @@ class Avaliacao360Dto {
 }
 
 class MentoringDto {
-    @IsString()
-    mentorId: string;
+    @IsNumber()
+    mentorId: number;
 
     @IsString()
     justificativa: string;
 
     @IsOptional()
-    @IsString()
-    leaderId?: string;
+    @IsNumber()
+    leaderId?: number;
 
     @IsOptional()
     @IsString()
@@ -69,8 +69,8 @@ class MentoringDto {
 }
 
 class ReferenciaDto {
-    @IsString()
-    colaboradorId: string;
+    @IsNumber()
+    colaboradorId: number;
 
     @IsArray()
     @IsNumber({}, { each: true })
@@ -81,11 +81,11 @@ class ReferenciaDto {
 }
 
 export class CreateEvaluationDto {
-    @IsString()
-    ciclo: string;
+    @IsNumber()
+    cycleConfigId: number;
 
-    @IsString()
-    colaboradorId: string;
+    @IsNumber()
+    colaboradorId: number;
 
     @IsDefined()
     @ValidateNested()

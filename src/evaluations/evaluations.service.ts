@@ -21,12 +21,18 @@ export class EvaluationsService {
         private readonly cycleConfigService: CycleConfigService,
     ) {}
 
-    async createEvaluation(createEvaluationDto: CreateEvaluationDto, userTrack?: string) {
-        const { ciclo, colaboradorId, autoavaliacao, avaliacao360, mentoring, referencias } =
-            createEvaluationDto;
+    async createEvaluation(createEvaluationDto: CreateEvaluationDto, userTrack?: number) {
+        const {
+            cycleConfigId,
+            colaboradorId,
+            autoavaliacao,
+            avaliacao360,
+            mentoring,
+            referencias,
+        } = createEvaluationDto;
 
-        // Converter colaboradorId de string para number
-        const colaboradorIdNumber = parseInt(colaboradorId, 10);
+        // colaboradorId já é number
+        const colaboradorIdNumber = colaboradorId;
 
         // VALIDAÇÕES PRÉVIAS - Usando o service de validação
         await this.validationService.validateEvaluationData(createEvaluationDto);
@@ -40,7 +46,7 @@ export class EvaluationsService {
                 prisma,
                 autoavaliacao,
                 colaboradorIdNumber,
-                ciclo,
+                cycleConfigId,
                 userTrack,
             );
             if (autoEvaluation) {
@@ -52,7 +58,7 @@ export class EvaluationsService {
                 prisma,
                 avaliacao360,
                 colaboradorIdNumber,
-                ciclo,
+                cycleConfigId,
             );
             evaluations.push(...peerEvaluations);
 
@@ -60,10 +66,10 @@ export class EvaluationsService {
             if (mentoring && mentoring.mentorId) {
                 const mentorEvaluation = await this.mentorEvaluationService.createMentorEvaluation(
                     prisma,
-                    parseInt(mentoring.mentorId, 10),
+                    mentoring.mentorId,
                     colaboradorIdNumber,
                     mentoring.justificativa,
-                    ciclo,
+                    cycleConfigId,
                 );
                 evaluations.push(mentorEvaluation);
             }
@@ -72,7 +78,7 @@ export class EvaluationsService {
             await this.referenceService.createReferences(prisma, referencias, colaboradorIdNumber);
 
             // Retorna a estrutura compatível com o formato anterior
-            return this.formatEvaluationResponse(evaluations, colaboradorIdNumber, ciclo);
+            return this.formatEvaluationResponse(evaluations, colaboradorIdNumber, cycleConfigId);
         });
     }
 
@@ -128,7 +134,7 @@ export class EvaluationsService {
     private async formatEvaluationResponse(
         evaluations: any[],
         colaboradorId: number,
-        ciclo: string,
+        cycleConfigId: number,
     ) {
         // Busca referências relacionadas
         const references = await this.prisma.reference.findMany({
@@ -139,7 +145,7 @@ export class EvaluationsService {
 
         return {
             id: evaluations[0]?.id || 0,
-            cycle: ciclo,
+            cycle: cycleConfigId,
             userId: colaboradorId,
             grade: 0.0,
             user: null, // Será preenchido se necessário
@@ -169,7 +175,7 @@ export class EvaluationsService {
                       evaluatorId: evaluations.find((e) => e.type === 'LEADER')?.evaluatorId,
                       evaluatedId: evaluations.find((e) => e.type === 'LEADER')?.evaluateeId,
                       justification: evaluations.find((e) => e.type === 'LEADER')?.justification,
-                      cycle: ciclo,
+                      cycle: cycleConfigId,
                   }
                 : null,
             mentoring: evaluations.find((e) => e.type === 'MENTOR')
@@ -179,7 +185,7 @@ export class EvaluationsService {
                       evaluatorId: evaluations.find((e) => e.type === 'MENTOR')?.evaluatorId,
                       evaluatedId: evaluations.find((e) => e.type === 'MENTOR')?.evaluateeId,
                       justification: evaluations.find((e) => e.type === 'MENTOR')?.justification,
-                      cycle: ciclo,
+                      cycle: cycleConfigId,
                   }
                 : null,
             references: references.map((r) => ({

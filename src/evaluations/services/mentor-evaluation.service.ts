@@ -10,7 +10,7 @@ export class MentorEvaluationService {
         mentorId: number,
         evaluatorId: number,
         justification: string,
-        cycle: string,
+        cycleConfigId: number,
     ) {
         if (!mentorId) {
             throw new BadRequestException('ID do mentor é obrigatório');
@@ -27,7 +27,7 @@ export class MentorEvaluationService {
                 type: 'MENTOR',
                 evaluatorId: evaluatorId,
                 evaluateeId: mentorId,
-                cycle: parseInt(cycle.replace(/\D/g, '')),
+                cycleConfigId: cycleConfigId,
                 justification: justification,
                 score: 0,
             },

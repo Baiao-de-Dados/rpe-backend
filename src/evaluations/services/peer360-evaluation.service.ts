@@ -9,7 +9,7 @@ export class Peer360EvaluationService {
         prisma: any,
         avaliacao360: any[],
         colaboradorId: number,
-        ciclo: string,
+        cycleConfigId: number,
     ) {
         const peerEvaluations: any[] = [];
 
@@ -37,8 +37,8 @@ export class Peer360EvaluationService {
                 data: {
                     type: 'PEER_360',
                     evaluatorId: colaboradorId,
-                    evaluateeId: parseInt(avaliacao.avaliadoId, 10),
-                    cycle: parseInt(ciclo.replace(/\D/g, '')),
+                    evaluateeId: avaliacao.avaliadoId,
+                    cycleConfigId: cycleConfigId,
                     justification: avaliacao.justificativa,
                     score: 0,
                 },
