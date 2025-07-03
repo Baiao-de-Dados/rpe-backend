@@ -37,11 +37,18 @@ export class CriteriaService {
     }
 
     async findAll() {
-        return this.prisma.criterion.findMany({
+        const criteria = await this.prisma.criterion.findMany({
             include: {
                 pillar: true,
             },
         });
+        return criteria.map((c) => ({
+            id: c.id,
+            name: c.name,
+            description: c.description,
+            pillarId: c.pillarId,
+            isActive: true, // ou ajuste conforme sua lógica
+        }));
     }
 
     async findOne(id: number) {
@@ -56,7 +63,13 @@ export class CriteriaService {
             throw new NotFoundException(`Critério com ID ${id} não encontrado`);
         }
 
-        return criterion;
+        return {
+            id: criterion.id,
+            name: criterion.name,
+            description: criterion.description,
+            pillarId: criterion.pillarId,
+            isActive: true, // ou ajuste conforme sua lógica
+        };
     }
 
     async update(id: number, updateCriterionDto: UpdateCriterionDto) {
@@ -118,12 +131,19 @@ export class CriteriaService {
     }
 
     async findByPillar(pillarId: number) {
-        return this.prisma.criterion.findMany({
+        const criteria = await this.prisma.criterion.findMany({
             where: { pillarId },
             include: {
                 pillar: true,
             },
         });
+        return criteria.map((c) => ({
+            id: c.id,
+            name: c.name,
+            description: c.description,
+            pillarId: c.pillarId,
+            isActive: true, // ou ajuste conforme sua lógica
+        }));
     }
 
     async findAllTrackConfigs() {
@@ -584,6 +604,10 @@ export class CriteriaService {
             throw new NotFoundException(`Ciclo com ID ${cycleId} não encontrado`);
         }
 
+        // Buscar todas as trilhas e pilares
+        const tracks = await this.prisma.track.findMany();
+        const pillars = await this.prisma.pillar.findMany();
+
         // Buscar configurações de critério por trilha para o ciclo
         const cycleConfigs = await this.prisma.criterionTrackCycleConfig.findMany({
             where: { cycleId },
@@ -597,59 +621,29 @@ export class CriteriaService {
             },
         });
 
-        // Organizar dados por trilha
-        const tracksMap = new Map();
-
-        cycleConfigs.forEach((config) => {
-            const trackId = config.trackId;
-            const trackName = config.track?.name || '';
-            const pillar = config.criterion.pillar;
-            const criterion = config.criterion;
-
-            if (!tracksMap.has(trackId)) {
-                tracksMap.set(trackId, {
-                    id: trackId,
-                    name: trackName,
-                    pillars: new Map(),
-                });
-            }
-
-            const trackData = tracksMap.get(trackId);
-
-            if (!trackData.pillars.has(pillar.id)) {
-                trackData.pillars.set(pillar.id, {
+        // Organizar dados por trilha e pilar
+        const result = tracks.map((track) => ({
+            id: track.id,
+            name: track.name,
+            pillars: pillars.map((pillar) => {
+                const criteria = cycleConfigs
+                    .filter(
+                        (cfg) => cfg.trackId === track.id && cfg.criterion.pillarId === pillar.id,
+                    )
+                    .map((cfg) => ({
+                        id: cfg.criterion.id,
+                        name: cfg.criterion.name,
+                        description: cfg.criterion.description,
+                        weight: cfg.weight,
+                        isActive: cfg.isActive,
+                    }));
+                return {
                     id: pillar.id,
                     name: pillar.name,
-                    criteria: [],
-                });
-            }
-
-            const pillarData = trackData.pillars.get(pillar.id);
-            pillarData.criteria.push({
-                id: criterion.id,
-                name: criterion.name,
-                description: criterion.description,
-                weight: config.weight,
-                isActive: config.isActive,
-            });
-        });
-
-        // Converter para array e ordenar
-        const result = Array.from(tracksMap.values())
-            .map((track) => ({
-                id: track.id,
-                name: track.name,
-                pillars: Array.from(track.pillars.values())
-                    .map((pillar: any) => ({
-                        id: pillar.id,
-                        name: pillar.name,
-                        criteria: pillar.criteria.sort((a: any, b: any) =>
-                            a.name.localeCompare(b.name),
-                        ),
-                    }))
-                    .sort((a: any, b: any) => a.name.localeCompare(b.name)),
-            }))
-            .sort((a: any, b: any) => a.name.localeCompare(b.name));
+                    criteria,
+                };
+            }),
+        }));
 
         return {
             cycle: {
@@ -666,6 +660,12 @@ export class CriteriaService {
     async createTrackCycleConfigFromDraft(endDate: string) {
         // 1. Desativar todos os ciclos ativos
         await this.prisma.cycleConfig.updateMany({
+            where: { isActive: true },
+            data: { isActive: false },
+        });
+
+        // 1.1 Desativar todas as configs de ciclos anteriores
+        await this.prisma.criterionTrackCycleConfig.updateMany({
             where: { isActive: true },
             data: { isActive: false },
         });
@@ -694,7 +694,7 @@ export class CriteriaService {
                     trackId: config.trackId,
                     criterionId: config.criterionId,
                     weight: config.weight,
-                    isActive: config.isActive,
+                    isActive: true, // Sempre criar como ativo para o novo ciclo
                 })),
             });
         }

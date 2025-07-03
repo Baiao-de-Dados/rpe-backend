@@ -2,7 +2,6 @@ import { CollaboratorsStatusDto, CollaboratorStatusDto } from '../dto/collaborat
 import { Controller, Get, Param, ParseIntPipe, Query } from '@nestjs/common';
 import { ApiAuth } from '../../../common/decorators/api-auth.decorator';
 import { RequireRH } from '../../../auth/decorators/roles.decorator';
-import { RoleCompletionStatsDto } from '../dto/roles.dashboard.dto';
 import { ApiTags } from '@nestjs/swagger';
 import { DashboardStatsDto } from '../dto/dashboard-stats.dto';
 import { RhPanelService } from '../services/rh-panel.service';
@@ -40,9 +39,9 @@ export class RhPanelController {
     }
 
     @RequireRH()
-    @Get('roles/completion')
-    @ApiGet('roleCompletionStats')
-    getRoleCompletionStats(): Promise<RoleCompletionStatsDto> {
-        return this.rhPanelService.getRoleCompletionStats();
+    @ApiGet('trackCompletionStats')
+    @Get('trackCompletionStats')
+    getTrackCompletionStats() {
+        return this.rhPanelService.getTrackCompletionStats();
     }
 }

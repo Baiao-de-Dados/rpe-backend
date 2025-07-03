@@ -19,8 +19,8 @@ CREATE TABLE "User" (
     "email" TEXT NOT NULL,
     "password" TEXT NOT NULL,
     "name" TEXT NOT NULL,
-    "track" TEXT NOT NULL,
-    "position" TEXT NOT NULL,
+    "unit" TEXT,
+    "trackId" INTEGER NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "lastLogged" TIMESTAMP(3) NOT NULL,
@@ -217,19 +217,6 @@ CREATE TABLE "PillarCycleConfig" (
 );
 
 -- CreateTable
-CREATE TABLE "CriterionCycleConfig" (
-    "id" SERIAL NOT NULL,
-    "cycleId" INTEGER NOT NULL,
-    "criterionId" INTEGER NOT NULL,
-    "isActive" BOOLEAN NOT NULL DEFAULT true,
-    "weight" INTEGER NOT NULL DEFAULT 1,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-
-    CONSTRAINT "CriterionCycleConfig_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
 CREATE TABLE "PillarTrackConfig" (
     "id" SERIAL NOT NULL,
     "pillarId" INTEGER NOT NULL,
@@ -242,16 +229,52 @@ CREATE TABLE "PillarTrackConfig" (
 );
 
 -- CreateTable
+CREATE TABLE "Track" (
+    "id" SERIAL NOT NULL,
+    "name" TEXT NOT NULL,
+
+    CONSTRAINT "Track_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "CriterionTrackConfig" (
     "id" SERIAL NOT NULL,
     "criterionId" INTEGER NOT NULL,
-    "track" TEXT NOT NULL,
+    "trackId" INTEGER NOT NULL,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "weight" INTEGER NOT NULL DEFAULT 1,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "CriterionTrackConfig_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "CriterionTrackCycleConfig" (
+    "id" SERIAL NOT NULL,
+    "cycleId" INTEGER NOT NULL,
+    "trackId" INTEGER NOT NULL,
+    "criterionId" INTEGER NOT NULL,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "weight" INTEGER NOT NULL DEFAULT 1,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "CriterionTrackCycleConfig_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "PillarTrackCycleConfig" (
+    "id" SERIAL NOT NULL,
+    "cycleId" INTEGER NOT NULL,
+    "trackId" INTEGER NOT NULL,
+    "pillarId" INTEGER NOT NULL,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "weight" INTEGER NOT NULL DEFAULT 1,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "PillarTrackCycleConfig_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
@@ -273,13 +296,22 @@ CREATE UNIQUE INDEX "CycleConfig_name_key" ON "CycleConfig"("name");
 CREATE UNIQUE INDEX "PillarCycleConfig_cycleId_pillarId_key" ON "PillarCycleConfig"("cycleId", "pillarId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "CriterionCycleConfig_cycleId_criterionId_key" ON "CriterionCycleConfig"("cycleId", "criterionId");
-
--- CreateIndex
 CREATE UNIQUE INDEX "PillarTrackConfig_pillarId_track_key" ON "PillarTrackConfig"("pillarId", "track");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "CriterionTrackConfig_criterionId_track_key" ON "CriterionTrackConfig"("criterionId", "track");
+CREATE UNIQUE INDEX "Track_name_key" ON "Track"("name");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "CriterionTrackConfig_criterionId_trackId_key" ON "CriterionTrackConfig"("criterionId", "trackId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "CriterionTrackCycleConfig_cycleId_trackId_criterionId_key" ON "CriterionTrackCycleConfig"("cycleId", "trackId", "criterionId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "PillarTrackCycleConfig_cycleId_trackId_pillarId_key" ON "PillarTrackCycleConfig"("cycleId", "trackId", "pillarId");
+
+-- AddForeignKey
+ALTER TABLE "User" ADD CONSTRAINT "User_trackId_fkey" FOREIGN KEY ("trackId") REFERENCES "Track"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "UserRoleLink" ADD CONSTRAINT "UserRoleLink_assignedBy_fkey" FOREIGN KEY ("assignedBy") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
@@ -339,13 +371,28 @@ ALTER TABLE "PillarCycleConfig" ADD CONSTRAINT "PillarCycleConfig_cycleId_fkey" 
 ALTER TABLE "PillarCycleConfig" ADD CONSTRAINT "PillarCycleConfig_pillarId_fkey" FOREIGN KEY ("pillarId") REFERENCES "Pillar"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "CriterionCycleConfig" ADD CONSTRAINT "CriterionCycleConfig_cycleId_fkey" FOREIGN KEY ("cycleId") REFERENCES "CycleConfig"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "CriterionCycleConfig" ADD CONSTRAINT "CriterionCycleConfig_criterionId_fkey" FOREIGN KEY ("criterionId") REFERENCES "Criterion"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "PillarTrackConfig" ADD CONSTRAINT "PillarTrackConfig_pillarId_fkey" FOREIGN KEY ("pillarId") REFERENCES "Pillar"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "CriterionTrackConfig" ADD CONSTRAINT "CriterionTrackConfig_criterionId_fkey" FOREIGN KEY ("criterionId") REFERENCES "Criterion"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "CriterionTrackConfig" ADD CONSTRAINT "CriterionTrackConfig_trackId_fkey" FOREIGN KEY ("trackId") REFERENCES "Track"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "CriterionTrackCycleConfig" ADD CONSTRAINT "CriterionTrackCycleConfig_cycleId_fkey" FOREIGN KEY ("cycleId") REFERENCES "CycleConfig"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "CriterionTrackCycleConfig" ADD CONSTRAINT "CriterionTrackCycleConfig_trackId_fkey" FOREIGN KEY ("trackId") REFERENCES "Track"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "CriterionTrackCycleConfig" ADD CONSTRAINT "CriterionTrackCycleConfig_criterionId_fkey" FOREIGN KEY ("criterionId") REFERENCES "Criterion"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PillarTrackCycleConfig" ADD CONSTRAINT "PillarTrackCycleConfig_cycleId_fkey" FOREIGN KEY ("cycleId") REFERENCES "CycleConfig"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PillarTrackCycleConfig" ADD CONSTRAINT "PillarTrackCycleConfig_trackId_fkey" FOREIGN KEY ("trackId") REFERENCES "Track"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PillarTrackCycleConfig" ADD CONSTRAINT "PillarTrackCycleConfig_pillarId_fkey" FOREIGN KEY ("pillarId") REFERENCES "Pillar"("id") ON DELETE CASCADE ON UPDATE CASCADE;

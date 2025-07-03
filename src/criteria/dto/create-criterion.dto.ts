@@ -25,3 +25,24 @@ export class CreateCriterionDto {
     @IsNumber()
     pillarId: number;
 }
+
+export class CriterionResponseDto {
+    @ApiProperty({ example: 1 })
+    id: number;
+
+    @ApiProperty({ example: 'Sentimento de Dono' })
+    name: string;
+
+    @ApiProperty({
+        example: 'Demonstra responsabilidade e senso de pertencimento nas tarefas e resultados.',
+        required: false,
+        nullable: true,
+    })
+    description?: string | null;
+
+    @ApiProperty({ example: 1 })
+    pillarId: number;
+
+    @ApiProperty({ example: true })
+    isActive: boolean;
+}
