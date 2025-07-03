@@ -101,6 +101,8 @@ model Pillar {
   criteria     Criterion[]
   cycleConfigs PillarCycleConfig[]
   trackConfigs PillarTrackConfig[]
+
+  pillarTrackCycleConfigs PillarTrackCycleConfig[]
 }
 
 model Criterion {
@@ -112,8 +114,8 @@ model Criterion {
 
   pillar             Pillar                 @relation(fields: [pillarId], references: [id], onDelete: Cascade)
   CriteriaAssignment CriteriaAssignment[]
-  cycleConfigs       CriterionCycleConfig[]
-  trackConfigs       CriterionTrackConfig[]
+  criterionTrackConfigs CriterionTrackConfig[]
+  criterionTrackCycleConfigs CriterionTrackCycleConfig[]
 }
 
 model CriteriaAssignment {
@@ -212,8 +214,10 @@ model CycleConfig {
   updatedAt   DateTime @updatedAt
 
   pillarConfigs    PillarCycleConfig[]
-  criterionConfigs CriterionCycleConfig[]
   Evaluation       Evaluation[]
+
+  criterionTrackCycleConfigs CriterionTrackCycleConfig[]
+  pillarTrackCycleConfigs    PillarTrackCycleConfig[]
 
   @@unique([name])
 }
@@ -233,21 +237,6 @@ model PillarCycleConfig {
   @@unique([cycleId, pillarId])
 }
 
-model CriterionCycleConfig {
-  id          Int      @id @default(autoincrement())
-  cycleId     Int
-  criterionId Int
-  isActive    Boolean  @default(true)
-  weight      Int    @default(1)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  cycle     CycleConfig @relation(fields: [cycleId], references: [id], onDelete: Cascade)
-  criterion Criterion   @relation(fields: [criterionId], references: [id], onDelete: Cascade)
-
-  @@unique([cycleId, criterionId])
-}
-
 model PillarTrackConfig {
   id        Int      @id @default(autoincrement())
   pillarId  Int
@@ -261,13 +250,13 @@ model PillarTrackConfig {
   @@unique([pillarId, track])
 }
 
-
 model Track {
   id    Int    @id @default(autoincrement())
   name  String @unique
   criterionTrackConfigs CriterionTrackConfig[]
+  criterionTrackCycleConfigs CriterionTrackCycleConfig[]
+  pillarTrackCycleConfigs    PillarTrackCycleConfig[]
   users User[]
-
 }
 
 model CriterionTrackConfig {
@@ -283,6 +272,40 @@ model CriterionTrackConfig {
   track     Track     @relation(fields: [trackId], references: [id], onDelete: Cascade)
 
   @@unique([criterionId, trackId])
+}
+
+model CriterionTrackCycleConfig {
+  id          Int      @id @default(autoincrement())
+  cycleId     Int
+  trackId     Int
+  criterionId Int
+  isActive    Boolean  @default(true)
+  weight      Int      @default(1)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  cycle     CycleConfig @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  track     Track       @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  criterion Criterion   @relation(fields: [criterionId], references: [id], onDelete: Cascade)
+
+  @@unique([cycleId, trackId, criterionId])
+}
+
+model PillarTrackCycleConfig {
+  id        Int      @id @default(autoincrement())
+  cycleId   Int
+  trackId   Int
+  pillarId  Int
+  isActive  Boolean  @default(true)
+  weight    Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cycle  CycleConfig @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  track  Track       @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  pillar Pillar      @relation(fields: [pillarId], references: [id], onDelete: Cascade)
+
+  @@unique([cycleId, trackId, pillarId])
 }
 
 enum EvaluationType {

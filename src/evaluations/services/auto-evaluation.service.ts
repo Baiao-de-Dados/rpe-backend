@@ -81,18 +81,31 @@ export class AutoEvaluationService {
     }
 
     private async validateUserCriteria(prisma: any, autoavaliacao: any, userTrack: string) {
-        // Buscar critérios ativos para a trilha específica do usuário
-        const userCriterionConfigs = await prisma.criterionTrackConfig.findMany({
+        // Buscar configurações de critério para a trilha do usuário no ciclo ativo
+        const activeCycle = await prisma.cycleConfig.findFirst({
+            where: { isActive: true },
+        });
+
+        if (!activeCycle) {
+            throw new BadRequestException('Nenhum ciclo ativo encontrado');
+        }
+
+        const userTrackCriteria = await prisma.criterionTrackCycleConfig.findMany({
             where: {
-                track: userTrack,
+                trackId: userTrack,
+                cycleId: activeCycle.id,
                 isActive: true,
             },
             include: {
-                criterion: true,
+                criterion: {
+                    include: {
+                        pillar: true,
+                    },
+                },
             },
         });
 
-        if (!userCriterionConfigs || userCriterionConfigs.length === 0) {
+        if (!userTrackCriteria || userTrackCriteria.length === 0) {
             throw new BadRequestException(
                 `Nenhum critério configurado para sua trilha (${userTrack})`,
             );
@@ -100,7 +113,7 @@ export class AutoEvaluationService {
 
         // Criar conjunto de critérios autorizados para o usuário
         const authorizedCriteriaIds = new Set(
-            userCriterionConfigs.map((config: any) => config.criterionId),
+            userTrackCriteria.map((config: any) => config.criterionId),
         );
 
         // Validar se todos os critérios enviados estão autorizados para o usuário
@@ -125,12 +138,12 @@ export class AutoEvaluationService {
         }
 
         // Verificar se todos os critérios obrigatórios foram incluídos
-        const missingCriteria = userCriterionConfigs
+        const missingCriteria = userTrackCriteria
             .map((config: any) => config.criterionId)
             .filter((id: number) => !submittedCriteriaIds.has(id));
 
         if (missingCriteria.length > 0) {
-            const missingCriteriaNames = userCriterionConfigs
+            const missingCriteriaNames = userTrackCriteria
                 .filter((config: any) => missingCriteria.includes(config.criterionId))
                 .map((config: any) => config.criterion.name)
                 .join(', ');
@@ -183,9 +196,10 @@ export class AutoEvaluationService {
         );
 
         // 4. Buscar critérios configurados para a trilha do usuário
-        const userTrackCriteria = await prisma.criterionTrackConfig.findMany({
+        const userTrackCriteria = await prisma.criterionTrackCycleConfig.findMany({
             where: {
-                track: userTrack || undefined,
+                trackId: userTrack || undefined,
+                cycleId: activeCycle.id,
                 isActive: true,
             },
             select: {

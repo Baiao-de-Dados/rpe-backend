@@ -20,17 +20,6 @@ export class PillarConfigDto {
     weight: number;
 }
 
-export class CriterionConfigDto {
-    @ApiProperty({ example: 1, description: 'ID do critério' })
-    criterionId: number;
-
-    @ApiProperty({ example: true, description: 'Se o critério está ativo no ciclo' })
-    isActive: boolean;
-
-    @ApiProperty({ example: 1.0, description: 'Peso do critério no ciclo' })
-    weight: number;
-}
-
 export class CreateCycleConfigDto {
     @ApiProperty({ example: '2025.1', description: 'Nome do ciclo' })
     @IsString()
@@ -58,10 +47,4 @@ export class CreateCycleConfigDto {
     @ValidateNested({ each: true })
     @Type(() => PillarConfigDto)
     pillarConfigs: PillarConfigDto[];
-
-    @ApiProperty({ type: [CriterionConfigDto], description: 'Configurações dos critérios' })
-    @IsArray()
-    @ValidateNested({ each: true })
-    @Type(() => CriterionConfigDto)
-    criterionConfigs: CriterionConfigDto[];
 }

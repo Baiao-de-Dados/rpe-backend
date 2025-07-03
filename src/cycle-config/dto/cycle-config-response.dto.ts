@@ -17,29 +17,6 @@ export class PillarConfigResponseDto {
     weight: number;
 }
 
-export class CriterionConfigResponseDto {
-    @ApiProperty({ example: 1, description: 'ID da configuração' })
-    id: number;
-
-    @ApiProperty({ example: 1, description: 'ID do critério' })
-    criterionId: number;
-
-    @ApiProperty({ example: 'Qualidade do Código', description: 'Nome do critério' })
-    criterionName: string;
-
-    @ApiProperty({ example: 1, description: 'ID do pilar do critério' })
-    pillarId: number;
-
-    @ApiProperty({ example: 'Técnico', description: 'Nome do pilar do critério' })
-    pillarName: string;
-
-    @ApiProperty({ example: true, description: 'Se o critério está ativo no ciclo' })
-    isActive: boolean;
-
-    @ApiProperty({ example: 1.0, description: 'Peso do critério no ciclo' })
-    weight: number;
-}
-
 export class CycleConfigResponseDto {
     @ApiProperty({ example: 1, description: 'ID da configuração' })
     id: number;
@@ -68,6 +45,9 @@ export class CycleConfigResponseDto {
     @ApiProperty({ type: [PillarConfigResponseDto], description: 'Configurações dos pilares' })
     pillarConfigs: PillarConfigResponseDto[];
 
-    @ApiProperty({ type: [CriterionConfigResponseDto], description: 'Configurações dos critérios' })
-    criterionConfigs: CriterionConfigResponseDto[];
+    @ApiProperty({
+        description:
+            'Configurações dos critérios (agora vazio, pois usamos CriterionTrackCycleConfig)',
+    })
+    criterionConfigs: any[];
 }

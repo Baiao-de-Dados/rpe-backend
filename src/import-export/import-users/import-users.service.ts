@@ -46,14 +46,28 @@ export class ImportUsersService {
 
         for (const user of users) {
             const hashedPassword = await bcrypt.hash(user.password, 10);
+
+            // Buscar a trilha pelo nome (projectRole)
+            let track: { id: number } | null = null;
+            if (user.projectRole) {
+                track = await this.prisma.track.findFirst({
+                    where: { name: user.projectRole },
+                    select: { id: true },
+                });
+            }
+
+            const userData: any = {
+                email: user.email,
+                password: hashedPassword,
+                name: user.name,
+                position: user.userRole || 'Não informado',
+            };
+            if (track && track.id) {
+                userData.track = { connect: { id: track.id } };
+            }
+
             await this.prisma.user.create({
-                data: {
-                    email: user.email,
-                    password: hashedPassword,
-                    name: user.name,
-                    track: user.projectRole || 'Não informado',
-                    position: user.userRole || 'Não informado',
-                },
+                data: userData,
             });
         }
 

@@ -7,6 +7,7 @@ import { CycleConfigResponseDto } from './dto/cycle-config-response.dto';
 import { RequireRH } from '../auth/decorators/roles.decorator';
 import { ApiAuth } from '../common/decorators/api-auth.decorator';
 import { ApiCreate } from '../common/decorators/api-crud.decorator';
+import { ExtendCycleDto } from './dto/extend-cycle.dto';
 
 @ApiTags('Configuração de Ciclo')
 @ApiAuth()
@@ -71,5 +72,17 @@ export class CycleConfigController {
         await this.cycleConfigService.validateCycleNotActive();
 
         return this.cycleConfigService.remove(id);
+    }
+
+    @Post(':id/extend')
+    @ApiOperation({ summary: 'Prorrogar ciclo ativo' })
+    @ApiResponse({ status: 200, description: 'Ciclo prorrogado com sucesso' })
+    @ApiResponse({ status: 400, description: 'Ciclo não está ativo ou data inválida' })
+    @ApiResponse({ status: 404, description: 'Ciclo não encontrado' })
+    async extendCycle(
+        @Param('id', ParseIntPipe) id: number,
+        @Body() extendCycleDto: ExtendCycleDto,
+    ) {
+        return await this.cycleConfigService.extendCycle(id, extendCycleDto);
     }
 }

@@ -226,10 +226,11 @@ export class EvaluationsService {
         const activeCycleCriteria = await this.cycleConfigService.getActiveCriteria();
         const activeCriteriaIds = new Set(activeCycleCriteria.map((c) => c.id));
 
-        // 4. Buscar critérios configurados para a trilha do usuário
-        const userTrackCriteria = await this.prisma.criterionTrackConfig.findMany({
+        // 4. Buscar configurações de critério para a trilha do usuário no ciclo ativo
+        const userTrackCriteria = await this.prisma.criterionTrackCycleConfig.findMany({
             where: {
-                track: user.track,
+                trackId: user.trackId,
+                cycleId: activeCycle.id,
                 isActive: true,
             },
             include: {
@@ -247,40 +248,25 @@ export class EvaluationsService {
             );
         }
 
-        // 5. Filtrar apenas critérios que estão ativos no ciclo E configurados para a trilha
-        const validUserCriteria = userTrackCriteria.filter((config) =>
-            activeCriteriaIds.has(config.criterion.id),
-        );
+        // 5. Filtrar critérios que estão ativos no ciclo E configurados para a trilha do usuário
+        const userActiveCriteria = userTrackCriteria
+            .filter((trackConfig) => activeCriteriaIds.has(trackConfig.criterionId))
+            .map((trackConfig) => ({
+                id: trackConfig.criterion.id,
+                name: trackConfig.criterion.name,
+                description: trackConfig.criterion.description,
+                weight: trackConfig.weight,
+                pillar: {
+                    id: trackConfig.criterion.pillar.id,
+                    name: trackConfig.criterion.pillar.name,
+                },
+            }));
 
-        if (validUserCriteria.length === 0) {
+        if (userActiveCriteria.length === 0) {
             throw new NotFoundException(
                 `Nenhum critério ativo no ciclo atual para sua trilha (${user.track})`,
             );
         }
-
-        // 6. Agrupar critérios por pilar
-        const groupedByPillar = validUserCriteria.reduce((acc, config) => {
-            const pillar = config.criterion.pillar;
-            const pillarId = pillar.id;
-
-            if (!acc[pillarId]) {
-                acc[pillarId] = {
-                    id: pillar.id,
-                    name: pillar.name,
-                    criterios: [],
-                };
-            }
-
-            acc[pillarId].criterios.push({
-                id: config.criterion.id,
-                name: config.criterion.name,
-                description: config.criterion.description,
-                weight: config.weight, // Peso da configuração de trilha
-                originalWeight: null, // Critério base não tem peso
-            });
-
-            return acc;
-        }, {});
 
         return {
             user: {
@@ -293,7 +279,7 @@ export class EvaluationsService {
                 startDate: activeCycle.startDate,
                 endDate: activeCycle.endDate,
             },
-            pilares: Object.values(groupedByPillar),
+            pilares: userActiveCriteria,
         };
     }
 }
