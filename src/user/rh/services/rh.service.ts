@@ -14,6 +14,9 @@ import { UpdateCycleConfigDto } from 'src/cycle-config/dto/update-cycle-config.d
 import { CycleConfigResponseDto } from 'src/cycle-config/dto/cycle-config-response.dto';
 import { CreatePillarTrackConfigDto } from 'src/pillars/dto/create-pillar-track-config.dto';
 import { UpdatePillarTrackConfigDto } from 'src/pillars/dto/update-pillar-track-config.dto';
+import { UpdateCriterionTrackConfigDto } from 'src/criteria/dto/update-criterion-track-config.dto';
+import { BatchUpdateCriteriaDto } from 'src/criteria/dto/batch-update-criteria.dto';
+import { TrackConfigDto } from 'src/criteria/dto/track-config.dto';
 
 @Injectable()
 export class RHService {
@@ -136,6 +139,42 @@ export class RHService {
 
     async deleteCriterion(id: number) {
         return this.criteriaService.remove(id);
+    }
+
+    async findCriterionByPillar(id: number) {
+        return this.criteriaService.findByPillar(id);
+    }
+
+    async findAllCriteriaTracksConfigs() {
+        return this.criteriaService.findAllTrackConfigs();
+    }
+
+    async findCriteriaTracksConfigsByTrack(id: number) {
+        return this.criteriaService.findTrackConfigsByTrack(id);
+    }
+
+    async findActiveCriteriaPerUser(id: number) {
+        return this.criteriaService.findActiveCriteriaForUser(id);
+    }
+
+    async updateCriteriaTrackConfig(
+        criteriaId: number,
+        trackId: number,
+        dto: UpdateCriterionTrackConfigDto,
+    ) {
+        return await this.criteriaService.updateTrackConfig(criteriaId, trackId, dto);
+    }
+
+    async deleteCriteriaTrackConfig(criteriaId: number, trackId: number) {
+        return await this.criteriaService.removeTrackConfig(criteriaId, trackId);
+    }
+
+    async batchUpdateCriteria(dto: BatchUpdateCriteriaDto) {
+        return this.criteriaService.batchUpdate(dto);
+    }
+
+    async createCriteriaTrackConfigBulk(trackConfigs: TrackConfigDto[]) {
+        return this.criteriaService.createTrackConfigBulk(trackConfigs);
     }
 
     // Ciclos
