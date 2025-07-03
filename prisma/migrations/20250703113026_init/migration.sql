@@ -19,8 +19,8 @@ CREATE TABLE "User" (
     "email" TEXT NOT NULL,
     "password" TEXT NOT NULL,
     "name" TEXT NOT NULL,
-    "track" TEXT NOT NULL,
-    "position" TEXT NOT NULL,
+    "unit" TEXT,
+    "trackId" INTEGER NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "lastLogged" TIMESTAMP(3) NOT NULL,
@@ -242,10 +242,18 @@ CREATE TABLE "PillarTrackConfig" (
 );
 
 -- CreateTable
+CREATE TABLE "Track" (
+    "id" SERIAL NOT NULL,
+    "name" TEXT NOT NULL,
+
+    CONSTRAINT "Track_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "CriterionTrackConfig" (
     "id" SERIAL NOT NULL,
     "criterionId" INTEGER NOT NULL,
-    "track" TEXT NOT NULL,
+    "trackId" INTEGER NOT NULL,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "weight" INTEGER NOT NULL DEFAULT 1,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -279,7 +287,13 @@ CREATE UNIQUE INDEX "CriterionCycleConfig_cycleId_criterionId_key" ON "Criterion
 CREATE UNIQUE INDEX "PillarTrackConfig_pillarId_track_key" ON "PillarTrackConfig"("pillarId", "track");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "CriterionTrackConfig_criterionId_track_key" ON "CriterionTrackConfig"("criterionId", "track");
+CREATE UNIQUE INDEX "Track_name_key" ON "Track"("name");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "CriterionTrackConfig_criterionId_trackId_key" ON "CriterionTrackConfig"("criterionId", "trackId");
+
+-- AddForeignKey
+ALTER TABLE "User" ADD CONSTRAINT "User_trackId_fkey" FOREIGN KEY ("trackId") REFERENCES "Track"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "UserRoleLink" ADD CONSTRAINT "UserRoleLink_assignedBy_fkey" FOREIGN KEY ("assignedBy") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
@@ -349,3 +363,6 @@ ALTER TABLE "PillarTrackConfig" ADD CONSTRAINT "PillarTrackConfig_pillarId_fkey"
 
 -- AddForeignKey
 ALTER TABLE "CriterionTrackConfig" ADD CONSTRAINT "CriterionTrackConfig_criterionId_fkey" FOREIGN KEY ("criterionId") REFERENCES "Criterion"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "CriterionTrackConfig" ADD CONSTRAINT "CriterionTrackConfig_trackId_fkey" FOREIGN KEY ("trackId") REFERENCES "Track"("id") ON DELETE CASCADE ON UPDATE CASCADE;
