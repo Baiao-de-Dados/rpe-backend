@@ -165,7 +165,7 @@ export class RHController {
         return this.rh.findAllCriteriaTracksConfigs();
     }
 
-    @Get('criteria/track-config/filter')
+    @Get('criteria/track-config/filter/:trackId')
     @ApiGet('Filtro de Critérios por trilha')
     async findCriteriaTrackConfigsByFilter(
         @Query('track', ParseIntPipe) trackId: number,
