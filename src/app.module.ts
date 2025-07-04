@@ -20,6 +20,7 @@ import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
 import { TrackModule } from './track/track.module';
 import { ImportUsersModule } from './import-export/import-users/import-users.module';
+import { ImportEvaluationsModule } from './import-export/import-evaluations/import-evaluations.module';
 
 @Module({
     imports: [
@@ -51,6 +52,7 @@ import { ImportUsersModule } from './import-export/import-users/import-users.mod
         CommonModule,
         TrackModule,
         ImportUsersModule,
+        ImportEvaluationsModule,
     ],
     controllers: [AppController],
     providers: [
