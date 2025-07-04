@@ -673,9 +673,13 @@ export class CriteriaService {
         // 2. Criar novo ciclo
         const now = new Date();
         const startDate = now;
+        // Calcular semestre: meses 0-5 = 1, meses 6-11 = 2
+        const year = now.getFullYear();
+        const semester = now.getMonth() < 6 ? 1 : 2;
+        const cycleName = `${year}.${semester}`;
         const cycle = await this.prisma.cycleConfig.create({
             data: {
-                name: `${now.getFullYear()}.${now.getMonth() + 1}.${now.getDate()}-${now.getHours()}${now.getMinutes()}`,
+                name: cycleName,
                 description: 'Ciclo criado automaticamente ao iniciar ciclo',
                 startDate,
                 endDate: new Date(endDate),
