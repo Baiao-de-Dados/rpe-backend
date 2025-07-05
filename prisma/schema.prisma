@@ -12,23 +12,21 @@ model User {
   email      String   @unique
   password   String
   name       String
-  unit       String?
-  trackId    Int    
+  position   String
+  mentorId   Int
+  mentor     User     @relation("Mentor", fields: [mentorId], references: [id])
+  mentees    User[]   @relation("Mentor")
+  trackId    Int
   track      Track?   @relation(fields: [trackId], references: [id])
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
   lastLogged DateTime @updatedAt
 
-  evaluator      Evaluation[]    @relation("Evaluator")
-  evaluatee      Evaluation[]    @relation("Evaluatee")
-  feedbacks      Feedback[]
-  referencesFrom Reference[]     @relation("RefFrom")
-  referencesTo   Reference[]     @relation("RefTo")
-  okrs           Okr[]
-  pdps           Pdi[]
-  userRoles      UserRoleLink[]  @relation("UserRoleUser")
-  assignedRoles  UserRoleLink[]  @relation("AssignedByAdmin")
-  projectMember  ProjectMember[]
+  evaluator     Evaluation[]    @relation("Evaluator")
+  evaluatee     Evaluation[]    @relation("Evaluatee")
+  userRoles     UserRoleLink[]  @relation("UserRoleUser")
+  assignedRoles UserRoleLink[]  @relation("AssignedByAdmin")
+  projectMember ProjectMember[]
 }
 
 model UserRoleLink {
@@ -44,28 +42,178 @@ model UserRoleLink {
   @@id([userId, role])
 }
 
+model CycleConfig {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  description String?
+  startDate   DateTime
+  endDate     DateTime
+  isActive    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  pillarConfigs    PillarCycleConfig[]
+  criterionConfigs CriterionCycleConfig[]
+  Evaluation       Evaluation[]
+}
+
+model Track {
+  id                    Int                    @id @default(autoincrement())
+  name                  String                 @unique
+  criterionTrackConfigs CriterionTrackConfig[]
+  pillarTrackConfigs    PillarTrackConfig[]
+  users                 User[]
+  evaluations           Evaluation[]
+}
+
+model Pillar {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  createdAt DateTime @default(now())
+
+  cycleConfigs PillarCycleConfig[]
+  trackConfigs PillarTrackConfig[]
+  criteria     Criterion[]
+}
+
+model Criterion {
+  id          Int      @id @default(autoincrement())
+  pillarId    Int
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+
+  pillar                   Pillar                     @relation(fields: [pillarId], references: [id], onDelete: Cascade)
+  cycleConfigs             CriterionCycleConfig[]
+  trackConfigs             CriterionTrackConfig[]
+  autoEvaluationAssigments AutoEvaluationAssignment[]
+}
+
+model PillarCycleConfig {
+  id        Int      @id @default(autoincrement())
+  cycleId   Int
+  pillarId  Int
+  isActive  Boolean  @default(true)
+  weight    Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cycle  CycleConfig @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  pillar Pillar      @relation(fields: [pillarId], references: [id], onDelete: Cascade)
+
+  @@unique([cycleId, pillarId])
+}
+
+model CriterionCycleConfig {
+  id          Int      @id @default(autoincrement())
+  cycleId     Int
+  criterionId Int
+  isActive    Boolean  @default(true)
+  weight      Int      @default(1)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  cycle     CycleConfig @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  criterion Criterion   @relation(fields: [criterionId], references: [id], onDelete: Cascade)
+
+  @@unique([cycleId, criterionId])
+}
+
+model PillarTrackConfig {
+  id        Int      @id @default(autoincrement())
+  pillarId  Int
+  trackId   Int
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  pillar Pillar @relation(fields: [pillarId], references: [id], onDelete: Cascade)
+  track  Track  @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
+  @@unique([pillarId, trackId])
+}
+
+model CriterionTrackConfig {
+  id          Int      @id @default(autoincrement())
+  criterionId Int
+  trackId     Int
+  isActive    Boolean  @default(true)
+  weight      Int      @default(1)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  criterion Criterion @relation(fields: [criterionId], references: [id], onDelete: Cascade)
+  track     Track     @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
+  @@unique([criterionId, trackId])
+}
+
 model Evaluation {
-  id            Int @id @default(autoincrement())
+  id            Int              @id @default(autoincrement())
   evaluatorId   Int
   evaluateeId   Int
   cycleConfigId Int
+  trackId       Int?
+  status        EvaluationStatus @default(PENDING)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  evaluator   User        @relation("Evaluator", fields: [evaluatorId], references: [id], onDelete: Cascade)
+  evaluatee   User        @relation("Evaluatee", fields: [evaluateeId], references: [id], onDelete: Cascade)
+  cycleConfig CycleConfig @relation(fields: [cycleConfigId], references: [id], onDelete: Cascade)
+  track       Track?      @relation(fields: [trackId], references: [id])
+
+  autoEvaluation AutoEvaluation?
+  evaluation360  Evaluation360?
+  mentoring      Mentoring?
+  reference      Reference?
+}
+
+model AutoEvaluation {
+  evaluationId Int        @id
+  evaluation   Evaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+
+  assignments AutoEvaluationAssignment[]
+}
+
+model AutoEvaluationAssignment {
+  evaluationId  Int
+  criterionId   Int
+  score         Float
+  justification String
+
+  autoEvaluation AutoEvaluation @relation(fields: [evaluationId], references: [evaluationId], onDelete: Cascade)
+  criterion      Criterion      @relation(fields: [criterionId], references: [id], onDelete: Cascade)
+
+  @@id([evaluationId, criterionId])
+}
+
+model Evaluation360 {
+  evaluationId Int        @id
+  evaluation   Evaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
 
   justification String
   score         Float?
-  type          EvaluationType // AUTO | PEER | LEADER
-  status        EvaluationStatus @default(PENDING)
+  strengths     String?
+  improvements  String?
+}
 
-  submittedAt DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+model Mentoring {
+  evaluationId Int        @id
+  evaluation   Evaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
 
-  cycleConfig CycleConfig @relation(fields: [cycleConfigId], references: [id], onDelete: Cascade)
-  evaluator   User        @relation("Evaluator", fields: [evaluatorId], references: [id], onDelete: Cascade)
-  evaluatee   User        @relation("Evaluatee", fields: [evaluateeId], references: [id], onDelete: Cascade)
+  justification String
+  score         Float?
+}
 
-  CriteriaAssignment CriteriaAssignment[]
+model Reference {
+  evaluationId Int        @id
+  evaluation   Evaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
 
-  @@index([type], map: "EvaluationTypeIndex")
+  justification String
+  createdAt     DateTime @default(now())
+
+  @@map("Reference")
 }
 
 model Project {
@@ -82,115 +230,15 @@ model Project {
 }
 
 model ProjectMember {
-  id        Int         @id @default(autoincrement())
+  id        Int       @id @default(autoincrement())
   projectId Int
   userId    Int
-  startDate DateTime    @default(now())
+  startDate DateTime  @default(now())
   endDate   DateTime?
-  createdAt DateTime    @default(now())
+  createdAt DateTime  @default(now())
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-model Pillar {
-  id          Int      @id @default(autoincrement())
-  name        String   @unique
-  createdAt   DateTime @default(now())
-
-  criteria     Criterion[]
-  cycleConfigs PillarCycleConfig[]
-  trackConfigs PillarTrackConfig[]
-}
-
-model Criterion {
-  id          Int      @id @default(autoincrement())
-  pillarId    Int
-  name        String   @unique
-  description String?
-  createdAt   DateTime @default(now())
-
-  pillar             Pillar                 @relation(fields: [pillarId], references: [id], onDelete: Cascade)
-  CriteriaAssignment CriteriaAssignment[]
-  cycleConfigs       CriterionCycleConfig[]
-  trackConfigs       CriterionTrackConfig[]
-}
-
-model CriteriaAssignment {
-  autoEvaluationID Int
-  criterionId      Int
-  note             Float
-  justification    String
-
-  autoEvaluation Evaluation @relation(fields: [autoEvaluationID], references: [id])
-  criterion      Criterion  @relation(fields: [criterionId], references: [id])
-
-  @@id([autoEvaluationID, criterionId])
-}
-
-model Tag {
-  id        Int      @id @default(autoincrement())
-  name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  tagReferences TagReference[]
-}
-
-model Reference {
-  id        Int      @id @default(autoincrement())
-  fromId    Int
-  toId      Int
-  tags      String[]
-  comment   String
-  createdAt DateTime @default(now())
-
-  from User @relation("RefFrom", fields: [fromId], references: [id], onDelete: Cascade)
-  to   User @relation("RefTo", fields: [toId], references: [id], onDelete: Cascade)
-
-  tagReferences TagReference[]
-}
-
-model TagReference {
-  tagId       Int
-  referenceId Int
-  tag         Tag       @relation(fields: [tagId], references: [id])
-  reference   Reference @relation(fields: [referenceId], references: [id])
-
-  @@id([tagId, referenceId])
-}
-
-model Feedback {
-  id         Int            @id @default(autoincrement())
-  userId     Int
-  text       String
-  sourceType FeedbackSource // TEXT | AUDIO_TRANSCRIBED
-  createdAt  DateTime       @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-model Okr {
-  id         Int      @id @default(autoincrement())
-  userId     Int
-  objective  String
-  keyResults String[]
-  progress   Float
-  cycle      Int
-  createdAt  DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-model Pdi {
-  id          Int      @id @default(autoincrement())
-  userId      Int
-  title       String
-  description String
-  status      String // OPEN | IN_PROGRESS | DONE
-  createdAt   DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Log {
@@ -201,105 +249,10 @@ model Log {
   createdAt DateTime @default(now())
 }
 
-model CycleConfig {
-  id          Int      @id @default(autoincrement())
-  name        String // ex: "2025.1", "2025.2"
-  description String?
-  startDate   DateTime
-  endDate     DateTime
-  isActive    Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  pillarConfigs    PillarCycleConfig[]
-  criterionConfigs CriterionCycleConfig[]
-  Evaluation       Evaluation[]
-
-  @@unique([name])
-}
-
-model PillarCycleConfig {
-  id        Int      @id @default(autoincrement())
-  cycleId   Int
-  pillarId  Int
-  isActive  Boolean  @default(true)
-  weight     Int    @default(1)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  cycle  CycleConfig @relation(fields: [cycleId], references: [id], onDelete: Cascade)
-  pillar Pillar      @relation(fields: [pillarId], references: [id], onDelete: Cascade)
-
-  @@unique([cycleId, pillarId])
-}
-
-model CriterionCycleConfig {
-  id          Int      @id @default(autoincrement())
-  cycleId     Int
-  criterionId Int
-  isActive    Boolean  @default(true)
-  weight      Int    @default(1)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  cycle     CycleConfig @relation(fields: [cycleId], references: [id], onDelete: Cascade)
-  criterion Criterion   @relation(fields: [criterionId], references: [id], onDelete: Cascade)
-
-  @@unique([cycleId, criterionId])
-}
-
-model PillarTrackConfig {
-  id        Int      @id @default(autoincrement())
-  pillarId  Int
-  track     String // trilha
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  pillar Pillar @relation(fields: [pillarId], references: [id], onDelete: Cascade)
-
-  @@unique([pillarId, track])
-}
-
-
-model Track {
-  id    Int    @id @default(autoincrement())
-  name  String @unique
-  criterionTrackConfigs CriterionTrackConfig[]
-  users User[]
-
-}
-
-model CriterionTrackConfig {
-  id          Int      @id @default(autoincrement())
-  criterionId Int
-  trackId     Int
-  isActive    Boolean  @default(true)
-  weight      Int    @default(1)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  criterion Criterion @relation(fields: [criterionId], references: [id], onDelete: Cascade)
-  track     Track     @relation(fields: [trackId], references: [id], onDelete: Cascade)
-
-  @@unique([criterionId, trackId])
-}
-
-enum EvaluationType {
-  AUTOEVALUATION
-  PEER_360
-  MENTOR
-}
-
 enum EvaluationStatus {
   PENDING
   IN_PROGRESS
   COMPLETED
-}
-
-enum FeedbackSource {
-  TEXT
-  AUDIO_TRANSCRIBED
 }
 
 enum UserRole {
@@ -319,4 +272,3 @@ enum ProjectStatus {
   COMPLETED
   CANCELLED
 }
-
