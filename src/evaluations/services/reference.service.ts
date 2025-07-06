@@ -8,12 +8,6 @@ export class ReferenceService {
         }
 
         for (const referencia of referencias) {
-            if (!referencia.tagIds) {
-                throw new BadRequestException('Tags são obrigatórias na referência');
-            }
-            if (!Array.isArray(referencia.tagIds) || referencia.tagIds.length === 0) {
-                throw new BadRequestException('Tags não podem estar vazias');
-            }
             if (!referencia.justificativa) {
                 throw new BadRequestException('Justificativa é obrigatória na referência');
             }
@@ -25,7 +19,6 @@ export class ReferenceService {
                 data: {
                     fromId: colaboradorId,
                     toId: parseInt(referencia.colaboradorId, 10),
-                    tags: referencia.tagIds.map((id: number) => id.toString()),
                     comment: referencia.justificativa,
                 },
             });

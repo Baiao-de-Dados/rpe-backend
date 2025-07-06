@@ -7,7 +7,7 @@ import { ApiCreate, ApiGet } from 'src/common/decorators/api-crud.decorator';
 import { ApiAuth } from 'src/common/decorators/api-auth.decorator';
 import { RequireEmployer, RequireRH, RequireLeader } from 'src/auth/decorators/roles.decorator';
 import { PrismaService } from '../prisma/prisma.service';
-import { CycleConfigService } from '../cycle-config/cycle-config.service';
+import { CycleConfigService } from './cycles/cycle-config.service';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 
 @ApiTags('Avaliações')

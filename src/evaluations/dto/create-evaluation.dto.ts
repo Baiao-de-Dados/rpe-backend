@@ -72,10 +72,6 @@ class ReferenciaDto {
     @IsString()
     colaboradorId: string;
 
-    @IsArray()
-    @IsNumber({}, { each: true })
-    tagIds: number[];
-
     @IsString()
     justificativa: string;
 }

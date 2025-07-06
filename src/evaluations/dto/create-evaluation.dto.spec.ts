@@ -43,7 +43,6 @@ describe('CreateEvaluationDto', () => {
                     {
                         colaboradorId: '2',
                         justificativa: 'Referência técnica',
-                        tagIds: [1],
                     },
                 ],
             });

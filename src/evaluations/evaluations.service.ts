@@ -4,9 +4,9 @@ import { CreateEvaluationDto } from './dto/create-evaluation.dto';
 import { EvaluationValidationService } from './services/evaluation-validation.service';
 import { Peer360EvaluationService } from './services/peer360-evaluation.service';
 import { ReferenceService } from './services/reference.service';
-import { AutoEvaluationService } from './services/auto-evaluation.service';
+import { AutoEvaluationService } from './autoevaluations/services/auto-evaluation.service';
 import { MentorEvaluationService } from './services/mentor-evaluation.service';
-import { CycleConfigService } from '../cycle-config/cycle-config.service';
+import { CycleConfigService } from './cycles/cycle-config.service';
 import { ActiveCriteriaUserResponseDto } from './dto/active-criteria-response.dto';
 
 @Injectable()
@@ -25,16 +25,10 @@ export class EvaluationsService {
         const { ciclo, colaboradorId, autoavaliacao, avaliacao360, mentoring, referencias } =
             createEvaluationDto;
 
-        // Converter colaboradorId de string para number
         const colaboradorIdNumber = parseInt(colaboradorId, 10);
-
-        // VALIDAÇÕES PRÉVIAS - Usando o service de validação
         await this.validationService.validateEvaluationData(createEvaluationDto);
 
-        // Usar transação para garantir atomicidade
         return await this.prisma.$transaction(async (prisma) => {
-            const evaluations: any[] = [];
-
             // 1. Cria a autoavaliação usando o service (com validação de trilha)
             const autoEvaluation = await this.autoEvaluationService.createAutoEvaluation(
                 prisma,
@@ -43,36 +37,38 @@ export class EvaluationsService {
                 ciclo,
                 userTrack,
             );
-            if (autoEvaluation) {
-                evaluations.push(autoEvaluation);
-            }
 
-            // 2. Cria as avaliações 360 (PEER_360) usando o service
+            // 2. Cria as avaliações 360
             const peerEvaluations = await this.peer360EvaluationService.createPeer360Evaluations(
                 prisma,
                 avaliacao360,
                 colaboradorIdNumber,
                 ciclo,
             );
-            evaluations.push(...peerEvaluations);
 
-            // 3. Cria as avaliações de mentor e líder (MENTOR/LEADER) usando o service
+            // 3. Cria as avaliações de mentor
+            let mentorEvaluation = null;
             if (mentoring && mentoring.mentorId) {
-                const mentorEvaluation = await this.mentorEvaluationService.createMentorEvaluation(
+                mentorEvaluation = await this.mentorEvaluationService.createMentorEvaluation(
                     prisma,
                     parseInt(mentoring.mentorId, 10),
                     colaboradorIdNumber,
                     mentoring.justificativa,
                     ciclo,
                 );
-                evaluations.push(mentorEvaluation);
             }
 
             // 4. Cria as referências usando o service
             await this.referenceService.createReferences(prisma, referencias, colaboradorIdNumber);
 
             // Retorna a estrutura compatível com o formato anterior
-            return this.formatEvaluationResponse(evaluations, colaboradorIdNumber, ciclo);
+            return this.formatEvaluationResponse(
+                autoEvaluation,
+                peerEvaluations,
+                mentorEvaluation,
+                colaboradorIdNumber,
+                ciclo,
+            );
         });
     }
 
@@ -82,28 +78,33 @@ export class EvaluationsService {
             include: {
                 evaluator: true,
                 evaluatee: true,
-                CriteriaAssignment: {
+                autoEvaluation: {
                     include: {
-                        criterion: {
+                        assignments: {
                             include: {
-                                pillar: true,
+                                criterion: {
+                                    include: {
+                                        pillar: true,
+                                    },
+                                },
                             },
                         },
                     },
                 },
+                evaluation360: true,
+                mentoring: true,
+                reference: true,
             },
         });
 
         if (!evaluation) {
             throw new NotFoundException(`Avaliação com ID ${id} não encontrada`);
         }
-
         return evaluation;
     }
 
     async findWithFilters(type?: string, evaluateeId?: number, evaluatorId?: number) {
         const where: any = {};
-        if (type) where.type = type as any;
         if (evaluateeId) where.evaluateeId = evaluateeId;
         if (evaluatorId) where.evaluatorId = evaluatorId;
         return this.prisma.evaluation.findMany({
@@ -111,95 +112,83 @@ export class EvaluationsService {
             include: {
                 evaluator: true,
                 evaluatee: true,
-                CriteriaAssignment: {
+                autoEvaluation: {
                     include: {
-                        criterion: {
+                        assignments: {
                             include: {
-                                pillar: true,
+                                criterion: {
+                                    include: {
+                                        pillar: true,
+                                    },
+                                },
                             },
                         },
                     },
                 },
+                evaluation360: true,
+                mentoring: true,
+                reference: true,
             },
             orderBy: { createdAt: 'desc' },
         });
     }
 
     private async formatEvaluationResponse(
-        evaluations: any[],
+        autoEvaluation: any,
+        peerEvaluations: any[],
+        mentorEvaluation: any,
         colaboradorId: number,
         ciclo: string,
     ) {
         // Busca referências relacionadas
         const references = await this.prisma.reference.findMany({
             where: {
-                fromId: colaboradorId,
+                evaluation: {
+                    evaluateeId: colaboradorId,
+                },
             },
         });
 
         return {
-            id: evaluations[0]?.id || 0,
-            cycle: ciclo,
             userId: colaboradorId,
+            cycle: ciclo,
             grade: 0.0,
             user: null, // Será preenchido se necessário
-            autoEvaluation: evaluations.find((e) => e.type === 'AUTOEVALUATION')
+            autoEvaluation: autoEvaluation
                 ? {
-                      id: evaluations.find((e) => e.type === 'AUTOEVALUATION')?.id,
-                      evaluationId: evaluations.find((e) => e.type === 'AUTOEVALUATION')?.id,
-                      justification: evaluations.find((e) => e.type === 'AUTOEVALUATION')
-                          ?.justification,
-                      criteriaAssignments: [], // Será preenchido se necessário
+                      id: autoEvaluation.id,
+                      evaluationId: autoEvaluation.evaluationId,
+                      justification: autoEvaluation.justification,
+                      criteriaAssignments: autoEvaluation.assignments ?? [],
                   }
                 : null,
-            evaluation360: evaluations
-                .filter((e) => e.type === 'PEER_360')
-                .map((e) => ({
-                    id: e.id,
-                    evaluationId: e.id,
-                    evaluatorId: e.evaluatorId,
-                    evaluatedId: e.evaluateeId,
-                    strengths: '',
-                    improvements: '',
-                })),
-            leader: evaluations.find((e) => e.type === 'LEADER')
+            evaluation360: peerEvaluations.map((e) => ({
+                id: e.id,
+                evaluationId: e.evaluationId,
+                evaluatorId: e.evaluatorId,
+                evaluatedId: e.evaluatedId,
+                strengths: e.strenghts ?? '',
+                improvements: e.improvements ?? '',
+            })),
+            mentoring: mentorEvaluation
                 ? {
-                      id: evaluations.find((e) => e.type === 'LEADER')?.id,
-                      evaluationId: evaluations.find((e) => e.type === 'LEADER')?.id,
-                      evaluatorId: evaluations.find((e) => e.type === 'LEADER')?.evaluatorId,
-                      evaluatedId: evaluations.find((e) => e.type === 'LEADER')?.evaluateeId,
-                      justification: evaluations.find((e) => e.type === 'LEADER')?.justification,
-                      cycle: ciclo,
-                  }
-                : null,
-            mentoring: evaluations.find((e) => e.type === 'MENTOR')
-                ? {
-                      id: evaluations.find((e) => e.type === 'MENTOR')?.id,
-                      evaluationId: evaluations.find((e) => e.type === 'MENTOR')?.id,
-                      evaluatorId: evaluations.find((e) => e.type === 'MENTOR')?.evaluatorId,
-                      evaluatedId: evaluations.find((e) => e.type === 'MENTOR')?.evaluateeId,
-                      justification: evaluations.find((e) => e.type === 'MENTOR')?.justification,
+                      id: mentorEvaluation.id,
+                      evaluationId: mentorEvaluation.evaluationId,
+                      evaluatorId: mentorEvaluation.evaluatorId,
+                      evaluatedId: mentorEvaluation.evaluateeId,
+                      justification: mentorEvaluation.justification,
                       cycle: ciclo,
                   }
                 : null,
             references: references.map((r) => ({
-                id: r.id,
-                evaluatorId: r.fromId,
-                evaluatedId: r.toId,
-                justification: r.comment,
+                evaluationId: r.evaluationId,
+                justification: r.justification,
                 createdAt: r.createdAt,
-                cycle: new Date(),
-                tagReferences: r.tags.map((tag) => ({
-                    tagId: parseInt(tag),
-                    referenceId: r.id,
-                    tag: { id: parseInt(tag), name: `Tag ${tag}` }, // Placeholder
-                })),
             })),
         };
     }
 
     async getActiveCriteriaForUser(user: any): Promise<ActiveCriteriaUserResponseDto> {
-        // 1. Verificar se existe um ciclo ativo
         const activeCycle = await this.prisma.cycleConfig.findFirst({
             where: { isActive: true },
         });
@@ -208,7 +197,6 @@ export class EvaluationsService {
             throw new NotFoundException('Nenhum ciclo de avaliação ativo encontrado');
         }
 
-        // 2. Verificar se o ciclo está dentro do prazo
         const now = new Date();
         if (now > activeCycle.endDate) {
             throw new BadRequestException(
@@ -222,11 +210,9 @@ export class EvaluationsService {
             );
         }
 
-        // 3. Buscar critérios ativos no ciclo atual
         const activeCycleCriteria = await this.cycleConfigService.getActiveCriteria();
         const activeCriteriaIds = new Set(activeCycleCriteria.map((c) => c.id));
 
-        // 4. Buscar critérios configurados para a trilha do usuário
         const userTrackCriteria = await this.prisma.criterionTrackConfig.findMany({
             where: {
                 track: user.track,
@@ -247,7 +233,6 @@ export class EvaluationsService {
             );
         }
 
-        // 5. Filtrar apenas critérios que estão ativos no ciclo E configurados para a trilha
         const validUserCriteria = userTrackCriteria.filter((config) =>
             activeCriteriaIds.has(config.criterion.id),
         );
@@ -258,7 +243,6 @@ export class EvaluationsService {
             );
         }
 
-        // 6. Agrupar critérios por pilar
         const groupedByPillar = validUserCriteria.reduce((acc, config) => {
             const pillar = config.criterion.pillar;
             const pillarId = pillar.id;
