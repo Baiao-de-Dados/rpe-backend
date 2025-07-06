@@ -251,7 +251,6 @@ model Log {
 
 enum EvaluationStatus {
   PENDING
-  IN_PROGRESS
   COMPLETED
 }
 
