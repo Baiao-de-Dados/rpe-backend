@@ -50,13 +50,6 @@ export class CycleConfigService {
 
     async findAll(): Promise<CycleConfigResponseDto[]> {
         const cycles = await this.prisma.cycleConfig.findMany({
-            include: {
-                pillarConfigs: {
-                    include: {
-                        pillar: true,
-                    },
-                },
-            },
             orderBy: {
                 createdAt: 'desc',
             },
@@ -68,13 +61,6 @@ export class CycleConfigService {
     async findOne(id: number): Promise<CycleConfigResponseDto> {
         const cycle = await this.prisma.cycleConfig.findUnique({
             where: { id },
-            include: {
-                pillarConfigs: {
-                    include: {
-                        pillar: true,
-                    },
-                },
-            },
         });
 
         if (!cycle) {
@@ -87,13 +73,6 @@ export class CycleConfigService {
     async findActive(): Promise<CycleConfigResponseDto | null> {
         const cycle = await this.prisma.cycleConfig.findFirst({
             where: { isActive: true },
-            include: {
-                pillarConfigs: {
-                    include: {
-                        pillar: true,
-                    },
-                },
-            },
         });
 
         return cycle ? this.mapToResponseDto(cycle) : null;
@@ -152,26 +131,6 @@ export class CycleConfigService {
                 where: { id },
                 data: cycleData,
             });
-
-            // Atualizar configurações dos pilares se fornecidas
-            if (updateCycleConfigDto.pillarConfigs) {
-                // Remover configurações existentes
-                await prisma.pillarCycleConfig.deleteMany({
-                    where: { cycleId: id },
-                });
-
-                // Criar novas configurações
-                if (updateCycleConfigDto.pillarConfigs.length > 0) {
-                    await prisma.pillarCycleConfig.createMany({
-                        data: updateCycleConfigDto.pillarConfigs.map((config) => ({
-                            cycleId: id,
-                            pillarId: config.pillarId,
-                            isActive: config.isActive,
-                            weight: config.weight,
-                        })),
-                    });
-                }
-            }
 
             return this.findOne(id);
         });
@@ -345,14 +304,72 @@ export class CycleConfigService {
     }
 
     private async mapToResponseDto(cycle: any): Promise<CycleConfigResponseDto> {
-        // Buscar configs de critério do ciclo
         const criterionConfigs = await this.prisma.criterionTrackCycleConfig.findMany({
             where: { cycleId: cycle.id },
             include: {
-                criterion: true,
+                criterion: {
+                    include: {
+                        pillar: true,
+                    },
+                },
                 track: true,
             },
         });
+
+        // Agrupar critérios por trilha e depois por pilar
+        type CriteriaByTrackAndPillar = Record<
+            number,
+            {
+                trackId: number;
+                pillars: Record<
+                    number,
+                    {
+                        pillarId: number;
+                        criteria: Array<{
+                            id: number;
+                            criterionId: number;
+                            weight: number;
+                        }>;
+                    }
+                >;
+            }
+        >;
+
+        const criteriaByTrackAndPillar = criterionConfigs.reduce(
+            (acc: CriteriaByTrackAndPillar, cfg) => {
+                const trackId = cfg.trackId;
+                const pillarId = cfg.criterion.pillar.id;
+
+                if (!acc[trackId]) {
+                    acc[trackId] = {
+                        trackId: trackId,
+                        pillars: {},
+                    };
+                }
+
+                if (!acc[trackId].pillars[pillarId]) {
+                    acc[trackId].pillars[pillarId] = {
+                        pillarId: pillarId,
+                        criteria: [],
+                    };
+                }
+
+                acc[trackId].pillars[pillarId].criteria.push({
+                    id: cfg.id,
+                    criterionId: cfg.criterionId,
+                    weight: cfg.weight,
+                });
+
+                return acc;
+            },
+            {} as CriteriaByTrackAndPillar,
+        );
+
+        // Converter para o formato final
+        const tracksWithPillars = Object.values(criteriaByTrackAndPillar).map((track) => ({
+            trackId: track.trackId,
+            pillars: Object.values(track.pillars),
+        }));
 
         return {
             id: cycle.id,
@@ -363,21 +380,7 @@ export class CycleConfigService {
             isActive: cycle.isActive,
             createdAt: cycle.createdAt,
             updatedAt: cycle.updatedAt,
-            pillarConfigs: (cycle.pillarConfigs || []).map((config: any) => ({
-                id: config.id,
-                pillarId: config.pillarId,
-                pillarName: config.pillar?.name || 'N/A',
-                isActive: config.isActive,
-                weight: config.weight,
-            })),
-            criterionConfigs: criterionConfigs.map((cfg) => ({
-                id: cfg.id,
-                criterionId: cfg.criterionId,
-                criterionName: cfg.criterion.name,
-                trackId: cfg.trackId,
-                trackName: cfg.track.name,
-                weight: cfg.weight,
-            })),
+            criteriaPillars: tracksWithPillars,
         };
     }
 }

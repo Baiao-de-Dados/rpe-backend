@@ -99,7 +99,6 @@ model Pillar {
   createdAt   DateTime @default(now())
 
   criteria     Criterion[]
-  cycleConfigs PillarCycleConfig[]
 }
 
 model Criterion {
@@ -210,27 +209,11 @@ model CycleConfig {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  pillarConfigs    PillarCycleConfig[]
   Evaluation       Evaluation[]
 
   criterionTrackCycleConfigs CriterionTrackCycleConfig[]
 
   @@unique([name])
-}
-
-model PillarCycleConfig {
-  id        Int      @id @default(autoincrement())
-  cycleId   Int
-  pillarId  Int
-  isActive  Boolean  @default(true)
-  weight     Int    @default(1)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  cycle  CycleConfig @relation(fields: [cycleId], references: [id], onDelete: Cascade)
-  pillar Pillar      @relation(fields: [pillarId], references: [id], onDelete: Cascade)
-
-  @@unique([cycleId, pillarId])
 }
 
 model Track {

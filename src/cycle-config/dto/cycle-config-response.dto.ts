@@ -42,12 +42,9 @@ export class CycleConfigResponseDto {
     @ApiProperty({ example: true, description: 'Se o ciclo está ativo' })
     isActive: boolean;
 
-    @ApiProperty({ type: [PillarConfigResponseDto], description: 'Configurações dos pilares' })
-    pillarConfigs: PillarConfigResponseDto[];
-
     @ApiProperty({
         description:
             'Configurações dos critérios (agora vazio, pois usamos CriterionTrackCycleConfig)',
     })
-    criterionConfigs: any[];
+    criteriaPillars: any[];
 }

@@ -108,49 +108,11 @@ export class EmployerService {
     async getEvaluationData(userId: number, cycleConfigId: number) {
         const cycle = await this.prisma.cycleConfig.findUnique({
             where: { id: cycleConfigId },
-            include: {
-                pillarConfigs: {
-                    include: {
-                        pillar: {
-                            include: {
-                                criteria: true,
-                            },
-                        },
-                    },
-                },
-            },
         });
         if (!cycle) throw new NotFoundException('Ciclo não existe');
 
-        const autoEval = await this.prisma.evaluation.findFirst({
-            where: {
-                evaluateeId: userId,
-                cycleConfigId,
-                type: 'AUTOEVALUATION',
-            },
-            include: {
-                CriteriaAssignment: true,
-            },
-        });
-
-        const pillars = cycle.pillarConfigs.map((pc) => ({
-            id: pc.pillar.id,
-            name: pc.pillar.id,
-            criteria: pc.pillar.criteria.map((c) => {
-                const assigned = autoEval?.CriteriaAssignment.find((a) => a.criterionId === c.id);
-                return {
-                    criterionId: c.id,
-                    title: c.name,
-                    description: c.description,
-                    score: assigned?.note ?? null,
-                    justification: assigned?.justification ?? '',
-                };
-            }),
-        }));
-
         return {
             cycleName: cycle.name,
-            pillars,
             // TODO: incluir avaliacao360, mentoring e referenc aq
         };
     }

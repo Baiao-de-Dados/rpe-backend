@@ -44,11 +44,6 @@ export class SeedService {
             update: {},
             create: { name: 'RH' },
         });
-        const trackDefault = await this.prisma.track.upsert({
-            where: { name: 'Default' },
-            update: {},
-            create: { name: 'Default' },
-        });
 
         // Usuários normais (usar upsert)
         await this.prisma.user.upsert({
@@ -81,7 +76,7 @@ export class SeedService {
                 password: hashedPassword,
                 name: 'Ana RH',
                 trackId: trackRH.id,
-                userRoles: { create: [{ role: 'RH' }] },
+                userRoles: { create: [{ role: 'RH' }, { role: 'EMPLOYER' }, { role: 'ADMIN' }] },
             },
         });
 
@@ -94,7 +89,7 @@ export class SeedService {
                 email: encryptedEmailAdmin,
                 password: await bcrypt.hash('admin123', 10),
                 name: 'System Admin',
-                trackId: trackDefault.id,
+                trackId: trackRH.id,
                 userRoles: { create: [{ role: 'ADMIN' }] },
             },
         });
@@ -198,6 +193,95 @@ export class SeedService {
                 },
             });
         }
+
+        // Buscar todos os critérios criados
+        const allCriteria = await this.prisma.criterion.findMany();
+
+        // Criar CriterionTrackConfig para todas as trilhas e critérios
+        const tracks = [trackBackend, trackFrontend, trackRH];
+        for (const track of tracks) {
+            for (const criterion of allCriteria) {
+                await this.prisma.criterionTrackConfig.upsert({
+                    where: {
+                        criterionId_trackId: {
+                            criterionId: criterion.id,
+                            trackId: track.id,
+                        },
+                    },
+                    update: {},
+                    create: {
+                        criterionId: criterion.id,
+                        trackId: track.id,
+                        weight: 1,
+                    },
+                });
+            }
+        }
+
+        // Criar 5 ciclos terminando em 2025.1
+        const cycles = [
+            {
+                name: '2024.1',
+                startDate: new Date('2024-01-01'),
+                endDate: new Date('2024-06-30'),
+                isActive: false,
+            },
+            {
+                name: '2024.2',
+                startDate: new Date('2024-07-01'),
+                endDate: new Date('2024-12-31'),
+                isActive: false,
+            },
+            {
+                name: '2024.3',
+                startDate: new Date('2024-09-01'),
+                endDate: new Date('2024-11-30'),
+                isActive: false,
+            },
+            {
+                name: '2024.4',
+                startDate: new Date('2024-10-01'),
+                endDate: new Date('2024-12-15'),
+                isActive: false,
+            },
+            {
+                name: '2025.1',
+                startDate: new Date('2025-01-01'),
+                endDate: new Date('2025-06-30'),
+                isActive: false,
+            },
+        ];
+
+        for (const cycleData of cycles) {
+            const cycle = await this.prisma.cycleConfig.upsert({
+                where: { name: cycleData.name },
+                update: {},
+                create: cycleData,
+            });
+
+            // Criar CriterionTrackCycleConfig para cada combinação de ciclo, trilha e critério
+            for (const track of tracks) {
+                for (const criterion of allCriteria) {
+                    await this.prisma.criterionTrackCycleConfig.upsert({
+                        where: {
+                            cycleId_trackId_criterionId: {
+                                cycleId: cycle.id,
+                                trackId: track.id,
+                                criterionId: criterion.id,
+                            },
+                        },
+                        update: {},
+                        create: {
+                            cycleId: cycle.id,
+                            trackId: track.id,
+                            criterionId: criterion.id,
+                            weight: 1,
+                        },
+                    });
+                }
+            }
+        }
+
         return { message: 'Seed executada com sucesso!' };
     }
 }
