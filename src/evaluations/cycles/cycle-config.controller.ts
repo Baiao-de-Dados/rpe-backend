@@ -4,9 +4,9 @@ import { CycleConfigService } from './cycle-config.service';
 import { CreateCycleConfigDto } from './dto/create-cycle-config.dto';
 import { UpdateCycleConfigDto } from './dto/update-cycle-config.dto';
 import { CycleConfigResponseDto } from './dto/cycle-config-response.dto';
-import { RequireRH } from '../auth/decorators/roles.decorator';
-import { ApiAuth } from '../common/decorators/api-auth.decorator';
-import { ApiCreate } from '../common/decorators/api-crud.decorator';
+import { RequireRH } from '../../auth/decorators/roles.decorator';
+import { ApiAuth } from '../../common/decorators/api-auth.decorator';
+import { ApiCreate } from '../../common/decorators/api-crud.decorator';
 
 @ApiTags('Configuração de Ciclo')
 @ApiAuth()
