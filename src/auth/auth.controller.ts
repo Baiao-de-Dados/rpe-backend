@@ -20,6 +20,8 @@ export class CreateUserDto {
     email: string;
     password: string;
     name: string;
+    position: string;
+    mentorId: number;
     roles: UserRole[];
 }
 
@@ -65,6 +67,8 @@ export class AuthController {
             createUserDto.email,
             createUserDto.password,
             createUserDto.name,
+            createUserDto.position,
+            createUserDto.mentorId,
             createUserDto.roles,
             admin.id,
         );
@@ -87,6 +91,8 @@ export class AuthController {
             'admin@test.com',
             'admin123',
             'System Admin',
+            'Administrador',
+            0,
             [UserRole.ADMIN],
         );
 
