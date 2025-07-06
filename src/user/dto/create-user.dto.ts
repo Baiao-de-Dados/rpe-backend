@@ -1,6 +1,6 @@
 import { IsEmail, IsEnum, IsNotEmpty, IsString, MinLength } from 'class-validator';
 import { UserRole } from '@prisma/client';
-import { EncryptField } from 'src/encryption/decorators/encrypt-field.decorator';
+import { EncryptField } from 'src/cryptography/decorators/encrypt-field.decorator';
 
 export class CreateUserDTO {
     @EncryptField()

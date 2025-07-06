@@ -22,18 +22,18 @@ import { RequireRH } from 'src/auth/decorators/roles.decorator';
 import { RHService } from '../services/rh.service';
 import { ApiTags } from '@nestjs/swagger';
 import { RHUserDTO } from '../dto/rh.dto';
-import { CreatePillarDto } from 'src/pillars/dto/create-pillar.dto';
-import { UpdatePillarDto } from 'src/pillars/dto/update-pillar.dto';
-import { CreateCriterionDto } from 'src/criteria/dto/create-criterion.dto';
-import { CreateCycleConfigDto } from 'src/cycle-config/dto/create-cycle-config.dto';
-import { UpdateCycleConfigDto } from 'src/cycle-config/dto/update-cycle-config.dto';
-import { CycleConfigResponseDto } from 'src/cycle-config/dto/cycle-config-response.dto';
-import { CreatePillarTrackConfigDto } from 'src/pillars/dto/create-pillar-track-config.dto';
-import { UpdatePillarTrackConfigDto } from 'src/pillars/dto/update-pillar-track-config.dto';
-import { BatchUpdateCriteriaDto } from 'src/criteria/dto/batch-update-criteria.dto';
-import { TrackConfigResponseDto } from 'src/criteria/dto/track-config-response.dto';
-import { UpdateCriterionTrackConfigDto } from 'src/criteria/dto/update-criterion-track-config.dto';
-import { TrackConfigDto } from 'src/criteria/dto/track-config.dto';
+import { CreatePillarDto } from 'src/evaluations/autoevaluations/pillar/dto/create-pillar.dto';
+import { UpdatePillarDto } from 'src/evaluations/autoevaluations/pillar/dto/update-pillar.dto';
+import { CreateCriterionDto } from 'src/evaluations/autoevaluations/criteria/dto/create-criterion.dto';
+import { CreateCycleConfigDto } from 'src/evaluations/cycles/dto/create-cycle-config.dto';
+import { UpdateCycleConfigDto } from 'src/evaluations/cycles/dto/update-cycle-config.dto';
+import { CycleConfigResponseDto } from 'src/evaluations/cycles/dto/cycle-config-response.dto';
+import { CreatePillarTrackConfigDto } from 'src/evaluations/autoevaluations/pillar/dto/create-pillar-track-config.dto';
+import { UpdatePillarTrackConfigDto } from 'src/evaluations/autoevaluations/pillar/dto/update-pillar-track-config.dto';
+import { BatchUpdateCriteriaDto } from 'src/evaluations/autoevaluations/criteria/dto/batch-update-criteria.dto';
+import { TrackConfigResponseDto } from 'src/evaluations/autoevaluations/criteria/dto/track-config-response.dto';
+import { UpdateCriterionTrackConfigDto } from 'src/evaluations/autoevaluations/criteria/dto/update-criterion-track-config.dto';
+import { TrackConfigDto } from 'src/evaluations/autoevaluations/criteria/dto/track-config.dto';
 
 @ApiTags('Admin RH')
 @ApiAuth()

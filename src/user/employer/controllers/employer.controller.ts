@@ -2,7 +2,7 @@ import { Body, Controller, Get, Param, ParseIntPipe, Post, Query } from '@nestjs
 import { ApiTags } from '@nestjs/swagger';
 import { RequireEmployer } from 'src/auth/decorators/roles.decorator';
 import { ApiAuth } from 'src/common/decorators/api-auth.decorator';
-import { EmployerService } from '../services/employer.services';
+import { EmployerService } from '../services/employer.service';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { FiltersDto } from '../dto/filters.dto';
 import { AutoEvaluationDto } from '../dto/auto-evaluation.dto';

@@ -4,7 +4,7 @@ import { RoleCompletionStatsDto } from '../dto/roles.dashboard.dto';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { DashboardStatsDto } from '../dto/dashboard-stats.dto';
-import { EvaluationType } from '@prisma/client';
+import { EvaluationStatus } from '@prisma/client';
 
 @Injectable()
 export class RhPanelService {
@@ -39,23 +39,24 @@ export class RhPanelService {
         });
 
         const totalEvaluations = evaluations.length;
-        const completedEvaluations = evaluations.filter((evaluation) => {
-            return (
-                evaluation.type === EvaluationType.AUTOEVALUATION ||
-                evaluation.type === EvaluationType.PEER_360 ||
-                evaluation.type === EvaluationType.MENTOR
-            );
-        }).length;
+        const completedEvaluations = evaluations.filter(
+            (evaluation) => evaluation.status === EvaluationStatus.COMPLETED,
+        ).length;
 
         const pendingEvaluations = totalEvaluations - completedEvaluations;
         const completionPercentage =
             totalEvaluations > 0 ? Math.round((completedEvaluations / totalEvaluations) * 100) : 0;
 
         const autoEvaluationCount = evaluations.filter(
-            (evaluation) => evaluation.type === EvaluationType.AUTOEVALUATION,
+            (evaluation) =>
+                evaluation.status === EvaluationStatus.COMPLETED &&
+                evaluation.evaluatorId === evaluation.evaluateeId,
         ).length;
+
         const evaluation360Count = evaluations.filter(
-            (evaluation) => evaluation.type === EvaluationType.PEER_360,
+            (evaluation) =>
+                evaluation.status === EvaluationStatus.COMPLETED &&
+                evaluation.evaluatorId !== evaluation.evaluateeId,
         ).length;
 
         return {
@@ -117,15 +118,10 @@ export class RhPanelService {
             orderBy: { createdAt: 'desc' },
         });
 
-        // Deduplicate collaborators by ID, keeping the latest evaluation for each
         const collaboratorMap = new Map<number, any>();
         for (const ev of evaluations) {
-            const isCompleted =
-                ev.type === EvaluationType.AUTOEVALUATION ||
-                ev.type === EvaluationType.PEER_360 ||
-                ev.type === EvaluationType.MENTOR;
+            const isCompleted = ev.status === EvaluationStatus.COMPLETED;
 
-            // Always overwrite to keep the latest due to orderBy: { createdAt: 'desc' }
             collaboratorMap.set(ev.evaluatee.id, {
                 id: ev.evaluatee.id,
                 name: ev.evaluatee.name || 'Sem nome',
@@ -133,8 +129,8 @@ export class RhPanelService {
                 CycleConfigId: cycleConfig.id.toString(),
                 status: isCompleted ? 'finalizado' : 'pendente',
                 breakdown: {
-                    autoEvaluation: ev.type === EvaluationType.AUTOEVALUATION,
-                    evaluation360: ev.type === EvaluationType.PEER_360,
+                    autoEvaluation: ev.evaluatorId === ev.evaluateeId && isCompleted,
+                    evaluation360: ev.evaluatorId !== ev.evaluateeId && isCompleted,
                     mentoring: false, // Ajustar depois
                     references: false,
                 },
@@ -155,9 +151,7 @@ export class RhPanelService {
         };
     }
 
-    //retorna o status de um colaborador específico
     async getCollaboratorStatusById(collaboratorId: number): Promise<CollaboratorStatusDto> {
-        // Obter o ciclo atual
         const currentCycle = this.systemConfigService.getCurrentCycle();
         let targetCycle = currentCycle;
 
@@ -169,7 +163,6 @@ export class RhPanelService {
             targetCycle = latestEvaluation?.cycleConfigId?.toString() || 'N/A';
         }
 
-        // Buscar APENAS a avaliação do usuário no ciclo atual
         const evaluation = await this.prisma.evaluation.findFirst({
             where: {
                 evaluateeId: collaboratorId,
@@ -187,10 +180,7 @@ export class RhPanelService {
             );
         }
 
-        const isCompleted =
-            evaluation.type === EvaluationType.AUTOEVALUATION ||
-            evaluation.type === EvaluationType.PEER_360 ||
-            evaluation.type === EvaluationType.MENTOR;
+        const isCompleted = evaluation.status === EvaluationStatus.COMPLETED;
 
         return {
             id: evaluation.evaluatee.id,
@@ -199,8 +189,8 @@ export class RhPanelService {
             CycleConfigId: evaluation.cycleConfigId.toString(),
             status: isCompleted ? ('finalizado' as const) : ('pendente' as const),
             breakdown: {
-                autoEvaluation: evaluation.type === EvaluationType.AUTOEVALUATION,
-                evaluation360: evaluation.type === EvaluationType.PEER_360,
+                autoEvaluation: evaluation.evaluatorId === evaluation.evaluateeId && isCompleted,
+                evaluation360: evaluation.evaluatorId !== evaluation.evaluateeId && isCompleted,
                 mentoring: false,
                 references: false,
             },
@@ -243,10 +233,7 @@ export class RhPanelService {
 
             if (userRoles.length === 0) return;
 
-            const isCompleted =
-                evaluation.type === EvaluationType.AUTOEVALUATION ||
-                evaluation.type === EvaluationType.PEER_360 ||
-                evaluation.type === EvaluationType.MENTOR;
+            const isCompleted = evaluation.status === EvaluationStatus.COMPLETED;
 
             userRoles.forEach((role) => {
                 const current = roleStats.get(role) || { total: 0, completed: 0, pending: 0 };

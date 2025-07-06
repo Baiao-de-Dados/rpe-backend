@@ -1,16 +1,16 @@
 import {
     IsOptional,
     IsString,
-    IsNumber,
     IsArray,
     ArrayNotEmpty,
     ValidateNested,
+    IsNumber,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
 class ReferenceItem {
     @IsNumber()
-    employerId: number;
+    evaluateeId: number;
 
     @IsOptional()
     @IsString()

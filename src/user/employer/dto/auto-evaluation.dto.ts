@@ -12,7 +12,7 @@ import { Type } from 'class-transformer';
 
 class AutoEvaluationItem {
     @IsNumber()
-    questionId: number;
+    criterionId: number;
 
     @IsNumber()
     @Min(1)

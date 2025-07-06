@@ -2,21 +2,21 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { RHUserDTO } from '../dto/rh.dto';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { UserRole } from '@prisma/client';
-import { UpdatePillarDto } from 'src/pillars/dto/update-pillar.dto';
-import { CriteriaService } from 'src/criteria/criteria.service';
-import { CycleConfigService } from 'src/cycle-config/cycle-config.service';
-import { PillarsService } from 'src/pillars/pillars.service';
-import { CreatePillarDto } from 'src/pillars/dto/create-pillar.dto';
-import { CreateCriterionDto } from 'src/criteria/dto/create-criterion.dto';
-import { UpdateCriterionDto } from 'src/criteria/dto/update-criterion.dto';
-import { CreateCycleConfigDto } from 'src/cycle-config/dto/create-cycle-config.dto';
-import { UpdateCycleConfigDto } from 'src/cycle-config/dto/update-cycle-config.dto';
-import { CycleConfigResponseDto } from 'src/cycle-config/dto/cycle-config-response.dto';
-import { CreatePillarTrackConfigDto } from 'src/pillars/dto/create-pillar-track-config.dto';
-import { UpdatePillarTrackConfigDto } from 'src/pillars/dto/update-pillar-track-config.dto';
-import { UpdateCriterionTrackConfigDto } from 'src/criteria/dto/update-criterion-track-config.dto';
-import { BatchUpdateCriteriaDto } from 'src/criteria/dto/batch-update-criteria.dto';
-import { TrackConfigDto } from 'src/criteria/dto/track-config.dto';
+import { UpdatePillarDto } from 'src/evaluations/autoevaluations/pillar/dto/update-pillar.dto';
+import { CriteriaService } from 'src/evaluations/autoevaluations/criteria/criteria.service';
+import { CycleConfigService } from 'src/evaluations/cycles/cycle-config.service';
+import { PillarsService } from 'src/evaluations/autoevaluations/pillar/pillars.service';
+import { CreatePillarDto } from 'src/evaluations/autoevaluations/pillar/dto/create-pillar.dto';
+import { CreateCriterionDto } from 'src/evaluations/autoevaluations/criteria/dto/create-criterion.dto';
+import { UpdateCriterionDto } from 'src/evaluations/autoevaluations/criteria/dto/update-criterion.dto';
+import { CreateCycleConfigDto } from 'src/evaluations/cycles/dto/create-cycle-config.dto';
+import { UpdateCycleConfigDto } from 'src/evaluations/cycles/dto/update-cycle-config.dto';
+import { CycleConfigResponseDto } from 'src/evaluations/cycles/dto/cycle-config-response.dto';
+import { CreatePillarTrackConfigDto } from 'src/evaluations/autoevaluations/pillar/dto/create-pillar-track-config.dto';
+import { UpdatePillarTrackConfigDto } from 'src/evaluations/autoevaluations/pillar/dto/update-pillar-track-config.dto';
+import { UpdateCriterionTrackConfigDto } from 'src/evaluations/autoevaluations/criteria/dto/update-criterion-track-config.dto';
+import { BatchUpdateCriteriaDto } from 'src/evaluations/autoevaluations/criteria/dto/batch-update-criteria.dto';
+import { TrackConfigDto } from 'src/evaluations/autoevaluations/criteria/dto/track-config.dto';
 
 @Injectable()
 export class RHService {

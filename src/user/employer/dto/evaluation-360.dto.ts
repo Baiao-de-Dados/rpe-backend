@@ -3,12 +3,15 @@ import { Type } from 'class-transformer';
 
 class Evaluation360Item {
     @IsNumber()
-    employerId: number;
+    evaluateeId: number;
 
     @IsNumber()
     @Min(1)
     @Max(5)
     score: number;
+
+    @IsString()
+    justification: string;
 
     @IsOptional()
     @IsString()

@@ -5,7 +5,7 @@ import {
     BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { EncryptionService } from 'src/encryption/encryption.service';
+import { EncryptionService } from 'src/cryptography/encryption.service';
 import { User, UserRole } from '@prisma/client';
 import { CreateUserDTO } from './dto/create-user.dto';
 import { UserWithRoles } from './dto/user-response.dto';
