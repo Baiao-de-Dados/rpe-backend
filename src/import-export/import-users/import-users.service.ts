@@ -57,16 +57,27 @@ export class ImportUsersService {
                     data: { name: user.track || 'Não informado' },
                 });
             }
-            await this.prisma.user.create({
+
+            const position = 'Não informado';
+            // Cria o usuário como mentor de si mesmo (padrão seguro)
+            const createdUser = await this.prisma.user.create({
                 data: {
                     email: user.email,
                     password: hashedPassword,
                     name: user.name,
+                    position,
+                    mentorId: 0,
                     trackId: track.id,
                     userRoles: {
                         create: [{ role: user.role as UserRole }],
                     },
                 },
+            });
+
+            // Faz auto-referência do mentorId para o próprio usuário
+            await this.prisma.user.update({
+                where: { id: createdUser.id },
+                data: { mentorId: createdUser.id },
             });
         }
 
