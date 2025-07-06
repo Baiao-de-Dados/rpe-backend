@@ -1,12 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import {
-    IsString,
-    IsDateString,
-    IsOptional,
-    IsBoolean,
-    IsArray,
-    ValidateNested,
-} from 'class-validator';
+import { IsString, IsDateString, IsOptional, IsArray, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class PillarConfigDto {
@@ -39,8 +32,8 @@ export class CreateCycleConfigDto {
     endDate: string;
 
     @ApiProperty({ example: true, description: 'Se o ciclo está ativo' })
-    @IsBoolean()
-    isActive: boolean;
+    @IsOptional()
+    isActive?: boolean;
 
     @ApiProperty({ type: [PillarConfigDto], description: 'Configurações dos pilares' })
     @IsArray()

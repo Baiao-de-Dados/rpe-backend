@@ -42,7 +42,4 @@ export class CriterionResponseDto {
 
     @ApiProperty({ example: 1 })
     pillarId: number;
-
-    @ApiProperty({ example: true })
-    isActive: boolean;
 }

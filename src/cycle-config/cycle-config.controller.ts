@@ -85,4 +85,14 @@ export class CycleConfigController {
     ) {
         return await this.cycleConfigService.extendCycle(id, extendCycleDto);
     }
+
+    @Delete(':id/cancel')
+    @RequireRH()
+    @ApiOperation({ summary: 'Cancelar ciclo ativo' })
+    @ApiResponse({ status: 200, description: 'Ciclo cancelado com sucesso' })
+    @ApiResponse({ status: 400, description: 'Ciclo não está ativo' })
+    @ApiResponse({ status: 404, description: 'Ciclo não encontrado' })
+    async cancelCycle(@Param('id', ParseIntPipe) id: number) {
+        return this.cycleConfigService.cancelCycle(id);
+    }
 }

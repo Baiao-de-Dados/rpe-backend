@@ -229,15 +229,13 @@ export class EvaluationsService {
         }
 
         // 3. Buscar critérios ativos no ciclo atual
-        const activeCycleCriteria = await this.cycleConfigService.getActiveCriteria();
-        const activeCriteriaIds = new Set(activeCycleCriteria.map((c) => c.id));
+        // const activeCycleCriteria = await this.cycleConfigService.getActiveCriteria();
 
         // 4. Buscar configurações de critério para a trilha do usuário no ciclo ativo
         const userTrackCriteria = await this.prisma.criterionTrackCycleConfig.findMany({
             where: {
                 trackId: user.trackId,
                 cycleId: activeCycle.id,
-                isActive: true,
             },
             include: {
                 criterion: {
@@ -255,18 +253,16 @@ export class EvaluationsService {
         }
 
         // 5. Filtrar critérios que estão ativos no ciclo E configurados para a trilha do usuário
-        const userActiveCriteria = userTrackCriteria
-            .filter((trackConfig) => activeCriteriaIds.has(trackConfig.criterionId))
-            .map((trackConfig) => ({
-                id: trackConfig.criterion.id,
-                name: trackConfig.criterion.name,
-                description: trackConfig.criterion.description,
-                weight: trackConfig.weight,
-                pillar: {
-                    id: trackConfig.criterion.pillar.id,
-                    name: trackConfig.criterion.pillar.name,
-                },
-            }));
+        const userActiveCriteria = userTrackCriteria.map((trackConfig) => ({
+            id: trackConfig.criterion.id,
+            name: trackConfig.criterion.name,
+            description: trackConfig.criterion.description,
+            weight: trackConfig.weight,
+            pillar: {
+                id: trackConfig.criterion.pillar.id,
+                name: trackConfig.criterion.pillar.name,
+            },
+        }));
 
         if (userActiveCriteria.length === 0) {
             throw new NotFoundException(

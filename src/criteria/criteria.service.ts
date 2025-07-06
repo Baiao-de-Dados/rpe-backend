@@ -149,11 +149,7 @@ export class CriteriaService {
             include: {
                 criterion: {
                     include: {
-                        pillar: {
-                            include: {
-                                trackConfigs: true,
-                            },
-                        },
+                        pillar: true,
                     },
                 },
                 track: true,
@@ -301,7 +297,6 @@ export class CriteriaService {
             where: {
                 trackId: user.trackId,
                 cycleId: activeCycle.id,
-                isActive: true,
             },
             include: {
                 criterion: {
@@ -657,39 +652,64 @@ export class CriteriaService {
     }
 
     async createTrackCycleConfigFromDraft(endDate: string) {
-        // 1. Desativar todos os ciclos ativos
+        // 1. Buscar todas as configs de rascunho
+        const draftConfigs = await this.prisma.criterionTrackConfig.findMany();
+
+        // 2. Impede iniciar ciclo se não houver configs de rascunho
+        if (draftConfigs.length === 0) {
+            throw new Error(
+                'Não é possível iniciar o ciclo: nenhuma configuração de critério encontrada.',
+            );
+        }
+
+        // 3. Desativar ciclos ativos
         await this.prisma.cycleConfig.updateMany({
             where: { isActive: true },
             data: { isActive: false },
         });
 
-        // 1.1 Desativar todas as configs de ciclos anteriores
-        await this.prisma.criterionTrackCycleConfig.updateMany({
-            where: { isActive: true },
-            data: { isActive: false },
-        });
+        // Usar a data atual como data de início do ciclo
+        const startDate = new Date(); // Data de criação
 
-        // 2. Criar novo ciclo
-        const now = new Date();
-        const startDate = now;
-        // Calcular semestre: meses 0-5 = 1, meses 6-11 = 2
-        const year = now.getFullYear();
-        const semester = now.getMonth() < 6 ? 1 : 2;
+        const year = startDate.getFullYear();
+        const semester = startDate.getMonth() < 6 ? 1 : 2;
         const cycleName = `${year}.${semester}`;
-        const cycle = await this.prisma.cycleConfig.create({
-            data: {
-                name: cycleName,
-                description: 'Ciclo criado automaticamente ao iniciar ciclo',
-                startDate,
-                endDate: new Date(endDate),
-                isActive: true,
+
+        let cycle = await this.prisma.cycleConfig.findFirst({
+            where: {
+                OR: [{ startDate: startDate }, { name: cycleName }],
             },
         });
 
-        // 2. Buscar todas as configs de rascunho
-        const draftConfigs = await this.prisma.criterionTrackConfig.findMany();
+        if (cycle) {
+            // Atualiza ciclo existente
+            cycle = await this.prisma.cycleConfig.update({
+                where: { id: cycle.id },
+                data: {
+                    endDate: new Date(endDate),
+                    name: cycleName, // Garante que o nome está correto
+                    startDate: startDate,
+                    isActive: true, // Garante que o ciclo atualizado fique ativo
+                },
+            });
+            // Remove configs antigas desse ciclo
+            await this.prisma.criterionTrackCycleConfig.deleteMany({
+                where: { cycleId: cycle.id },
+            });
+        } else {
+            // Cria novo ciclo
+            cycle = await this.prisma.cycleConfig.create({
+                data: {
+                    name: cycleName,
+                    description: 'Ciclo criado automaticamente ao iniciar ciclo',
+                    startDate: startDate,
+                    endDate: new Date(endDate),
+                    isActive: true, // Garante que o ciclo criado é ativo
+                },
+            });
+        }
 
-        // 3. Copiar para CriterionTrackCycleConfig
+        // 4. Copiar para CriterionTrackCycleConfig
         if (draftConfigs.length > 0) {
             await this.prisma.criterionTrackCycleConfig.createMany({
                 data: draftConfigs.map((config) => ({
@@ -697,7 +717,6 @@ export class CriteriaService {
                     trackId: config.trackId,
                     criterionId: config.criterionId,
                     weight: config.weight,
-                    isActive: true, // Sempre criar como ativo para o novo ciclo
                 })),
             });
         }

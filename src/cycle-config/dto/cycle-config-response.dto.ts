@@ -33,14 +33,14 @@ export class CycleConfigResponseDto {
     @ApiProperty({ example: '2025-06-30T23:59:59Z', description: 'Data de fim do ciclo' })
     endDate: Date;
 
-    @ApiProperty({ example: true, description: 'Se o ciclo está ativo' })
-    isActive: boolean;
-
     @ApiProperty({ example: '2025-01-01T00:00:00Z', description: 'Data de criação' })
     createdAt: Date;
 
     @ApiProperty({ example: '2025-01-01T00:00:00Z', description: 'Data de atualização' })
     updatedAt: Date;
+
+    @ApiProperty({ example: true, description: 'Se o ciclo está ativo' })
+    isActive: boolean;
 
     @ApiProperty({ type: [PillarConfigResponseDto], description: 'Configurações dos pilares' })
     pillarConfigs: PillarConfigResponseDto[];

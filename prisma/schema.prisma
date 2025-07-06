@@ -100,9 +100,6 @@ model Pillar {
 
   criteria     Criterion[]
   cycleConfigs PillarCycleConfig[]
-  trackConfigs PillarTrackConfig[]
-
-  pillarTrackCycleConfigs PillarTrackCycleConfig[]
 }
 
 model Criterion {
@@ -217,7 +214,6 @@ model CycleConfig {
   Evaluation       Evaluation[]
 
   criterionTrackCycleConfigs CriterionTrackCycleConfig[]
-  pillarTrackCycleConfigs    PillarTrackCycleConfig[]
 
   @@unique([name])
 }
@@ -237,25 +233,12 @@ model PillarCycleConfig {
   @@unique([cycleId, pillarId])
 }
 
-model PillarTrackConfig {
-  id        Int      @id @default(autoincrement())
-  pillarId  Int
-  track     String // trilha
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  pillar Pillar @relation(fields: [pillarId], references: [id], onDelete: Cascade)
-
-  @@unique([pillarId, track])
-}
-
 model Track {
   id    Int    @id @default(autoincrement())
   name  String @unique
+
   criterionTrackConfigs CriterionTrackConfig[]
   criterionTrackCycleConfigs CriterionTrackCycleConfig[]
-  pillarTrackCycleConfigs    PillarTrackCycleConfig[]
   users User[]
 }
 
@@ -278,7 +261,6 @@ model CriterionTrackCycleConfig {
   cycleId     Int
   trackId     Int
   criterionId Int
-  isActive    Boolean  @default(true)
   weight      Int      @default(1)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -288,23 +270,6 @@ model CriterionTrackCycleConfig {
   criterion Criterion   @relation(fields: [criterionId], references: [id], onDelete: Cascade)
 
   @@unique([cycleId, trackId, criterionId])
-}
-
-model PillarTrackCycleConfig {
-  id        Int      @id @default(autoincrement())
-  cycleId   Int
-  trackId   Int
-  pillarId  Int
-  isActive  Boolean  @default(true)
-  weight    Int      @default(1)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  cycle  CycleConfig @relation(fields: [cycleId], references: [id], onDelete: Cascade)
-  track  Track       @relation(fields: [trackId], references: [id], onDelete: Cascade)
-  pillar Pillar      @relation(fields: [pillarId], references: [id], onDelete: Cascade)
-
-  @@unique([cycleId, trackId, pillarId])
 }
 
 enum EvaluationType {

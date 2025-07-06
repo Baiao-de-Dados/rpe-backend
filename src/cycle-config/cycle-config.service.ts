@@ -10,26 +10,13 @@ export class CycleConfigService {
     constructor(private prisma: PrismaService) {}
 
     async create(createCycleConfigDto: CreateCycleConfigDto): Promise<CycleConfigResponseDto> {
-        // Verificar se já existe um ciclo com o mesmo nome
-        const existingCycle = await this.prisma.cycleConfig.findUnique({
-            where: { name: createCycleConfigDto.name },
+        // Sempre desativa todos os ciclos antes de criar um novo
+        await this.prisma.cycleConfig.updateMany({
+            where: { isActive: true },
+            data: { isActive: false },
         });
 
-        if (existingCycle) {
-            throw new BadRequestException(
-                `Já existe um ciclo com o nome: ${createCycleConfigDto.name}`,
-            );
-        }
-
-        // Se este ciclo será ativo, desativar outros ciclos
-        if (createCycleConfigDto.isActive) {
-            await this.prisma.cycleConfig.updateMany({
-                where: { isActive: true },
-                data: { isActive: false },
-            });
-        }
-
-        // Criar o ciclo e suas configurações em uma transação
+        // Cria o ciclo e suas configurações em uma transação
         return await this.prisma.$transaction(async (prisma) => {
             const cycle = await prisma.cycleConfig.create({
                 data: {
@@ -37,21 +24,9 @@ export class CycleConfigService {
                     description: createCycleConfigDto.description,
                     startDate: new Date(createCycleConfigDto.startDate),
                     endDate: new Date(createCycleConfigDto.endDate),
-                    isActive: createCycleConfigDto.isActive,
+                    isActive: true, // Sempre ativo
                 },
             });
-
-            // Criar configurações dos pilares
-            if (createCycleConfigDto.pillarConfigs.length > 0) {
-                await prisma.pillarCycleConfig.createMany({
-                    data: createCycleConfigDto.pillarConfigs.map((config) => ({
-                        cycleId: cycle.id,
-                        pillarId: config.pillarId,
-                        isActive: config.isActive,
-                        weight: config.weight,
-                    })),
-                });
-            }
 
             // Copiar configs de CriterionTrackConfig para CriterionTrackCycleConfig
             const draftConfigs = await prisma.criterionTrackConfig.findMany();
@@ -62,7 +37,6 @@ export class CycleConfigService {
                         trackId: config.trackId,
                         criterionId: config.criterionId,
                         weight: config.weight,
-                        isActive: config.isActive,
                     })),
                 });
             }
@@ -217,6 +191,39 @@ export class CycleConfigService {
         });
     }
 
+    async cancelCycle(id: number): Promise<void> {
+        const cycle = await this.prisma.cycleConfig.findUnique({
+            where: { id },
+        });
+
+        if (!cycle) {
+            throw new NotFoundException(`Ciclo com ID ${id} não encontrado`);
+        }
+
+        if (!cycle.isActive) {
+            throw new BadRequestException(
+                `Ciclo ${cycle.name} não está ativo. Apenas ciclos ativos podem ser cancelados.`,
+            );
+        }
+
+        // Cancelar todas as avaliações do ciclo
+        await this.prisma.evaluation.updateMany({
+            where: { cycleConfigId: id },
+            data: { status: 'COMPLETED' },
+        });
+
+        // Desativar o ciclo
+        // await this.prisma.cycleConfig.update({
+        //     where: { id },
+        //     data: { isActive: false },
+        // });
+
+        // Apagar o ciclo do banco de dados
+        await this.prisma.cycleConfig.delete({
+            where: { id },
+        });
+    }
+
     async getActiveCriteria(): Promise<any[]> {
         const activeCycle = await this.prisma.cycleConfig.findFirst({
             where: { isActive: true },
@@ -226,11 +233,10 @@ export class CycleConfigService {
             return [];
         }
 
-        // Buscar critérios ativos do ciclo através de CriterionTrackCycleConfig
+        // Buscar critérios do ciclo através de CriterionTrackCycleConfig
         const activeCriteria = await this.prisma.criterionTrackCycleConfig.findMany({
             where: {
                 cycleId: activeCycle.id,
-                isActive: true,
             },
             include: {
                 criterion: {
@@ -371,7 +377,6 @@ export class CycleConfigService {
                 trackId: cfg.trackId,
                 trackName: cfg.track.name,
                 weight: cfg.weight,
-                isActive: cfg.isActive,
             })),
         };
     }
