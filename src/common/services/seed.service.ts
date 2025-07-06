@@ -24,6 +24,7 @@ export class SeedService {
         }
 
         const hashedPassword = await bcrypt.hash('senha123', 10);
+        const encryptedEmailMentor = encrypt('mentor@teste.com');
         const encryptedEmailBackend = encrypt('backend@teste.com');
         const encryptedEmailFrontend = encrypt('frontend@teste.com');
         const encryptedEmailRh = encrypt('rh@teste.com');
@@ -50,6 +51,25 @@ export class SeedService {
             create: { name: 'Default' },
         });
 
+        // Usuário Mentor
+        const mentor = await this.prisma.user.upsert({
+            where: { email: encryptedEmailMentor },
+            update: {},
+            create: {
+                email: encryptedEmailMentor,
+                password: hashedPassword,
+                name: 'Mentor Dummy',
+                position: 'Mentor',
+                mentorId: 0,
+                trackId: trackBackend.id,
+            },
+        });
+
+        await this.prisma.user.update({
+            where: { id: mentor.id },
+            data: { mentorId: mentor.id },
+        });
+
         // Usuários normais (usar upsert)
         await this.prisma.user.upsert({
             where: { email: encryptedEmailBackend },
@@ -58,6 +78,8 @@ export class SeedService {
                 email: encryptedEmailBackend,
                 password: hashedPassword,
                 name: 'João Backend',
+                position: 'DEV Backend',
+                mentorId: mentor.id,
                 trackId: trackBackend.id,
                 userRoles: { create: [{ role: 'EMPLOYER' }] },
             },
@@ -69,6 +91,8 @@ export class SeedService {
                 email: encryptedEmailFrontend,
                 password: hashedPassword,
                 name: 'Maria Frontend',
+                position: 'DEV Frontend',
+                mentorId: mentor.id,
                 trackId: trackFrontend.id,
                 userRoles: { create: [{ role: 'EMPLOYER' }] },
             },
@@ -80,6 +104,8 @@ export class SeedService {
                 email: encryptedEmailRh,
                 password: hashedPassword,
                 name: 'Ana RH',
+                position: 'RH Tester',
+                mentorId: mentor.id,
                 trackId: trackRH.id,
                 userRoles: { create: [{ role: 'RH' }] },
             },
@@ -94,6 +120,8 @@ export class SeedService {
                 email: encryptedEmailAdmin,
                 password: await bcrypt.hash('admin123', 10),
                 name: 'System Admin',
+                position: 'Administrador',
+                mentorId: mentor.id,
                 trackId: trackDefault.id,
                 userRoles: { create: [{ role: 'ADMIN' }] },
             },

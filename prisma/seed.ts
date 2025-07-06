@@ -62,7 +62,7 @@ async function main() {
         data: {
             email: encryptedEmailBackend,
             password: hashedPassword,
-            name: 'Donatello Ninja',
+            name: 'João Backend',
             position: 'DEV Backend',
             mentorId: mentor.id,
             trackId: trackBackend.id,
