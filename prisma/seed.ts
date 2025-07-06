@@ -40,12 +40,31 @@ async function main() {
     const trackFrontend = await prisma.track.create({ data: { name: 'Frontend' } });
     const trackRH = await prisma.track.create({ data: { name: 'RH' } });
 
+    // Usuário Mentor
+    const mentor = await prisma.user.create({
+        data: {
+            email: encrypt('mentor@teste.com'),
+            password: hashedPassword,
+            name: 'Mentor Dummy',
+            position: 'Mentor',
+            mentorId: 0,
+            trackId: trackBackend.id,
+        },
+    });
+
+    await prisma.user.update({
+        where: { id: mentor.id },
+        data: { mentorId: mentor.id },
+    });
+
     // Usuário Backend/Desenvolvedor
     const userBackend = await prisma.user.create({
         data: {
             email: encryptedEmailBackend,
             password: hashedPassword,
-            name: 'João Backend',
+            name: 'Donatello Ninja',
+            position: 'DEV Backend',
+            mentorId: mentor.id,
             trackId: trackBackend.id,
             userRoles: {
                 create: [{ role: 'EMPLOYER' }],
@@ -59,6 +78,8 @@ async function main() {
             email: encryptedEmailFrontend,
             password: hashedPassword,
             name: 'Maria Frontend',
+            position: 'DEV Frontend',
+            mentorId: mentor.id,
             trackId: trackFrontend.id,
             userRoles: {
                 create: [{ role: 'EMPLOYER' }],
@@ -72,6 +93,8 @@ async function main() {
             email: encryptedEmailRh,
             password: hashedPassword,
             name: 'Ana RH',
+            position: 'RH tester',
+            mentorId: mentor.id,
             trackId: trackRH.id,
             userRoles: {
                 create: [{ role: 'RH' }],
@@ -81,26 +104,10 @@ async function main() {
 
     console.log('🏗️ Criando pilares...');
 
-    // Pilar Comportamento
-    const pilarComportamento = await prisma.pillar.create({
-        data: {
-            name: 'COMPORTAMENTO',
-        },
-    });
-
-    // Pilar Execução
-    const pilarExecucao = await prisma.pillar.create({
-        data: {
-            name: 'EXECUÇÃO',
-        },
-    });
-
-    // Pilar Gestão e Liderança
-    const pilarGestao = await prisma.pillar.create({
-        data: {
-            name: 'GESTÃO E LIDERANÇA',
-        },
-    });
+    // Pilares: Comportamento, Execução e Gestão
+    const pilarComportamento = await prisma.pillar.create({ data: { name: 'COMPORTAMENTO' } });
+    const pilarExecucao = await prisma.pillar.create({ data: { name: 'EXECUÇÃO' } });
+    const pilarGestao = await prisma.pillar.create({ data: { name: 'GESTÃO E LIDERANÇA' } });
 
     console.log('✅ Criando critérios...');
 
