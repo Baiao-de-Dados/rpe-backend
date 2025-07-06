@@ -2,15 +2,12 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { AuditMiddleware } from './common/middleware/audit.middleware';
 import { EvaluationsModule } from './evaluations/evaluations.module';
-import { CriteriaModule } from './criteria/criteria.module';
-import { PillarsModule } from './pillars/pillars.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { AppController } from './app.controller';
 import { UserModule } from './user/user.module';
 import { AuthModule } from './auth/auth.module';
-import { TagsModule } from './tags/tags.module';
 import { ErpModule } from './erp/erp.module';
-import { CycleConfigModule } from './cycle-config/cycle-config.module';
+import { CycleConfigModule } from './evaluations/cycles/cycle-config.module';
 import { ConfigModule } from '@nestjs/config';
 import { AppService } from './app.service';
 import { CommonModule } from './common/common.module';
@@ -43,9 +40,6 @@ import { ImportUsersModule } from './import-export/import-users/import-users.mod
         UserModule,
         AuthModule,
         EvaluationsModule,
-        PillarsModule,
-        CriteriaModule,
-        TagsModule,
         ErpModule,
         CycleConfigModule,
         CommonModule,
@@ -70,14 +64,6 @@ export class AppModule implements NestModule {
     configure(consumer: MiddlewareConsumer) {
         consumer
             .apply(AuditMiddleware)
-            .forRoutes(
-                'evaluations',
-                'pillars',
-                'criteria',
-                'tags',
-                'users',
-                'export',
-                'cycle-config',
-            );
+            .forRoutes('evaluations', 'pillars', 'criteria', 'users', 'export', 'cycle-config');
     }
 }
