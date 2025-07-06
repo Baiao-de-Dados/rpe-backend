@@ -1,7 +1,7 @@
 import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common';
 import { map, Observable } from 'rxjs';
-import { EncryptionService } from 'src/encryption/encryption.service';
-import { ENCRYPTED_FIELDS_KEY } from 'src/encryption/decorators/encrypt-field.decorator';
+import { EncryptionService } from 'src/cryptography/encryption.service';
+import { ENCRYPTED_FIELDS_KEY } from 'src/cryptography/decorators/encrypt-field.decorator';
 
 type PlainObject = Record<string, unknown>;
 
