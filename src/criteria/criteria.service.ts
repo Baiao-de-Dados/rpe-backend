@@ -47,7 +47,6 @@ export class CriteriaService {
             name: c.name,
             description: c.description,
             pillarId: c.pillarId,
-            isActive: true, // ou ajuste conforme sua lógica
         }));
     }
 
@@ -68,7 +67,6 @@ export class CriteriaService {
             name: criterion.name,
             description: criterion.description,
             pillarId: criterion.pillarId,
-            isActive: true, // ou ajuste conforme sua lógica
         };
     }
 
@@ -142,7 +140,6 @@ export class CriteriaService {
             name: c.name,
             description: c.description,
             pillarId: c.pillarId,
-            isActive: true, // ou ajuste conforme sua lógica
         }));
     }
 
@@ -517,6 +514,12 @@ export class CriteriaService {
             if (!track) {
                 throw new BadRequestException(`Trilha com ID ${trackId} não encontrada.`);
             }
+
+            // Remover todas as configurações antigas da trilha antes de inserir as novas
+            await this.prisma.criterionTrackConfig.deleteMany({
+                where: { trackId: trackId },
+            });
+
             const trackResults = {
                 track: trackId,
                 pillars: [] as any[],
@@ -551,13 +554,11 @@ export class CriteriaService {
                         },
                         update: {
                             weight: criterion.weight,
-                            isActive: true,
                         },
                         create: {
                             criterionId: criterionId,
                             trackId: trackId,
                             weight: criterion.weight,
-                            isActive: true,
                         },
                         include: {
                             criterion: {
@@ -635,7 +636,6 @@ export class CriteriaService {
                         name: cfg.criterion.name,
                         description: cfg.criterion.description,
                         weight: cfg.weight,
-                        isActive: cfg.isActive,
                     }));
                 return {
                     id: pillar.id,
@@ -651,7 +651,6 @@ export class CriteriaService {
                 name: cycle.name,
                 startDate: cycle.startDate,
                 endDate: cycle.endDate,
-                isActive: cycle.isActive,
             },
             tracks: result,
         };

@@ -263,7 +263,6 @@ model CriterionTrackConfig {
   id          Int      @id @default(autoincrement())
   criterionId Int
   trackId     Int
-  isActive    Boolean  @default(true)
   weight      Int    @default(1)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
