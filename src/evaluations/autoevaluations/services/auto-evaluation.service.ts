@@ -24,9 +24,11 @@ export class AutoEvaluationService {
             // Verificar se já existe uma autoavaliação para este usuário no ciclo
             const existingAutoEvaluation = await prisma.evaluation.findFirst({
                 where: {
-                    type: 'AUTOEVALUATION',
                     evaluateeId: colaboradorId,
                     cycleConfigId: activeCycle.id,
+                    autoEvaluation: {
+                        isNot: null,
+                    },
                 },
             });
 
@@ -60,23 +62,27 @@ export class AutoEvaluationService {
 
             const autoEvaluation = await prisma.evaluation.create({
                 data: {
-                    type: 'AUTOEVALUATION',
                     evaluatorId: colaboradorId,
                     evaluateeId: colaboradorId,
                     cycleConfigId: activeCycle.id,
-                    justification: 'Autoavaliação', // Justificativa padrão
-                    score: 0,
+                },
+            });
+
+            // Criar o registro de autoavaliação
+            await prisma.autoEvaluation.create({
+                data: {
+                    evaluationId: autoEvaluation.id,
                 },
             });
 
             // Cria os critérios da autoavaliação (agora validados)
             for (const pilar of autoavaliacao.pilares) {
                 for (const criterio of pilar.criterios) {
-                    await prisma.criteriaAssignment.create({
+                    await prisma.autoEvaluationAssignment.create({
                         data: {
-                            autoEvaluationID: autoEvaluation.id,
+                            evaluationId: autoEvaluation.id,
                             criterionId: parseInt(criterio.criterioId, 10),
-                            note: criterio.nota,
+                            score: criterio.nota,
                             justification: criterio.justificativa,
                         },
                     });

@@ -40,20 +40,33 @@ async function main() {
     const trackFrontend = await prisma.track.create({ data: { name: 'Frontend' } });
     const trackRH = await prisma.track.create({ data: { name: 'RH' } });
 
-    // Usuário Mentor
+    // Usuário Mentor Dummy
+    const dummyMentor = await prisma.user.create({
+        data: {
+            email: encrypt('dummy@teste.com'),
+            password: hashedPassword,
+            name: 'Dummy',
+            position: 'Mentor',
+            mentorId: 1, // valor temporário, será ajustado depois
+            trackId: trackBackend.id,
+        },
+    });
+
+    // Usuário Mentor real, apontando para o dummy
     const mentor = await prisma.user.create({
         data: {
             email: encrypt('mentor@teste.com'),
             password: hashedPassword,
             name: 'Mentor Dummy',
             position: 'Mentor',
-            mentorId: 0,
+            mentorId: dummyMentor.id,
             trackId: trackBackend.id,
         },
     });
 
+    // Atualiza o dummy para apontar para o mentor real
     await prisma.user.update({
-        where: { id: mentor.id },
+        where: { id: dummyMentor.id },
         data: { mentorId: mentor.id },
     });
 

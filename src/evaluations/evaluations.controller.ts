@@ -7,7 +7,7 @@ import { ApiCreate, ApiGet } from 'src/common/decorators/api-crud.decorator';
 import { ApiAuth } from 'src/common/decorators/api-auth.decorator';
 import { RequireEmployer, RequireRH, RequireLeader } from 'src/auth/decorators/roles.decorator';
 import { PrismaService } from '../prisma/prisma.service';
-import { CycleConfigService } from './cycles/cycle-config.service';
+import { CycleConfigService } from 'src/evaluations/cycles/cycle-config.service';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 
 @ApiTags('Avaliações')
@@ -32,29 +32,18 @@ export class EvaluationsController {
     @Get()
     @ApiGet('avaliações')
     findAll(
-        @Query('type') type?: string,
         @Query('evaluateeId') evaluateeId?: number,
         @Query('evaluatorId') evaluatorId?: number,
     ) {
         // Lógica unificada para filtros
-        return this.evaluationsService.findWithFilters(type, evaluateeId, evaluatorId);
-    }
-
-    @RequireRH()
-    @Get('type/:type')
-    @ApiGet('avaliações por tipo')
-    findByType(@Param('type') type: string) {
-        return this.evaluationsService.findWithFilters(type);
+        return this.evaluationsService.findWithFilters(evaluateeId, evaluatorId);
     }
 
     @RequireLeader()
     @Get('by-evaluator/:evaluatorId')
     @ApiGet('avaliações por avaliador')
-    findByEvaluator(
-        @Param('evaluatorId', ParseIntPipe) evaluatorId: number,
-        @Query('type') type?: string,
-    ) {
-        return this.evaluationsService.findWithFilters(type || 'LEADER', undefined, evaluatorId);
+    findByEvaluator(@Param('evaluatorId', ParseIntPipe) evaluatorId: number) {
+        return this.evaluationsService.findWithFilters(undefined, evaluatorId);
     }
 
     @RequireEmployer()

@@ -4,9 +4,9 @@ import { CreateEvaluationDto } from './dto/create-evaluation.dto';
 import { EvaluationValidationService } from './services/evaluation-validation.service';
 import { Peer360EvaluationService } from './services/peer360-evaluation.service';
 import { ReferenceService } from './services/reference.service';
-import { AutoEvaluationService } from './autoevaluations/services/auto-evaluation.service';
+import { AutoEvaluationService } from 'src/evaluations/autoevaluations/services/auto-evaluation.service';
 import { MentorEvaluationService } from './services/mentor-evaluation.service';
-import { CycleConfigService } from './cycles/cycle-config.service';
+import { CycleConfigService } from 'src/evaluations/cycles/cycle-config.service';
 import { ActiveCriteriaUserResponseDto } from './dto/active-criteria-response.dto';
 
 @Injectable()
@@ -31,53 +31,56 @@ export class EvaluationsService {
             referencias,
         } = createEvaluationDto;
 
-        // colaboradorId já é number
-        const colaboradorIdNumber = colaboradorId;
-
         // VALIDAÇÕES PRÉVIAS - Usando o service de validação
         await this.validationService.validateEvaluationData(createEvaluationDto);
 
+        // Usar transação para garantir atomicidade
         return await this.prisma.$transaction(async (prisma) => {
-            // 1. Cria a autoavaliação usando o service (com validação de trilha)
+            const evaluations: any[] = [];
+
+            // 1. Cria a autoavaliação usando o service (com validação de trilha/cargo)
             const autoEvaluation = await this.autoEvaluationService.createAutoEvaluation(
                 prisma,
                 autoavaliacao,
-                colaboradorIdNumber,
+                colaboradorId,
                 cycleConfigId,
                 userTrack,
             );
+            if (autoEvaluation) {
+                evaluations.push(autoEvaluation);
+            }
 
-            // 2. Cria as avaliações 360
+            // 2. Cria as avaliações 360 (PEER_360) usando o service
             const peerEvaluations = await this.peer360EvaluationService.createPeer360Evaluations(
                 prisma,
                 avaliacao360,
-                colaboradorIdNumber,
+                colaboradorId,
                 cycleConfigId,
             );
+            evaluations.push(...peerEvaluations);
 
-            // 3. Cria as avaliações de mentor
-            let mentorEvaluation = null;
-            if (mentoring && mentoring.mentorId) {
-                mentorEvaluation = await this.mentorEvaluationService.createMentorEvaluation(
+            // 3. Cria as avaliações de mentor usando o service
+            if (mentoring && mentoring.mentorId && mentoring.justificativa) {
+                const mentorEvaluation = await this.mentorEvaluationService.createMentorEvaluation(
                     prisma,
                     mentoring.mentorId,
-                    colaboradorIdNumber,
+                    colaboradorId,
                     mentoring.justificativa,
                     cycleConfigId,
                 );
+                evaluations.push(mentorEvaluation);
             }
 
             // 4. Cria as referências usando o service
-            await this.referenceService.createReferences(prisma, referencias, colaboradorIdNumber);
+            await this.referenceService.createReferences(
+                prisma,
+                referencias,
+                colaboradorId,
+                cycleConfigId,
+            );
 
             // Retorna a estrutura compatível com o formato anterior
-            return this.formatEvaluationResponse(
-                autoEvaluation,
-                peerEvaluations,
-                mentorEvaluation,
-                colaboradorIdNumber,
-                ciclo,
-            );
+            return this.formatEvaluationResponse(evaluations, colaboradorId, cycleConfigId);
         });
     }
 
@@ -87,19 +90,7 @@ export class EvaluationsService {
             include: {
                 evaluator: true,
                 evaluatee: true,
-                autoEvaluation: {
-                    include: {
-                        assignments: {
-                            include: {
-                                criterion: {
-                                    include: {
-                                        pillar: true,
-                                    },
-                                },
-                            },
-                        },
-                    },
-                },
+                autoEvaluation: true,
                 evaluation360: true,
                 mentoring: true,
                 reference: true,
@@ -109,97 +100,54 @@ export class EvaluationsService {
         if (!evaluation) {
             throw new NotFoundException(`Avaliação com ID ${id} não encontrada`);
         }
+
         return evaluation;
     }
 
-    async findWithFilters(type?: string, evaluateeId?: number, evaluatorId?: number) {
+    async findWithFilters(evaluateeId?: number, evaluatorId?: number) {
         const where: any = {};
         if (evaluateeId) where.evaluateeId = evaluateeId;
         if (evaluatorId) where.evaluatorId = evaluatorId;
         return this.prisma.evaluation.findMany({
             where,
             include: {
-                evaluator: true,
-                evaluatee: true,
-                autoEvaluation: {
-                    include: {
-                        assignments: {
-                            include: {
-                                criterion: {
-                                    include: {
-                                        pillar: true,
-                                    },
-                                },
-                            },
-                        },
-                    },
-                },
+                autoEvaluation: true,
                 evaluation360: true,
                 mentoring: true,
                 reference: true,
+                evaluator: true,
+                evaluatee: true,
             },
             orderBy: { createdAt: 'desc' },
         });
     }
 
-    private async formatEvaluationResponse(
-        autoEvaluation: any,
-        peerEvaluations: any[],
-        mentorEvaluation: any,
+    private formatEvaluationResponse(
+        evaluations: any[],
         colaboradorId: number,
         cycleConfigId: number,
     ) {
-        // Busca referências relacionadas
-        const references = await this.prisma.reference.findMany({
-            where: {
-                evaluation: {
-                    evaluateeId: colaboradorId,
-                },
-            },
-        });
+        // Nova estrutura: separa avaliações por tipo de relacionamento
+        const autoEvaluation = evaluations.find((e) => e.autoEvaluation);
+        const evaluation360 = evaluations.filter((e) => e.evaluation360);
+        const mentoring = evaluations.find((e) => e.mentoring);
+        const reference = evaluations.filter((e) => e.reference);
 
         return {
             id: evaluations[0]?.id || 0,
-            cycle: cycleConfigId,
+            cycleConfigId,
             userId: colaboradorId,
-            cycle: ciclo,
             grade: 0.0,
             user: null, // Será preenchido se necessário
-            autoEvaluation: autoEvaluation
-                ? {
-                      id: autoEvaluation.id,
-                      evaluationId: autoEvaluation.evaluationId,
-                      justification: autoEvaluation.justification,
-                      criteriaAssignments: autoEvaluation.assignments ?? [],
-                  }
-                : null,
-            evaluation360: peerEvaluations.map((e) => ({
-                id: e.id,
-                evaluationId: e.evaluationId,
-                evaluatorId: e.evaluatorId,
-                evaluatedId: e.evaluatedId,
-                strengths: e.strenghts ?? '',
-                improvements: e.improvements ?? '',
-            })),
-            mentoring: mentorEvaluation
-                ? {
-                      id: mentorEvaluation.id,
-                      evaluationId: mentorEvaluation.evaluationId,
-                      evaluatorId: mentorEvaluation.evaluatorId,
-                      evaluatedId: mentorEvaluation.evaluateeId,
-                      justification: mentorEvaluation.justification,
-                      cycle: ciclo,
-                  }
-                : null,
-            references: references.map((r) => ({
-                evaluationId: r.evaluationId,
-                justification: r.justification,
-                createdAt: r.createdAt,
-            })),
+            autoEvaluation: autoEvaluation || null,
+            evaluation360: evaluation360 || [],
+            mentoring: mentoring || null,
+            reference: reference || [],
         };
     }
 
     async getActiveCriteriaForUser(user: any): Promise<ActiveCriteriaUserResponseDto> {
+        // 1. Verificar se existe um ciclo ativo
         const activeCycle = await this.prisma.cycleConfig.findFirst({
             where: { isActive: true },
         });
@@ -208,6 +156,7 @@ export class EvaluationsService {
             throw new NotFoundException('Nenhum ciclo de avaliação ativo encontrado');
         }
 
+        // 2. Verificar se o ciclo está dentro do prazo
         const now = new Date();
         if (now > activeCycle.endDate) {
             throw new BadRequestException(
@@ -221,21 +170,14 @@ export class EvaluationsService {
             );
         }
 
+        // 3. Buscar critérios ativos no ciclo atual
         const activeCycleCriteria = await this.cycleConfigService.getActiveCriteria();
         const activeCriteriaIds = new Set(activeCycleCriteria.map((c) => c.id));
 
-        // 4. Buscar configurações de critério para a trilha do usuário no ciclo ativo
-        const userTrackCriteria = await this.prisma.criterionTrackCycleConfig.findMany({
+        // 4. Buscar critérios configurados para a trilha/cargo do usuário
+        const userTrackCriteria = await this.prisma.criterionTrackConfig.findMany({
             where: {
-                trackId: user.trackId,
-                cycleId: activeCycle.id,
-            },
-            include: {
-                criterion: {
-                    include: {
-                        pillar: true,
-                    },
-                },
+                trackId: user.trackId || undefined,
             },
         });
 
@@ -245,46 +187,63 @@ export class EvaluationsService {
             );
         }
 
-        // 5. Filtrar critérios que estão ativos no ciclo E configurados para a trilha do usuário
-        const userActiveCriteria = userTrackCriteria.map((trackConfig) => ({
-            id: trackConfig.criterion.id,
-            name: trackConfig.criterion.name,
-            description: trackConfig.criterion.description,
-            weight: trackConfig.weight,
-            pillar: {
-                id: trackConfig.criterion.pillar.id,
-                name: trackConfig.criterion.pillar.name,
-            },
-        }));
+        // 5. Filtrar apenas critérios que estão ativos no ciclo E configurados para a trilha
+        // Supondo que activeCriteriaIds é um Set de IDs de critérios ativos
+        const validUserCriteria = userTrackCriteria.filter((config) =>
+            activeCriteriaIds.has(config.criterionId),
+        );
 
-        if (userActiveCriteria.length === 0) {
+        if (validUserCriteria.length === 0) {
             throw new NotFoundException(
                 `Nenhum critério ativo no ciclo atual para sua trilha (${user.track})`,
             );
         }
 
-        const groupedByPillar = validUserCriteria.reduce((acc, config) => {
-            const pillar = config.criterion.pillar;
-            const pillarId = pillar.id;
-
-            if (!acc[pillarId]) {
-                acc[pillarId] = {
-                    id: pillar.id,
-                    name: pillar.name,
-                    criterios: [],
+        // 6. Agrupar critérios por pilar
+        // Para cada critério, buscar o pilar correspondente (precisa buscar do banco)
+        const criteriosComPilar = await Promise.all(
+            validUserCriteria.map(async (config) => {
+                const criterion = await this.prisma.criterion.findUnique({
+                    where: { id: config.criterionId },
+                });
+                if (!criterion) return null;
+                const pillar = await this.prisma.pillar.findUnique({
+                    where: { id: criterion.pillarId },
+                });
+                if (!pillar) return null;
+                return {
+                    id: config.criterionId,
+                    name: criterion.name,
+                    description: criterion.description,
+                    weight: config.weight,
+                    originalWeight: null,
+                    pillar: {
+                        id: pillar.id,
+                        name: pillar.name,
+                    },
                 };
+            }),
+        );
+
+        // Agrupar por pilar
+        const pilaresMap = new Map();
+        for (const criterio of criteriosComPilar) {
+            if (!criterio) continue;
+            if (!pilaresMap.has(criterio.pillar.id)) {
+                pilaresMap.set(criterio.pillar.id, {
+                    id: criterio.pillar.id,
+                    name: criterio.pillar.name,
+                    criterios: [],
+                });
             }
-
-            acc[pillarId].criterios.push({
-                id: config.criterion.id,
-                name: config.criterion.name,
-                description: config.criterion.description,
-                weight: config.weight, // Peso da configuração de trilha
-                originalWeight: null, // Critério base não tem peso
+            pilaresMap.get(criterio.pillar.id).criterios.push({
+                id: criterio.id,
+                name: criterio.name,
+                description: criterio.description,
+                weight: criterio.weight,
+                originalWeight: criterio.originalWeight,
             });
-
-            return acc;
-        }, {});
+        }
 
         return {
             user: {
@@ -297,7 +256,7 @@ export class EvaluationsService {
                 startDate: activeCycle.startDate,
                 endDate: activeCycle.endDate,
             },
-            pilares: userActiveCriteria,
+            pilares: Array.from(pilaresMap.values()),
         };
     }
 }

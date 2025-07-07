@@ -283,6 +283,10 @@ export class RhPanelService {
                         track: true,
                     },
                 },
+                autoEvaluation: true,
+                evaluation360: true,
+                mentoring: true,
+                reference: true,
             },
         });
 
@@ -291,9 +295,10 @@ export class RhPanelService {
         evaluations.forEach((evaluation) => {
             const trackName = evaluation.evaluatee.track?.name || 'Sem trilha';
             const isCompleted =
-                evaluation.type === EvaluationType.AUTOEVALUATION ||
-                evaluation.type === EvaluationType.PEER_360 ||
-                evaluation.type === EvaluationType.MENTOR;
+                evaluation.autoEvaluation ||
+                evaluation.evaluation360 ||
+                evaluation.mentoring ||
+                evaluation.reference;
 
             const current = trackStats.get(trackName) || { total: 0, completed: 0, pending: 0 };
             current.total += 1;

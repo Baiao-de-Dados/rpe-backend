@@ -113,13 +113,6 @@ export class EmployerService {
     async getEvaluationData(userId: number, cycleConfigId: number) {
         const cycle = await this.prisma.cycleConfig.findUnique({
             where: { id: cycleConfigId },
-            include: {
-                pillarConfigs: {
-                    include: {
-                        pillar: { include: { criteria: true } },
-                    },
-                },
-            },
         });
         if (!cycle) throw new NotFoundException('Ciclo não existe');
 
@@ -128,25 +121,37 @@ export class EmployerService {
         });
         if (!evalRecord) throw new NotFoundException('Avaliação não encontrada');
 
-        const autoEval = await this.prisma.autoEvaluation.findUnique({
-            where: { evaluationId: evalRecord.id },
-            include: { assignments: true },
+        const criteria = await this.prisma.criterionTrackCycleConfig.findMany({
+            where: { cycleId: cycleConfigId },
+            include: {
+                criterion: {
+                    include: { pillar: true },
+                },
+            },
         });
 
-        const pillars = cycle.pillarConfigs.map((pc) => ({
-            id: pc.pillar.id,
-            name: pc.pillar.name,
-            criteria: pc.pillar.criteria.map((c) => {
-                const assignment = autoEval?.assignments.find((a) => a.criterionId === c.id);
-                return {
-                    criterionId: c.id,
-                    title: c.name,
-                    description: c.description,
-                    score: assignment?.score ?? null,
-                    justification: assignment?.justification ?? '',
-                };
-            }),
-        }));
+        // Agrupar por pilar
+        const pillarsMap = new Map();
+        criteria.forEach((config) => {
+            const pillar = config.criterion.pillar;
+            const criterion = config.criterion;
+            if (!pillarsMap.has(pillar.id)) {
+                pillarsMap.set(pillar.id, {
+                    id: pillar.id,
+                    name: pillar.name,
+                    criteria: [],
+                });
+            }
+            const pillarData = pillarsMap.get(pillar.id);
+            pillarData.criteria.push({
+                id: criterion.id,
+                name: criterion.name,
+                description: criterion.description,
+                weight: config.weight,
+            });
+        });
+
+        const pillars = Array.from(pillarsMap.values());
 
         return {
             cycleName: cycle.name,

@@ -24,7 +24,6 @@ export class SeedService {
         }
 
         const hashedPassword = await bcrypt.hash('senha123', 10);
-        const encryptedEmailMentor = encrypt('mentor@teste.com');
         const encryptedEmailBackend = encrypt('backend@teste.com');
         const encryptedEmailFrontend = encrypt('frontend@teste.com');
         const encryptedEmailRh = encrypt('rh@teste.com');
@@ -55,7 +54,7 @@ export class SeedService {
                 password: hashedPassword,
                 name: 'João Backend',
                 position: 'DEV Backend',
-                mentorId: mentor.id,
+                mentorId: 0,
                 trackId: trackBackend.id,
                 userRoles: { create: [{ role: 'EMPLOYER' }] },
             },
@@ -68,7 +67,7 @@ export class SeedService {
                 password: hashedPassword,
                 name: 'Maria Frontend',
                 position: 'DEV Frontend',
-                mentorId: mentor.id,
+                mentorId: 0,
                 trackId: trackFrontend.id,
                 userRoles: { create: [{ role: 'EMPLOYER' }] },
             },
@@ -81,7 +80,7 @@ export class SeedService {
                 password: hashedPassword,
                 name: 'Ana RH',
                 position: 'RH Tester',
-                mentorId: mentor.id,
+                mentorId: 0,
                 trackId: trackRH.id,
                 userRoles: { create: [{ role: 'RH' }, { role: 'EMPLOYER' }, { role: 'ADMIN' }] },
             },
@@ -97,8 +96,8 @@ export class SeedService {
                 password: await bcrypt.hash('admin123', 10),
                 name: 'System Admin',
                 position: 'Administrador',
-                mentorId: mentor.id,
-                trackId: trackDefault.id,
+                mentorId: 0,
+                trackId: 0,
                 userRoles: { create: [{ role: 'ADMIN' }] },
             },
         });

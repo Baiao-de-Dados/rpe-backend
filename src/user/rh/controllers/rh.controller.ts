@@ -28,8 +28,6 @@ import { CreateCriterionDto } from 'src/evaluations/autoevaluations/criteria/dto
 import { CreateCycleConfigDto } from 'src/evaluations/cycles/dto/create-cycle-config.dto';
 import { UpdateCycleConfigDto } from 'src/evaluations/cycles/dto/update-cycle-config.dto';
 import { CycleConfigResponseDto } from 'src/evaluations/cycles/dto/cycle-config-response.dto';
-import { CreatePillarTrackConfigDto } from 'src/evaluations/autoevaluations/pillar/dto/create-pillar-track-config.dto';
-import { UpdatePillarTrackConfigDto } from 'src/evaluations/autoevaluations/pillar/dto/update-pillar-track-config.dto';
 import { BatchUpdateCriteriaDto } from 'src/evaluations/autoevaluations/criteria/dto/batch-update-criteria.dto';
 import { TrackConfigResponseDto } from 'src/evaluations/autoevaluations/criteria/dto/track-config-response.dto';
 import { UpdateCriterionTrackConfigDto } from 'src/evaluations/autoevaluations/criteria/dto/update-criterion-track-config.dto';
@@ -74,53 +72,6 @@ export class RHController {
         await this.rh.validateCycleActive();
         return this.rh.deletePillar(id);
     }
-
-    @Post('pillar/track-config')
-    @ApiCreate('Pilar por trilha')
-    async createPillarTrackConfig(@Body() dto: CreatePillarTrackConfigDto) {
-        await this.rh.validateCycleActive();
-        return this.rh.createPillarTrackConfig(dto);
-    }
-
-    @Get('pillar/track-config/all')
-    @ApiList('Pilares por trilha')
-    async findAllPillarTrackConfigs() {
-        return this.rh.findAllPillarTrackConfigs();
-    }
-
-    @Get('pillar/track-config/filter')
-    @ApiGet('Pilar por trilha')
-    async findTrackConfigsByFilter(@Query('track') track: string) {
-        return this.rh.findPillarTracksConfigByFilter(track);
-    }
-
-    @Get('pillar/track-config/user/:userId')
-    @ApiGet('Usuário por trilha')
-    async findActivePillarsPerUser(@Param('userId', ParseIntPipe) userId: number) {
-        return this.rh.findActivePillarsForUser(userId);
-    }
-
-    @Patch('pillar/track-config/:pillarId')
-    @ApiUpdate('Pilar por trilha')
-    async updatePillarTrackConfig(
-        @Param('pillarId', ParseIntPipe) pillarId: number,
-        @Body() dto: UpdatePillarTrackConfigDto,
-        @Query('track') track: string,
-    ) {
-        await this.rh.validateCycleActive();
-        return this.rh.updatePillarTrackConfig(pillarId, track, dto);
-    }
-
-    @Delete('pillar/track-config/:pillarId')
-    @ApiDelete('Pilar por trilha')
-    async deletePillarTrackConfig(
-        @Param('pillarId', ParseIntPipe) pillarId: number,
-        @Query('track') track: string,
-    ) {
-        await this.rh.validateCycleActive();
-        return this.rh.removePillarTrackConfig(pillarId, track);
-    }
-
     // Critérios
     @Post('criteria')
     @ApiCreate('Critério')

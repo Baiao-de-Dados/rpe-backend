@@ -26,7 +26,7 @@ import {
     ApiDelete,
 } from 'src/common/decorators/api-crud.decorator';
 import { ApiAuth } from 'src/common/decorators/api-auth.decorator';
-import { CycleConfigService } from '../../cycles/cycle-config.service';
+import { CycleConfigService } from 'src/evaluations/cycles/cycle-config.service';
 
 @ApiTags('Critérios')
 @ApiAuth()

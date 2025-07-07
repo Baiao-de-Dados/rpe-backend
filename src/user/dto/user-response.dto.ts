@@ -5,7 +5,7 @@ export interface UserWithRoles {
     id: number;
     email: string;
     name: string;
-    track: string | null;
+    trackId: number;
     roles: UserRole[];
     createdAt: Date;
     updatedAt: Date;
@@ -19,6 +19,7 @@ export class UserResponseDTO {
     track: string | null;
     createdAt: Date;
     updatedAt: Date;
+    trackId: number;
 
     @Exclude()
     password: string;
@@ -28,7 +29,7 @@ export class UserResponseDTO {
         this.email = user.email;
         this.name = user.name;
         this.roles = user.roles;
-        this.track = user.track;
+        this.trackId = user.trackId;
         this.createdAt = user.createdAt;
         this.updatedAt = user.updatedAt;
     }

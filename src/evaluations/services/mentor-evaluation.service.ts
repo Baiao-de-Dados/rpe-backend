@@ -24,14 +24,20 @@ export class MentorEvaluationService {
 
         const mentorEvaluation = await prisma.evaluation.create({
             data: {
-                type: 'MENTOR',
                 evaluatorId: evaluatorId,
                 evaluateeId: mentorId,
                 cycleConfigId: cycleConfigId,
-                justification: justification,
-                score: 0,
             },
         });
+
+        // Criar o registro de mentoring
+        await prisma.mentoring.create({
+            data: {
+                evaluationId: mentorEvaluation.id,
+                justification: justification,
+            },
+        });
+
         return mentorEvaluation;
     }
 }

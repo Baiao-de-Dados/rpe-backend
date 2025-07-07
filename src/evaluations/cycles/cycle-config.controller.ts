@@ -1,12 +1,12 @@
 import { Body, Controller, Get, Param, ParseIntPipe, Post, Put, Delete } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { CycleConfigService } from './cycle-config.service';
-import { CreateCycleConfigDto } from './dto/create-cycle-config.dto';
+import { CreateCycleConfigDto } from 'src/evaluations/cycles/dto/create-cycle-config.dto';
 import { UpdateCycleConfigDto } from './dto/update-cycle-config.dto';
 import { CycleConfigResponseDto } from './dto/cycle-config-response.dto';
-import { RequireRH } from '../auth/decorators/roles.decorator';
-import { ApiAuth } from '../common/decorators/api-auth.decorator';
-import { ApiCreate } from '../common/decorators/api-crud.decorator';
+import { RequireRH } from 'src/auth/decorators/roles.decorator';
+import { ApiAuth } from 'src/common/decorators/api-auth.decorator';
+import { ApiCreate } from 'src/common/decorators/api-crud.decorator';
 import { ExtendCycleDto } from './dto/extend-cycle.dto';
 
 @ApiTags('Configuração de Ciclo')

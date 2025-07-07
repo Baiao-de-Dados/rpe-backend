@@ -3,20 +3,18 @@ import { RHUserDTO } from '../dto/rh.dto';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { UserRole } from '@prisma/client';
 import { UpdatePillarDto } from 'src/evaluations/autoevaluations/pillar/dto/update-pillar.dto';
-import { CriteriaService } from 'src/evaluations/autoevaluations/criteria/criteria.service';
 import { CycleConfigService } from 'src/evaluations/cycles/cycle-config.service';
 import { PillarsService } from 'src/evaluations/autoevaluations/pillar/pillars.service';
 import { CreatePillarDto } from 'src/evaluations/autoevaluations/pillar/dto/create-pillar.dto';
 import { CreateCriterionDto } from 'src/evaluations/autoevaluations/criteria/dto/create-criterion.dto';
 import { UpdateCriterionDto } from 'src/evaluations/autoevaluations/criteria/dto/update-criterion.dto';
-import { CreateCycleConfigDto } from 'src/evaluations/cycles/dto/create-cycle-config.dto';
 import { UpdateCycleConfigDto } from 'src/evaluations/cycles/dto/update-cycle-config.dto';
-import { CycleConfigResponseDto } from 'src/evaluations/cycles/dto/cycle-config-response.dto';
-import { CreatePillarTrackConfigDto } from 'src/evaluations/autoevaluations/pillar/dto/create-pillar-track-config.dto';
-import { UpdatePillarTrackConfigDto } from 'src/evaluations/autoevaluations/pillar/dto/update-pillar-track-config.dto';
-import { UpdateCriterionTrackConfigDto } from 'src/evaluations/autoevaluations/criteria/dto/update-criterion-track-config.dto';
 import { BatchUpdateCriteriaDto } from 'src/evaluations/autoevaluations/criteria/dto/batch-update-criteria.dto';
 import { TrackConfigDto } from 'src/evaluations/autoevaluations/criteria/dto/track-config.dto';
+import { CreateCycleConfigDto } from 'src/evaluations/cycles/dto/create-cycle-config.dto';
+import { CycleConfigResponseDto } from 'src/evaluations/cycles/dto/cycle-config-response.dto';
+import { UpdateCriterionTrackConfigDto } from 'src/evaluations/autoevaluations/criteria/dto/update-criterion-track-config.dto';
+import { CriteriaService } from 'src/evaluations/autoevaluations/criteria/criteria.service';
 
 @Injectable()
 export class RHService {
@@ -91,35 +89,6 @@ export class RHService {
     async deletePillar(id: number) {
         return this.pillarService.remove(id);
     }
-
-    async createPillarTrackConfig(dto: CreatePillarTrackConfigDto) {
-        return this.pillarService.createTrackConfig(dto);
-    }
-
-    async findAllPillarTrackConfigs() {
-        return this.pillarService.findAllTrackConfigs();
-    }
-
-    async findPillarTracksConfigByFilter(track: string) {
-        return this.pillarService.findTrackConfigsByTrack(track);
-    }
-
-    async findActivePillarsForUser(userId: number) {
-        return this.pillarService.findActivePillarsForUser(userId);
-    }
-
-    async updatePillarTrackConfig(
-        pillarId: number,
-        track: string,
-        dto: UpdatePillarTrackConfigDto,
-    ) {
-        return this.pillarService.updateTrackConfig(pillarId, track, dto);
-    }
-
-    async removePillarTrackConfig(pillarId: number, track: string) {
-        return this.pillarService.removeTrackConfig(pillarId, track);
-    }
-
     // Critérios
     async createCriterion(dto: CreateCriterionDto) {
         return this.criteriaService.create(dto);
@@ -154,7 +123,15 @@ export class RHService {
     }
 
     async findActiveCriteriaPerUser(id: number) {
-        return this.criteriaService.findActiveCriteriaForUser(id);
+        const result = await this.criteriaService.findActiveCriteriaForUser(id);
+        if (!result || Array.isArray(result)) {
+            return { name: '', pillars: [] };
+        }
+        // Se vier no formato { id, name, pillars }, converte para { name, pillars }
+        if ('id' in result && 'name' in result && 'pillars' in result) {
+            return { name: result.name, pillars: result.pillars };
+        }
+        return result;
     }
 
     async updateCriteriaTrackConfig(
@@ -170,11 +147,11 @@ export class RHService {
     }
 
     async batchUpdateCriteria(dto: BatchUpdateCriteriaDto) {
-        return this.criteriaService.batchUpdate(dto);
+        return await this.criteriaService.batchUpdate(dto);
     }
 
     async createCriteriaTrackConfigBulk(trackConfigs: TrackConfigDto[]) {
-        return this.criteriaService.createTrackConfigBulk(trackConfigs);
+        return await this.criteriaService.createTrackConfigBulk(trackConfigs);
     }
 
     // Ciclos

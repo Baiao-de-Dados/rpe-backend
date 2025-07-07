@@ -35,14 +35,22 @@ export class Peer360EvaluationService {
 
             const peerEvaluation = await prisma.evaluation.create({
                 data: {
-                    type: 'PEER_360',
                     evaluatorId: colaboradorId,
                     evaluateeId: avaliacao.avaliadoId,
                     cycleConfigId: cycleConfigId,
-                    justification: avaliacao.justificativa,
-                    score: 0,
                 },
             });
+
+            // Criar o registro de evaluation360
+            await prisma.evaluation360.create({
+                data: {
+                    evaluationId: peerEvaluation.id,
+                    justification: avaliacao.justificativa,
+                    strengths: avaliacao.pontosFortes,
+                    improvements: avaliacao.pontosMelhoria,
+                },
+            });
+
             peerEvaluations.push(peerEvaluation);
         }
 

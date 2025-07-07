@@ -29,6 +29,5 @@ export interface MentoringDto {
 
 export interface ReferenciaDto {
     colaboradorId: number;
-    tagIds: number[];
     justificativa: string;
 }
