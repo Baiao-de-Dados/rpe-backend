@@ -14,7 +14,7 @@ export class EvaluationValidationService {
 
     async validateEvaluationData(data: CreateEvaluationDto): Promise<void> {
         const { colaboradorId, autoavaliacao, avaliacao360, mentoring, referencias } = data;
-        const colaboradorIdNum = parseInt(colaboradorId, 10);
+        const colaboradorIdNum = colaboradorId;
 
         await Promise.all([
             this.validateColaborador(colaboradorIdNum),
@@ -41,7 +41,7 @@ export class EvaluationValidationService {
         }
 
         const criterioIds = autoavaliacao.pilares.flatMap((pilar) =>
-            pilar.criterios.map((criterio) => parseInt(criterio.criterioId, 10)),
+            pilar.criterios.map((criterio) => criterio.criterioId),
         );
         const criteriosExistentes = await this.prisma.criterion.findMany({
             where: { id: { in: criterioIds } },
@@ -63,7 +63,7 @@ export class EvaluationValidationService {
             return;
         }
 
-        const avaliadoIds = avaliacao360.map((av) => parseInt(av.avaliadoId, 10));
+        const avaliadoIds = avaliacao360.map((av) => av.avaliadoId);
         const avaliadosExistentes = await this.prisma.user.findMany({
             where: { id: { in: avaliadoIds } },
         });
@@ -88,12 +88,12 @@ export class EvaluationValidationService {
 
         if (mentoring.mentorId) {
             const mentor = await this.prisma.user.findUnique({
-                where: { id: parseInt(mentoring.mentorId, 10) },
+                where: { id: mentoring.mentorId },
             });
             if (!mentor) {
                 throw new NotFoundException(`Mentor com ID ${mentoring.mentorId} não encontrado`);
             }
-            if (parseInt(mentoring.mentorId, 10) === colaboradorId) {
+            if (mentoring.mentorId === colaboradorId) {
                 throw new BadRequestException('O colaborador não pode ser seu próprio mentor');
             }
         }
@@ -107,7 +107,7 @@ export class EvaluationValidationService {
             return;
         }
 
-        const referenciaColaboradorIds = referencias.map((r) => parseInt(r.colaboradorId, 10));
+        const referenciaColaboradorIds = referencias.map((r) => r.colaboradorId);
         const referenciaColaboradoresExistentes = await this.prisma.user.findMany({
             where: { id: { in: referenciaColaboradorIds } },
         });

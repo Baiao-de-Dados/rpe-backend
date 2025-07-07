@@ -9,7 +9,7 @@ import {
     ParseIntPipe,
     Query,
 } from '@nestjs/common';
-import { ApiTags, ApiBody } from '@nestjs/swagger';
+import { ApiTags, ApiBody, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { CriteriaService } from './criteria.service';
 import { CreateCriterionDto } from './dto/create-criterion.dto';
 import { UpdateCriterionTrackConfigDto } from './dto/update-criterion-track-config.dto';
@@ -104,6 +104,7 @@ export class CriteriaController {
         return this.criteriaService.findTrackConfigsByTrack(trackId);
     }
 
+    /*
     @Get('track-config/user/:userId')
     @ExactRoles(UserRole.RH)
     @ApiGet('critérios ativos para usuário')
@@ -112,6 +113,7 @@ export class CriteriaController {
     ): Promise<TrackConfigResponseDto> {
         return this.criteriaService.findActiveCriteriaForUser(userId);
     }
+    */
 
     @Patch('track-config/:criterionId')
     @ExactRoles(UserRole.RH)
@@ -140,5 +142,30 @@ export class CriteriaController {
     @ApiBody({ type: TrackConfigDto, isArray: true })
     async createTrackConfigBulk(@Body() trackConfigs: TrackConfigDto[]) {
         return await this.criteriaService.createTrackConfigBulk(trackConfigs);
+    }
+
+    @Post('track-cycle-config')
+    @ExactRoles(UserRole.RH)
+    @ApiOperation({
+        summary:
+            'Iniciar ciclo: copiar configs de CriterionTrackConfig para CriterionTrackCycleConfig',
+    })
+    @ApiBody({
+        schema: {
+            properties: {
+                endDate: { type: 'string', format: 'date-time', example: '2025-12-31T23:59:59Z' },
+            },
+        },
+    })
+    async createTrackCycleConfig(@Body('endDate') endDate: string) {
+        return this.criteriaService.createTrackCycleConfigFromDraft(endDate);
+    }
+
+    @Get('cycle-history/:cycleId')
+    @ApiOperation({ summary: 'Listar histórico de configurações de critério por ciclo' })
+    @ApiResponse({ status: 200, description: 'Histórico de configurações retornado com sucesso' })
+    @ApiResponse({ status: 404, description: 'Ciclo não encontrado' })
+    async getCycleHistory(@Param('cycleId', ParseIntPipe) cycleId: number) {
+        return await this.criteriaService.getCycleHistory(cycleId);
     }
 }

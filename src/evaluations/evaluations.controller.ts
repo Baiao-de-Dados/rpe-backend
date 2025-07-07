@@ -25,7 +25,7 @@ export class EvaluationsController {
     @Post()
     @ApiCreate('avaliação')
     create(@Body() createEvaluationDto: CreateEvaluationDto, @CurrentUser() user: any) {
-        return this.evaluationsService.createEvaluation(createEvaluationDto, user.track);
+        return this.evaluationsService.createEvaluation(createEvaluationDto, user.trackId);
     }
 
     @RequireRH()

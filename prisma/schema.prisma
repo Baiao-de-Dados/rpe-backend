@@ -42,39 +42,15 @@ model UserRoleLink {
   @@id([userId, role])
 }
 
-model CycleConfig {
+model Pillar {
   id          Int      @id @default(autoincrement())
   name        String   @unique
-  description String?
-  startDate   DateTime
-  endDate     DateTime
-  isActive    Boolean  @default(false)
   createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
 
-  pillarConfigs    PillarCycleConfig[]
-  criterionConfigs CriterionCycleConfig[]
-  Evaluation       Evaluation[]
-}
-
-model Track {
-  id                    Int                    @id @default(autoincrement())
-  name                  String                 @unique
-  criterionTrackConfigs CriterionTrackConfig[]
-  pillarTrackConfigs    PillarTrackConfig[]
-  users                 User[]
-  evaluations           Evaluation[]
-}
-
-model Pillar {
-  id        Int      @id @default(autoincrement())
-  name      String   @unique
-  createdAt DateTime @default(now())
-
-  cycleConfigs PillarCycleConfig[]
-  trackConfigs PillarTrackConfig[]
   criteria     Criterion[]
 }
+
+
 
 model Criterion {
   id          Int      @id @default(autoincrement())
@@ -83,62 +59,46 @@ model Criterion {
   description String?
   createdAt   DateTime @default(now())
 
-  pillar                   Pillar                     @relation(fields: [pillarId], references: [id], onDelete: Cascade)
-  cycleConfigs             CriterionCycleConfig[]
-  trackConfigs             CriterionTrackConfig[]
-  autoEvaluationAssigments AutoEvaluationAssignment[]
+  pillar             Pillar                 @relation(fields: [pillarId], references: [id], onDelete: Cascade)
+  criterionTrackConfigs CriterionTrackConfig[]
+  criterionTrackCycleConfigs CriterionTrackCycleConfig[]
+  autoEvaluationAssignments AutoEvaluationAssignment[]
 }
 
-model PillarCycleConfig {
-  id        Int      @id @default(autoincrement())
-  cycleId   Int
-  pillarId  Int
-  isActive  Boolean  @default(true)
-  weight    Int      @default(1)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 
-  cycle  CycleConfig @relation(fields: [cycleId], references: [id], onDelete: Cascade)
-  pillar Pillar      @relation(fields: [pillarId], references: [id], onDelete: Cascade)
-
-  @@unique([cycleId, pillarId])
-}
-
-model CriterionCycleConfig {
+model CycleConfig {
   id          Int      @id @default(autoincrement())
-  cycleId     Int
-  criterionId Int
-  isActive    Boolean  @default(true)
-  weight      Int      @default(1)
+  name        String // ex: "2025.1", "2025.2"
+  description String?
+  startDate   DateTime
+  endDate     DateTime
+  isActive    Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  cycle     CycleConfig @relation(fields: [cycleId], references: [id], onDelete: Cascade)
-  criterion Criterion   @relation(fields: [criterionId], references: [id], onDelete: Cascade)
+  Evaluation       Evaluation[]
 
-  @@unique([cycleId, criterionId])
+  criterionTrackCycleConfigs CriterionTrackCycleConfig[]
+
+  @@unique([name])
 }
 
-model PillarTrackConfig {
-  id        Int      @id @default(autoincrement())
-  pillarId  Int
-  trackId   Int
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 
-  pillar Pillar @relation(fields: [pillarId], references: [id], onDelete: Cascade)
-  track  Track  @relation(fields: [trackId], references: [id], onDelete: Cascade)
+model Track {
+  id    Int    @id @default(autoincrement())
+  name  String @unique
 
-  @@unique([pillarId, trackId])
+  criterionTrackConfigs CriterionTrackConfig[]
+  criterionTrackCycleConfigs CriterionTrackCycleConfig[]
+  users User[]
+  evaluations Evaluation[]
 }
 
 model CriterionTrackConfig {
   id          Int      @id @default(autoincrement())
   criterionId Int
   trackId     Int
-  isActive    Boolean  @default(true)
-  weight      Int      @default(1)
+  weight      Int    @default(1)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -147,6 +107,23 @@ model CriterionTrackConfig {
 
   @@unique([criterionId, trackId])
 }
+
+model CriterionTrackCycleConfig {
+  id          Int      @id @default(autoincrement())
+  cycleId     Int
+  trackId     Int
+  criterionId Int
+  weight      Int      @default(1)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  cycle     CycleConfig @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  track     Track       @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  criterion Criterion   @relation(fields: [criterionId], references: [id], onDelete: Cascade)
+
+  @@unique([cycleId, trackId, criterionId])
+}
+
 
 model Evaluation {
   id            Int              @id @default(autoincrement())

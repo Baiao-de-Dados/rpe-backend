@@ -1,12 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import {
-    IsString,
-    IsDateString,
-    IsOptional,
-    IsBoolean,
-    IsArray,
-    ValidateNested,
-} from 'class-validator';
+import { IsString, IsDateString, IsOptional, IsArray, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class PillarConfigDto {
@@ -17,17 +10,6 @@ export class PillarConfigDto {
     isActive: boolean;
 
     @ApiProperty({ example: 1.0, description: 'Peso do pilar no ciclo' })
-    weight: number;
-}
-
-export class CriterionConfigDto {
-    @ApiProperty({ example: 1, description: 'ID do critério' })
-    criterionId: number;
-
-    @ApiProperty({ example: true, description: 'Se o critério está ativo no ciclo' })
-    isActive: boolean;
-
-    @ApiProperty({ example: 1.0, description: 'Peso do critério no ciclo' })
     weight: number;
 }
 
@@ -50,18 +32,12 @@ export class CreateCycleConfigDto {
     endDate: string;
 
     @ApiProperty({ example: true, description: 'Se o ciclo está ativo' })
-    @IsBoolean()
-    isActive: boolean;
+    @IsOptional()
+    isActive?: boolean;
 
     @ApiProperty({ type: [PillarConfigDto], description: 'Configurações dos pilares' })
     @IsArray()
     @ValidateNested({ each: true })
     @Type(() => PillarConfigDto)
     pillarConfigs: PillarConfigDto[];
-
-    @ApiProperty({ type: [CriterionConfigDto], description: 'Configurações dos critérios' })
-    @IsArray()
-    @ValidateNested({ each: true })
-    @Type(() => CriterionConfigDto)
-    criterionConfigs: CriterionConfigDto[];
 }

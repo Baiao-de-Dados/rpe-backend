@@ -10,9 +10,6 @@ export class CriterionResponseDto {
     @ApiProperty({ description: 'Descrição do critério', required: false })
     description?: string;
 
-    @ApiProperty({ description: 'Se o critério está ativo para a trilha' })
-    isActive: boolean;
-
     @ApiProperty({ description: 'Peso do critério na trilha' })
     weight: number;
 }

@@ -45,30 +45,6 @@ export class SeedService {
             update: {},
             create: { name: 'RH' },
         });
-        const trackDefault = await this.prisma.track.upsert({
-            where: { name: 'Default' },
-            update: {},
-            create: { name: 'Default' },
-        });
-
-        // Usuário Mentor
-        const mentor = await this.prisma.user.upsert({
-            where: { email: encryptedEmailMentor },
-            update: {},
-            create: {
-                email: encryptedEmailMentor,
-                password: hashedPassword,
-                name: 'Mentor Dummy',
-                position: 'Mentor',
-                mentorId: 0,
-                trackId: trackBackend.id,
-            },
-        });
-
-        await this.prisma.user.update({
-            where: { id: mentor.id },
-            data: { mentorId: mentor.id },
-        });
 
         // Usuários normais (usar upsert)
         await this.prisma.user.upsert({
@@ -107,7 +83,7 @@ export class SeedService {
                 position: 'RH Tester',
                 mentorId: mentor.id,
                 trackId: trackRH.id,
-                userRoles: { create: [{ role: 'RH' }] },
+                userRoles: { create: [{ role: 'RH' }, { role: 'EMPLOYER' }, { role: 'ADMIN' }] },
             },
         });
 
@@ -129,42 +105,42 @@ export class SeedService {
 
         // Pilares (usar upsert)
         const pilarComportamento = await this.prisma.pillar.upsert({
-            where: { name: 'COMPORTAMENTO' },
+            where: { name: 'Comportamento' },
             update: {},
-            create: { name: 'COMPORTAMENTO' },
+            create: { name: 'Comportamento' },
         });
         const pilarExecucao = await this.prisma.pillar.upsert({
-            where: { name: 'EXECUÇÃO' },
+            where: { name: 'Execução' },
             update: {},
-            create: { name: 'EXECUÇÃO' },
+            create: { name: 'Execução' },
         });
         const pilarGestao = await this.prisma.pillar.upsert({
-            where: { name: 'GESTÃO E LIDERANÇA' },
+            where: { name: 'Gestão e Liderança' },
             update: {},
-            create: { name: 'GESTÃO E LIDERANÇA' },
+            create: { name: 'Gestão e Liderança' },
         });
 
         // Critérios Comportamento
         const criteriosComportamento = [
             {
-                name: 'SENTIMENTO DE DONO',
+                name: 'Sentimento de Dono',
                 description:
                     'Demonstra responsabilidade e senso de pertencimento nas tarefas e resultados.',
             },
             {
-                name: 'RESILIENCIA NAS ADVERSIDADES',
+                name: 'Resiliencia nas adversidades',
                 description: 'Mantém a calma e persevera diante de desafios e mudanças.',
             },
             {
-                name: 'ORGANIZAÇÃO NO TRABALHO',
+                name: 'Organização no Trabalho',
                 description: 'Organiza tarefas, prazos e prioridades de forma eficiente.',
             },
             {
-                name: 'CAPACIDADE DE APRENDER',
+                name: 'Capacidade de aprender',
                 description: 'Busca aprendizado contínuo e aplica novos conhecimentos.',
             },
             {
-                name: 'SER TEAM PLAYER',
+                name: 'Ser "team player"',
                 description: 'Colabora, compartilha e contribui para o sucesso do time.',
             },
         ];
@@ -180,19 +156,19 @@ export class SeedService {
         // Critérios Execução
         const criteriosExecucao = [
             {
-                name: 'ENTREGAR COM QUALIDADE',
+                name: 'Entregar com qualidade',
                 description: 'Produz trabalhos com excelência e atenção aos detalhes.',
             },
             {
-                name: 'ATENDER AOS PRAZOS',
+                name: 'Atender aos prazos',
                 description: 'Cumpre compromissos e entregas dentro dos prazos estabelecidos.',
             },
             {
-                name: 'FAZER MAIS COM MENOS',
+                name: 'Fazer mais com menos',
                 description: 'Otimiza recursos e processos para maximizar resultados.',
             },
             {
-                name: 'PENSAR FORA DA CAIXA',
+                name: 'Pensar fora da caixa',
                 description: 'Proporciona soluções criativas e inovadoras para os desafios.',
             },
         ];
@@ -207,13 +183,13 @@ export class SeedService {
         }
         // Critérios Gestão
         const criteriosGestao = [
-            { name: 'GENTE', description: 'Desenvolve e lidera pessoas de forma efetiva.' },
+            { name: 'Gente', description: 'Desenvolve e lidera pessoas de forma efetiva.' },
             {
-                name: 'RESULTADOS',
+                name: 'Resultados',
                 description: 'Foca em entregar resultados consistentes e mensuráveis.',
             },
             {
-                name: 'EVOLUÇÃO DA ROCKET CORP',
+                name: 'Evolução da Rocket Corp',
                 description: 'Contribui para o crescimento e evolução da empresa.',
             },
         ];
@@ -226,6 +202,95 @@ export class SeedService {
                 },
             });
         }
+
+        // Buscar todos os critérios criados
+        const allCriteria = await this.prisma.criterion.findMany();
+
+        // Criar CriterionTrackConfig para todas as trilhas e critérios
+        const tracks = [trackBackend, trackFrontend, trackRH];
+        for (const track of tracks) {
+            for (const criterion of allCriteria) {
+                await this.prisma.criterionTrackConfig.upsert({
+                    where: {
+                        criterionId_trackId: {
+                            criterionId: criterion.id,
+                            trackId: track.id,
+                        },
+                    },
+                    update: {},
+                    create: {
+                        criterionId: criterion.id,
+                        trackId: track.id,
+                        weight: 1,
+                    },
+                });
+            }
+        }
+
+        // Criar 5 ciclos terminando em 2025.1
+        const cycles = [
+            {
+                name: '2024.1',
+                startDate: new Date('2024-01-01'),
+                endDate: new Date('2024-06-30'),
+                isActive: false,
+            },
+            {
+                name: '2024.2',
+                startDate: new Date('2024-07-01'),
+                endDate: new Date('2024-12-31'),
+                isActive: false,
+            },
+            {
+                name: '2024.3',
+                startDate: new Date('2024-09-01'),
+                endDate: new Date('2024-11-30'),
+                isActive: false,
+            },
+            {
+                name: '2024.4',
+                startDate: new Date('2024-10-01'),
+                endDate: new Date('2024-12-15'),
+                isActive: false,
+            },
+            {
+                name: '2025.1',
+                startDate: new Date('2025-01-01'),
+                endDate: new Date('2025-06-30'),
+                isActive: false,
+            },
+        ];
+
+        for (const cycleData of cycles) {
+            const cycle = await this.prisma.cycleConfig.upsert({
+                where: { name: cycleData.name },
+                update: {},
+                create: cycleData,
+            });
+
+            // Criar CriterionTrackCycleConfig para cada combinação de ciclo, trilha e critério
+            for (const track of tracks) {
+                for (const criterion of allCriteria) {
+                    await this.prisma.criterionTrackCycleConfig.upsert({
+                        where: {
+                            cycleId_trackId_criterionId: {
+                                cycleId: cycle.id,
+                                trackId: track.id,
+                                criterionId: criterion.id,
+                            },
+                        },
+                        update: {},
+                        create: {
+                            cycleId: cycle.id,
+                            trackId: track.id,
+                            criterionId: criterion.id,
+                            weight: 1,
+                        },
+                    });
+                }
+            }
+        }
+
         return { message: 'Seed executada com sucesso!' };
     }
 }

@@ -21,11 +21,20 @@ export class EvaluationsService {
         private readonly cycleConfigService: CycleConfigService,
     ) {}
 
-    async createEvaluation(createEvaluationDto: CreateEvaluationDto, userTrack?: string) {
-        const { ciclo, colaboradorId, autoavaliacao, avaliacao360, mentoring, referencias } =
-            createEvaluationDto;
+    async createEvaluation(createEvaluationDto: CreateEvaluationDto, userTrack?: number) {
+        const {
+            cycleConfigId,
+            colaboradorId,
+            autoavaliacao,
+            avaliacao360,
+            mentoring,
+            referencias,
+        } = createEvaluationDto;
 
-        const colaboradorIdNumber = parseInt(colaboradorId, 10);
+        // colaboradorId já é number
+        const colaboradorIdNumber = colaboradorId;
+
+        // VALIDAÇÕES PRÉVIAS - Usando o service de validação
         await this.validationService.validateEvaluationData(createEvaluationDto);
 
         return await this.prisma.$transaction(async (prisma) => {
@@ -34,7 +43,7 @@ export class EvaluationsService {
                 prisma,
                 autoavaliacao,
                 colaboradorIdNumber,
-                ciclo,
+                cycleConfigId,
                 userTrack,
             );
 
@@ -43,7 +52,7 @@ export class EvaluationsService {
                 prisma,
                 avaliacao360,
                 colaboradorIdNumber,
-                ciclo,
+                cycleConfigId,
             );
 
             // 3. Cria as avaliações de mentor
@@ -51,10 +60,10 @@ export class EvaluationsService {
             if (mentoring && mentoring.mentorId) {
                 mentorEvaluation = await this.mentorEvaluationService.createMentorEvaluation(
                     prisma,
-                    parseInt(mentoring.mentorId, 10),
+                    mentoring.mentorId,
                     colaboradorIdNumber,
                     mentoring.justificativa,
-                    ciclo,
+                    cycleConfigId,
                 );
             }
 
@@ -138,7 +147,7 @@ export class EvaluationsService {
         peerEvaluations: any[],
         mentorEvaluation: any,
         colaboradorId: number,
-        ciclo: string,
+        cycleConfigId: number,
     ) {
         // Busca referências relacionadas
         const references = await this.prisma.reference.findMany({
@@ -150,6 +159,8 @@ export class EvaluationsService {
         });
 
         return {
+            id: evaluations[0]?.id || 0,
+            cycle: cycleConfigId,
             userId: colaboradorId,
             cycle: ciclo,
             grade: 0.0,
@@ -213,10 +224,11 @@ export class EvaluationsService {
         const activeCycleCriteria = await this.cycleConfigService.getActiveCriteria();
         const activeCriteriaIds = new Set(activeCycleCriteria.map((c) => c.id));
 
-        const userTrackCriteria = await this.prisma.criterionTrackConfig.findMany({
+        // 4. Buscar configurações de critério para a trilha do usuário no ciclo ativo
+        const userTrackCriteria = await this.prisma.criterionTrackCycleConfig.findMany({
             where: {
-                track: user.track,
-                isActive: true,
+                trackId: user.trackId,
+                cycleId: activeCycle.id,
             },
             include: {
                 criterion: {
@@ -233,11 +245,19 @@ export class EvaluationsService {
             );
         }
 
-        const validUserCriteria = userTrackCriteria.filter((config) =>
-            activeCriteriaIds.has(config.criterion.id),
-        );
+        // 5. Filtrar critérios que estão ativos no ciclo E configurados para a trilha do usuário
+        const userActiveCriteria = userTrackCriteria.map((trackConfig) => ({
+            id: trackConfig.criterion.id,
+            name: trackConfig.criterion.name,
+            description: trackConfig.criterion.description,
+            weight: trackConfig.weight,
+            pillar: {
+                id: trackConfig.criterion.pillar.id,
+                name: trackConfig.criterion.pillar.name,
+            },
+        }));
 
-        if (validUserCriteria.length === 0) {
+        if (userActiveCriteria.length === 0) {
             throw new NotFoundException(
                 `Nenhum critério ativo no ciclo atual para sua trilha (${user.track})`,
             );
@@ -277,7 +297,7 @@ export class EvaluationsService {
                 startDate: activeCycle.startDate,
                 endDate: activeCycle.endDate,
             },
-            pilares: Object.values(groupedByPillar),
+            pilares: userActiveCriteria,
         };
     }
 }

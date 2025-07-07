@@ -3,56 +3,20 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { CreateCycleConfigDto } from './dto/create-cycle-config.dto';
 import { UpdateCycleConfigDto } from './dto/update-cycle-config.dto';
 import { CycleConfigResponseDto } from './dto/cycle-config-response.dto';
+import { ExtendCycleDto } from './dto/extend-cycle.dto';
 
 @Injectable()
 export class CycleConfigService {
     constructor(private prisma: PrismaService) {}
 
     async create(createCycleConfigDto: CreateCycleConfigDto): Promise<CycleConfigResponseDto> {
-        // Verificar se já existe um ciclo com o mesmo nome
-        const existingCycle = await this.prisma.cycleConfig.findUnique({
-            where: { name: createCycleConfigDto.name },
-        });
-
-        if (existingCycle) {
-            throw new BadRequestException(
-                `Já existe um ciclo com o nome: ${createCycleConfigDto.name}`,
-            );
-        }
-
-        // Se este ciclo será ativo, desativar outros ciclos
-        if (createCycleConfigDto.isActive) {
-            await this.prisma.cycleConfig.updateMany({
-                where: { isActive: true },
-                data: { isActive: false },
-            });
-        }
-
-        // Buscar todos os CriterionTrackConfig ativos para preencher o ciclo
-        const activeTrackConfigs = await this.prisma.criterionTrackConfig.findMany({
+        // Sempre desativa todos os ciclos antes de criar um novo
+        await this.prisma.cycleConfig.updateMany({
             where: { isActive: true },
+            data: { isActive: false },
         });
 
-        // Montar configs de critério para o ciclo, sem duplicar os já enviados no payload
-        const existingCriterionIds = new Set(
-            (createCycleConfigDto.criterionConfigs || []).map((c) => c.criterionId),
-        );
-        const autoCriterionConfigs = activeTrackConfigs
-            .filter((config) => !existingCriterionIds.has(config.criterionId))
-            .map((config) => ({
-                criterionId: config.criterionId,
-                isActive: false,
-                weight: config.weight,
-            }));
-
-        // Unir os configs do payload com os auto-gerados
-        const allCriterionConfigs = [
-            ...(createCycleConfigDto.criterionConfigs || []),
-            ...autoCriterionConfigs,
-        ];
-        createCycleConfigDto.criterionConfigs = allCriterionConfigs;
-
-        // Criar o ciclo e suas configurações em uma transação
+        // Cria o ciclo e suas configurações em uma transação
         return await this.prisma.$transaction(async (prisma) => {
             const cycle = await prisma.cycleConfig.create({
                 data: {
@@ -60,112 +24,55 @@ export class CycleConfigService {
                     description: createCycleConfigDto.description,
                     startDate: new Date(createCycleConfigDto.startDate),
                     endDate: new Date(createCycleConfigDto.endDate),
-                    isActive: createCycleConfigDto.isActive,
+                    isActive: true, // Sempre ativo
                 },
             });
 
-            // Criar configurações dos pilares
-            if (createCycleConfigDto.pillarConfigs.length > 0) {
-                await prisma.pillarCycleConfig.createMany({
-                    data: createCycleConfigDto.pillarConfigs.map((config) => ({
+            // Copiar configs de CriterionTrackConfig para CriterionTrackCycleConfig
+            const draftConfigs = await prisma.criterionTrackConfig.findMany();
+            if (draftConfigs.length > 0) {
+                await prisma.criterionTrackCycleConfig.createMany({
+                    data: draftConfigs.map((config) => ({
                         cycleId: cycle.id,
-                        pillarId: config.pillarId,
-                        isActive: config.isActive,
-                        weight: config.weight,
-                    })),
-                });
-            }
-
-            // Criar configurações dos critérios
-            if (createCycleConfigDto.criterionConfigs.length > 0) {
-                await prisma.criterionCycleConfig.createMany({
-                    data: createCycleConfigDto.criterionConfigs.map((config) => ({
-                        cycleId: cycle.id,
+                        trackId: config.trackId,
                         criterionId: config.criterionId,
-                        isActive: config.isActive,
                         weight: config.weight,
                     })),
                 });
             }
 
-            // Retornar o ciclo diretamente sem chamar findOne
+            // (Opcional) Limpar configs de rascunho após aplicar
+            // await prisma.criterionTrackConfig.deleteMany();
+
             return this.mapToResponseDto(cycle);
         });
     }
 
     async findAll(): Promise<CycleConfigResponseDto[]> {
         const cycles = await this.prisma.cycleConfig.findMany({
-            include: {
-                pillarConfigs: {
-                    include: {
-                        pillar: true,
-                    },
-                },
-                criterionConfigs: {
-                    include: {
-                        criterion: {
-                            include: {
-                                pillar: true,
-                            },
-                        },
-                    },
-                },
-            },
             orderBy: {
                 createdAt: 'desc',
             },
         });
 
-        return cycles.map((cycle) => this.mapToResponseDto(cycle));
+        return Promise.all(cycles.map((cycle) => this.mapToResponseDto(cycle)));
     }
 
     async findOne(id: number): Promise<CycleConfigResponseDto> {
         const cycle = await this.prisma.cycleConfig.findUnique({
             where: { id },
-            include: {
-                pillarConfigs: {
-                    include: {
-                        pillar: true,
-                    },
-                },
-                criterionConfigs: {
-                    include: {
-                        criterion: {
-                            include: {
-                                pillar: true,
-                            },
-                        },
-                    },
-                },
-            },
         });
 
         if (!cycle) {
             throw new NotFoundException(`Ciclo com ID ${id} não encontrado`);
         }
 
-        return this.mapToResponseDto(cycle);
+        return await this.mapToResponseDto(cycle);
     }
 
     async findActive(): Promise<CycleConfigResponseDto | null> {
         const cycle = await this.prisma.cycleConfig.findFirst({
             where: { isActive: true },
-            include: {
-                pillarConfigs: {
-                    include: {
-                        pillar: true,
-                    },
-                },
-                criterionConfigs: {
-                    include: {
-                        criterion: {
-                            include: {
-                                pillar: true,
-                            },
-                        },
-                    },
-                },
-            },
         });
 
         return cycle ? this.mapToResponseDto(cycle) : null;
@@ -225,46 +132,6 @@ export class CycleConfigService {
                 data: cycleData,
             });
 
-            // Atualizar configurações dos pilares se fornecidas
-            if (updateCycleConfigDto.pillarConfigs) {
-                // Remover configurações existentes
-                await prisma.pillarCycleConfig.deleteMany({
-                    where: { cycleId: id },
-                });
-
-                // Criar novas configurações
-                if (updateCycleConfigDto.pillarConfigs.length > 0) {
-                    await prisma.pillarCycleConfig.createMany({
-                        data: updateCycleConfigDto.pillarConfigs.map((config) => ({
-                            cycleId: id,
-                            pillarId: config.pillarId,
-                            isActive: config.isActive,
-                            weight: config.weight,
-                        })),
-                    });
-                }
-            }
-
-            // Atualizar configurações dos critérios se fornecidas
-            if (updateCycleConfigDto.criterionConfigs) {
-                // Remover configurações existentes
-                await prisma.criterionCycleConfig.deleteMany({
-                    where: { cycleId: id },
-                });
-
-                // Criar novas configurações
-                if (updateCycleConfigDto.criterionConfigs.length > 0) {
-                    await prisma.criterionCycleConfig.createMany({
-                        data: updateCycleConfigDto.criterionConfigs.map((config) => ({
-                            cycleId: id,
-                            criterionId: config.criterionId,
-                            isActive: config.isActive,
-                            weight: config.weight,
-                        })),
-                    });
-                }
-            }
-
             return this.findOne(id);
         });
     }
@@ -283,26 +150,61 @@ export class CycleConfigService {
         });
     }
 
+    async cancelCycle(id: number): Promise<void> {
+        const cycle = await this.prisma.cycleConfig.findUnique({
+            where: { id },
+        });
+
+        if (!cycle) {
+            throw new NotFoundException(`Ciclo com ID ${id} não encontrado`);
+        }
+
+        if (!cycle.isActive) {
+            throw new BadRequestException(
+                `Ciclo ${cycle.name} não está ativo. Apenas ciclos ativos podem ser cancelados.`,
+            );
+        }
+
+        // Cancelar todas as avaliações do ciclo
+        await this.prisma.evaluation.updateMany({
+            where: { cycleConfigId: id },
+            data: { status: 'COMPLETED' },
+        });
+
+        // Desativar o ciclo
+        // await this.prisma.cycleConfig.update({
+        //     where: { id },
+        //     data: { isActive: false },
+        // });
+
+        // Apagar o ciclo do banco de dados
+        await this.prisma.cycleConfig.delete({
+            where: { id },
+        });
+    }
+
     async getActiveCriteria(): Promise<any[]> {
         const activeCycle = await this.prisma.cycleConfig.findFirst({
             where: { isActive: true },
-            include: {
-                criterionConfigs: {
-                    where: { isActive: true },
-                    include: {
-                        criterion: {
-                            include: {
-                                pillar: true,
-                            },
-                        },
-                    },
-                },
-            },
         });
 
         if (!activeCycle) {
             return [];
         }
+
+        // Buscar critérios do ciclo através de CriterionTrackCycleConfig
+        const activeCriteria = await this.prisma.criterionTrackCycleConfig.findMany({
+            where: {
+                cycleId: activeCycle.id,
+            },
+            include: {
+                criterion: {
+                    include: {
+                        pillar: true,
+                    },
+                },
+            },
+        });
 
         // Verificar se o ciclo não expirou
         const now = new Date();
@@ -319,7 +221,7 @@ export class CycleConfigService {
             );
         }
 
-        return activeCycle.criterionConfigs.map((config) => ({
+        return activeCriteria.map((config) => ({
             id: config.criterion.id,
             name: config.criterion.name,
             description: config.criterion.description,
@@ -359,7 +261,116 @@ export class CycleConfigService {
         }
     }
 
-    private mapToResponseDto(cycle: any): CycleConfigResponseDto {
+    async extendCycle(id: number, extendCycleDto: ExtendCycleDto): Promise<CycleConfigResponseDto> {
+        const cycle = await this.prisma.cycleConfig.findUnique({
+            where: { id },
+        });
+
+        if (!cycle) {
+            throw new NotFoundException(`Ciclo com ID ${id} não encontrado`);
+        }
+
+        // Verificar se o ciclo está ativo
+        if (!cycle.isActive) {
+            throw new BadRequestException(
+                `Não é possível prorrogar o ciclo ${cycle.name} pois ele não está ativo.`,
+            );
+        }
+
+        // Verificar se a nova data de fim é posterior à data atual
+        const newEndDate = new Date(extendCycleDto.endDate);
+        const now = new Date();
+
+        if (newEndDate <= now) {
+            throw new BadRequestException('A nova data de fim deve ser posterior à data atual.');
+        }
+
+        // Verificar se a nova data de fim é posterior à data de fim atual
+        if (newEndDate <= cycle.endDate) {
+            throw new BadRequestException(
+                'A nova data de fim deve ser posterior à data de fim atual.',
+            );
+        }
+
+        // Atualizar apenas a data de fim
+        const updatedCycle = await this.prisma.cycleConfig.update({
+            where: { id },
+            data: {
+                endDate: newEndDate,
+            },
+        });
+
+        return this.mapToResponseDto(updatedCycle);
+    }
+
+    private async mapToResponseDto(cycle: any): Promise<CycleConfigResponseDto> {
+        const criterionConfigs = await this.prisma.criterionTrackCycleConfig.findMany({
+            where: { cycleId: cycle.id },
+            include: {
+                criterion: {
+                    include: {
+                        pillar: true,
+                    },
+                },
+                track: true,
+            },
+        });
+
+        // Agrupar critérios por trilha e depois por pilar
+        type CriteriaByTrackAndPillar = Record<
+            number,
+            {
+                trackId: number;
+                pillars: Record<
+                    number,
+                    {
+                        pillarId: number;
+                        criteria: Array<{
+                            id: number;
+                            criterionId: number;
+                            weight: number;
+                        }>;
+                    }
+                >;
+            }
+        >;
+
+        const criteriaByTrackAndPillar = criterionConfigs.reduce(
+            (acc: CriteriaByTrackAndPillar, cfg) => {
+                const trackId = cfg.trackId;
+                const pillarId = cfg.criterion.pillar.id;
+
+                if (!acc[trackId]) {
+                    acc[trackId] = {
+                        trackId: trackId,
+                        pillars: {},
+                    };
+                }
+
+                if (!acc[trackId].pillars[pillarId]) {
+                    acc[trackId].pillars[pillarId] = {
+                        pillarId: pillarId,
+                        criteria: [],
+                    };
+                }
+
+                acc[trackId].pillars[pillarId].criteria.push({
+                    id: cfg.id,
+                    criterionId: cfg.criterionId,
+                    weight: cfg.weight,
+                });
+
+                return acc;
+            },
+            {} as CriteriaByTrackAndPillar,
+        );
+
+        // Converter para o formato final
+        const tracksWithPillars = Object.values(criteriaByTrackAndPillar).map((track) => ({
+            trackId: track.trackId,
+            pillars: Object.values(track.pillars),
+        }));
+
         return {
             id: cycle.id,
             name: cycle.name,
@@ -369,22 +380,7 @@ export class CycleConfigService {
             isActive: cycle.isActive,
             createdAt: cycle.createdAt,
             updatedAt: cycle.updatedAt,
-            pillarConfigs: (cycle.pillarConfigs || []).map((config: any) => ({
-                id: config.id,
-                pillarId: config.pillarId,
-                pillarName: config.pillar?.name || 'N/A',
-                isActive: config.isActive,
-                weight: config.weight,
-            })),
-            criterionConfigs: (cycle.criterionConfigs || []).map((config: any) => ({
-                id: config.id,
-                criterionId: config.criterionId,
-                criterionName: config.criterion?.name || 'N/A',
-                pillarId: config.criterion?.pillar?.id || 0,
-                pillarName: config.criterion?.pillar?.name || 'N/A',
-                isActive: config.isActive,
-                weight: config.weight,
-            })),
+            criteriaPillars: tracksWithPillars,
         };
     }
 }
