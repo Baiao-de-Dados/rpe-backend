@@ -1,7 +1,6 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import * as ExcelJS from 'exceljs';
 import { PrismaService } from '../../prisma/prisma.service';
-import type { EvaluationType } from '@prisma/client';
 
 @Injectable()
 export class ImportEvaluationsService {
@@ -89,9 +88,6 @@ export class ImportEvaluationsService {
                     evaluatorId: user.id,
                     evaluateeId: user.id, // Autoavaliação ou avaliação 360
                     cycleConfigId: cycle.id, // Associa ao ciclo identificado
-                    justification: evaluation.justification,
-                    score: evaluation.note,
-                    type: evaluation.evaluationType as EvaluationType,
                 },
             });
         }

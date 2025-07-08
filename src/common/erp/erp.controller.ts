@@ -2,8 +2,8 @@ import { Controller, Get } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { ErpService } from './erp.service';
 import { ErpExportResponseDto } from './dto/erp-export.dto';
-import { ApiAuth } from '../common/decorators/api-auth.decorator';
-import { RequireRH } from '../auth/decorators/roles.decorator';
+import { ApiAuth } from '../decorators/api-auth.decorator';
+import { RequireRH } from '../../auth/decorators/roles.decorator';
 
 @ApiTags('ERP')
 @ApiAuth()
