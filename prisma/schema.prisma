@@ -8,14 +8,17 @@ datasource db {
 }
 
 model User {
-  id         Int      @id @default(autoincrement())
-  email      String   @unique
-  password   String
-  name       String
-  position   String
-  mentorId   Int
-  mentor     User     @relation("Mentor", fields: [mentorId], references: [id])
-  mentees    User[]   @relation("Mentor")
+  id       Int    @id @default(autoincrement())
+  email    String @unique
+  password String
+  name     String
+  position String
+
+  // Permite criar usuários sem mentor e depois, só para quem o JSON informar, configurar mentorId.
+  mentorId Int?
+  mentor   User?  @relation("Mentor", fields: [mentorId], references: [id])
+  mentees  User[] @relation("Mentor")
+
   trackId    Int
   track      Track?   @relation(fields: [trackId], references: [id])
   createdAt  DateTime @default(now())
@@ -43,14 +46,12 @@ model UserRoleLink {
 }
 
 model Pillar {
-  id          Int      @id @default(autoincrement())
-  name        String   @unique
-  createdAt   DateTime @default(now())
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  createdAt DateTime @default(now())
 
-  criteria     Criterion[]
+  criteria Criterion[]
 }
-
-
 
 model Criterion {
   id          Int      @id @default(autoincrement())
@@ -59,12 +60,11 @@ model Criterion {
   description String?
   createdAt   DateTime @default(now())
 
-  pillar             Pillar                 @relation(fields: [pillarId], references: [id], onDelete: Cascade)
-  criterionTrackConfigs CriterionTrackConfig[]
+  pillar                     Pillar                      @relation(fields: [pillarId], references: [id], onDelete: Cascade)
+  criterionTrackConfigs      CriterionTrackConfig[]
   criterionTrackCycleConfigs CriterionTrackCycleConfig[]
-  autoEvaluationAssignments AutoEvaluationAssignment[]
+  autoEvaluationAssignments  AutoEvaluationAssignment[]
 }
-
 
 model CycleConfig {
   id          Int      @id @default(autoincrement())
@@ -76,29 +76,27 @@ model CycleConfig {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  Evaluation       Evaluation[]
-
+  Evaluation Evaluation[]
   criterionTrackCycleConfigs CriterionTrackCycleConfig[]
 
   @@unique([name])
 }
 
-
 model Track {
-  id    Int    @id @default(autoincrement())
-  name  String @unique
+  id   Int    @id @default(autoincrement())
+  name String @unique
 
-  criterionTrackConfigs CriterionTrackConfig[]
+  criterionTrackConfigs      CriterionTrackConfig[]
   criterionTrackCycleConfigs CriterionTrackCycleConfig[]
-  users User[]
-  evaluations Evaluation[]
+  users                      User[]
+  evaluations                Evaluation[]
 }
 
 model CriterionTrackConfig {
   id          Int      @id @default(autoincrement())
   criterionId Int
   trackId     Int
-  weight      Int    @default(1)
+  weight      Int      @default(1)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -123,7 +121,6 @@ model CriterionTrackCycleConfig {
 
   @@unique([cycleId, trackId, criterionId])
 }
-
 
 model Evaluation {
   id            Int              @id @default(autoincrement())
@@ -213,9 +210,11 @@ model ProjectMember {
   startDate DateTime  @default(now())
   endDate   DateTime?
   createdAt DateTime  @default(now())
+  timeSpent Int       @default(0)
 
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role    UserRole
 }
 
 model Log {
