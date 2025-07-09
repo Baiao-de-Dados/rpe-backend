@@ -19,6 +19,7 @@ import { TrackModule } from './track/track.module';
 import { ImportUsersModule } from './import-export/import-users/import-users.module';
 import { ImportEvaluationsModule } from './import-export/import-evaluations/import-evaluations.module';
 import { ExportEvaluationsModule } from './import-export/export-evaluations/export-evaluations.module';
+import { CollaboratorsModule } from './evaluations/collaborators/collaborators.module';
 
 @Module({
     imports: [
@@ -49,6 +50,7 @@ import { ExportEvaluationsModule } from './import-export/export-evaluations/expo
         ImportUsersModule,
         ImportEvaluationsModule,
         ExportEvaluationsModule,
+        CollaboratorsModule,
     ],
     controllers: [AppController],
     providers: [
