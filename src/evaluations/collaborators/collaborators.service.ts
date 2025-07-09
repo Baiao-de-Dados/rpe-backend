@@ -5,12 +5,15 @@ import { PrismaService } from '../../prisma/prisma.service';
 export class CollaboratorsService {
     constructor(private readonly prisma: PrismaService) {}
 
-    async getCollaboratorsScores() {
+    async getCollaboratorsScores(cycleId?: number) {
         const collaborators = await this.prisma.user.findMany({
             include: {
                 track: true,
                 evaluator: {
-                    where: { status: 'COMPLETED' },
+                    where: {
+                        status: 'COMPLETED',
+                        ...(cycleId ? { cycleConfigId: cycleId } : {}), // Filtra pelo ciclo, se fornecido
+                    },
                     include: {
                         autoEvaluation: {
                             include: {
