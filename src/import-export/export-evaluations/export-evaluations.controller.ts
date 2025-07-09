@@ -30,7 +30,7 @@ export class ExportEvaluationsController {
     ): Promise<void> {
         const { cycleId } = query;
 
-        const buffer = await this.exportEvaluationsService.generateExport(cycleId);
+        const buffer = await this.exportEvaluationsService.generateExport();
 
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         res.setHeader('Content-Disposition', 'attachment; filename=evaluations.xlsx');
