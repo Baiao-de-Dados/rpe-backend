@@ -27,6 +27,10 @@ export class ExportEvaluationsService {
             throw new NotFoundException('Nenhuma avaliação encontrada para o ciclo especificado.');
         }
 
+        return this.generateExcel(evaluations);
+    }
+
+    private async generateExcel(evaluations: any[]): Promise<Buffer> {
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('Equalização');
 
