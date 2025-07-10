@@ -141,6 +141,8 @@ model Evaluation {
   evaluation360  Evaluation360?
   mentoring      Mentoring?
   reference      Reference?
+
+  @@unique([evaluateeId, cycleConfigId])
 }
 
 model AutoEvaluation {
@@ -215,6 +217,8 @@ model ProjectMember {
   project Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   role    UserRole
+
+  @@unique([projectId, userId])
 }
 
 model Log {
