@@ -7,6 +7,12 @@ import { AssignLeaderEvaluationDto } from '../dto/assign-leader-evaluation.dto';
 import { ManagerEvaluationDto } from '../dto/manager-evaluation.dto';
 import { ManagerService } from '../services/manager.service';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
+import { ApiBody } from '@nestjs/swagger';
+import { exampleManagerEvaluation } from 'src/common/decorators/post-bodies.examples';
+import {
+    exampleAssignLeader,
+    exampleAssignLeaderEvaluation,
+} from 'src/common/decorators/post-bodies.examples';
 
 @ApiTags('Gestor')
 @ApiAuth()
@@ -16,6 +22,7 @@ export class ManagerController {
     constructor(private readonly managerService: ManagerService) {}
 
     @Post('assign-leader')
+    @ApiBody({ schema: { example: exampleAssignLeader } })
     assignLeader(@Body() dto: AssignLeaderDto, @CurrentUser('id') userId: number) {
         return this.managerService.assignLeaderToProject(dto, userId);
     }
@@ -38,6 +45,7 @@ export class ManagerController {
     }
 
     @Post('assign-leader-evaluation')
+    @ApiBody({ schema: { example: exampleAssignLeaderEvaluation } })
     assignLeaderToEvaluateCollaborator(
         @Body() dto: AssignLeaderEvaluationDto,
         @CurrentUser('id') userId: number,
@@ -51,7 +59,8 @@ export class ManagerController {
     }
 
     @Post('evaluate')
-    evaluateCollaborator(@Body() dto: ManagerEvaluationDto, @CurrentUser('id') userId: number) {
+    @ApiBody({ schema: { example: exampleManagerEvaluation } })
+    async evaluate(@Body() dto: ManagerEvaluationDto, @CurrentUser('id') userId: number) {
         return this.managerService.evaluateCollaborator(dto, userId);
     }
 
@@ -77,6 +86,11 @@ export class ManagerController {
     @Get('dashboard/collaborators/without-leader')
     getCollaboratorsWithoutLeader(@CurrentUser('id') userId: number) {
         return this.managerService.getCollaboratorsWithoutLeader(userId);
+    }
+
+    @Get('collaborators/evaluations-summary')
+    getCollaboratorsEvaluationsSummary(@CurrentUser('id') userId: number) {
+        return this.managerService.getCollaboratorsEvaluationsSummary(userId);
     }
 
     @Get('auto-evaluation/:userId')

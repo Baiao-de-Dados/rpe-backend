@@ -625,8 +625,9 @@ export class ManagerService {
                 members: true,
             },
         });
-        // Todos os colaboradores dos projetos
-        const collaboratorIds = projects.flatMap((project) => project.members.map((m) => m.userId));
+        // Todos os colaboradores dos projetos, exceto o próprio gestor
+        let collaboratorIds = projects.flatMap((project) => project.members.map((m) => m.userId));
+        collaboratorIds = collaboratorIds.filter((id) => id !== managerId);
         // Buscar todos os ciclos ativos
         const cycles = await this.prisma.cycleConfig.findMany({ where: { isActive: true } });
         const cycleIds = cycles.map((c) => c.id);
@@ -681,6 +682,7 @@ export class ManagerService {
      * O total preenchido é o número de líderes que já fizeram pelo menos uma avaliação de líder em qualquer ciclo ativo
      */
     async getLeaderEvaluationPercentage(managerId: number) {
+        // Buscar todos os projetos do gestor
         const projects = await this.prisma.project.findMany({
             where: { managerId },
             include: {
@@ -699,29 +701,28 @@ export class ManagerService {
                 },
             },
         });
-
-        const leaderIds = new Set<number>();
-        projects.forEach((project) => {
-            project.members.forEach((member) => {
-                if (member.user.userRoles.some((role) => role.role === 'LEADER')) {
-                    leaderIds.add(member.user.id);
-                }
-            });
-        });
-        const leaderIdsArray = Array.from(leaderIds);
-        const totalExpected = leaderIdsArray.length;
-        if (totalExpected === 0) return { percentage: 0, totalFilled: 0, totalExpected: 0 };
+        // Todos os colaboradores dos projetos
+        const collaboratorIds = projects.flatMap((project) => project.members.map((m) => m.userId));
+        // Buscar ciclos ativos
         const cycles = await this.prisma.cycleConfig.findMany({ where: { isActive: true } });
         const cycleIds = cycles.map((c) => c.id);
-        const filledLeaders = await this.prisma.leaderEvaluation.findMany({
+        // Buscar assignments de líder para colaborador nos ciclos ativos
+        const assignments = await this.prisma.leaderEvaluationAssignment.findMany({
             where: {
-                leaderId: { in: leaderIdsArray },
+                collaboratorId: { in: collaboratorIds },
                 cycleId: { in: cycleIds },
             },
-            select: { leaderId: true },
-            distinct: ['leaderId'],
         });
-        const totalFilled = filledLeaders.length;
+        const totalExpected = assignments.length;
+        if (totalExpected === 0) return { percentage: 0, totalFilled: 0, totalExpected: 0 };
+        // Buscar avaliações de líder realizadas para esses assignments
+        const totalFilled = await this.prisma.leaderEvaluation.count({
+            where: {
+                collaboratorId: { in: assignments.map((a) => a.collaboratorId) },
+                leaderId: { in: assignments.map((a) => a.leaderId) },
+                cycleId: { in: assignments.map((a) => a.cycleId) },
+            },
+        });
         const percentage = Math.round((totalFilled / totalExpected) * 100);
         return { percentage, totalFilled, totalExpected };
     }
@@ -798,5 +799,153 @@ export class ManagerService {
             );
         }
         return evaluation;
+    }
+
+    async getCollaboratorsEvaluationsSummary(managerId: number) {
+        // Buscar todos os projetos do gestor
+        const projects = await this.prisma.project.findMany({
+            where: { managerId },
+            include: {
+                members: {
+                    include: {
+                        user: {
+                            select: {
+                                id: true,
+                                name: true,
+                                email: true,
+                                position: true,
+                                userRoles: {
+                                    where: { isActive: true },
+                                    select: { role: true },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        });
+        if (projects.length === 0) {
+            throw new NotFoundException('Você não tem permissão para gerenciar projetos.');
+        }
+        // Todos os colaboradores dos projetos (excluindo o próprio manager)
+        let collaborators = projects.flatMap((project) =>
+            project.members.map((member) => ({
+                ...member.user,
+                project: {
+                    projectId: project.id,
+                    projectName: project.name,
+                },
+            })),
+        );
+        collaborators = collaborators.filter((c) => c.id !== managerId);
+        const collaboratorIds = collaborators.map((c) => c.id);
+        // Buscar ciclos ativos
+        const cycles = await this.prisma.cycleConfig.findMany({ where: { isActive: true } });
+        if (cycles.length === 0) {
+            return [];
+        }
+        const cycleIds = cycles.map((c) => c.id);
+        // Buscar avaliações em lote
+        const autoEvaluations = await this.prisma.evaluation.findMany({
+            where: {
+                evaluateeId: { in: collaboratorIds },
+                cycleConfigId: { in: cycleIds },
+            },
+            include: {
+                autoEvaluation: {
+                    include: { assignments: true },
+                },
+            },
+        });
+        // Como o campo evaluatorId == evaluateeId para autoavaliação, vamos filtrar manualmente
+        const autoEvalMap = new Map();
+        for (const ev of autoEvaluations) {
+            if (ev.evaluatorId === ev.evaluateeId && ev.autoEvaluation) {
+                // Só pega a mais recente por ciclo
+                const key = `${ev.evaluateeId}-${ev.cycleConfigId}`;
+                if (!autoEvalMap.has(key) || autoEvalMap.get(key).createdAt < ev.createdAt) {
+                    autoEvalMap.set(key, ev);
+                }
+            }
+        }
+        // Buscar avaliações de líder
+        const leaderEvaluations = await this.prisma.leaderEvaluation.findMany({
+            where: {
+                collaboratorId: { in: collaboratorIds },
+                cycleId: { in: cycleIds },
+            },
+        });
+        const leaderEvalMap = new Map();
+        for (const le of leaderEvaluations) {
+            const key = `${le.collaboratorId}-${le.cycleId}`;
+            if (!leaderEvalMap.has(key) || leaderEvalMap.get(key).createdAt < le.createdAt) {
+                leaderEvalMap.set(key, le);
+            }
+        }
+        // Buscar avaliações do manager
+        const managerEvaluations = await this.prisma.managerEvaluation.findMany({
+            where: {
+                collaboratorId: { in: collaboratorIds },
+                managerId,
+                cycleId: { in: cycleIds },
+            },
+            include: {
+                criterias: true,
+            },
+        });
+        const managerEvalMap = new Map();
+        for (const me of managerEvaluations) {
+            const key = `${me.collaboratorId}-${me.cycleId}`;
+            if (!managerEvalMap.has(key) || managerEvalMap.get(key).createdAt < me.createdAt) {
+                managerEvalMap.set(key, me);
+            }
+        }
+        // Montar resposta
+        const result: any[] = [];
+        for (const collaborator of collaborators) {
+            // Para cada ciclo ativo
+            for (const cycle of cycles) {
+                const autoEval = autoEvalMap.get(`${collaborator.id}-${cycle.id}`);
+                let autoEvalScore: number | null = null;
+                if (
+                    autoEval &&
+                    autoEval.autoEvaluation &&
+                    autoEval.autoEvaluation.assignments.length > 0
+                ) {
+                    const sum = autoEval.autoEvaluation.assignments.reduce(
+                        (acc, a) => acc + a.score,
+                        0,
+                    );
+                    autoEvalScore = sum / autoEval.autoEvaluation.assignments.length;
+                }
+                const leaderEval = leaderEvalMap.get(`${collaborator.id}-${cycle.id}`);
+                const leaderEvalScore: number | null = leaderEval ? leaderEval.score : null;
+                const managerEval = managerEvalMap.get(`${collaborator.id}-${cycle.id}`);
+                let managerEvalScore: number | null = null;
+                if (managerEval && managerEval.criterias.length > 0) {
+                    const sum = managerEval.criterias.reduce((acc, c) => acc + c.score, 0);
+                    managerEvalScore = sum / managerEval.criterias.length;
+                }
+                const status = managerEvalScore === null ? 'pendente' : 'finalizado';
+                result.push({
+                    collaborator: {
+                        id: collaborator.id,
+                        name: collaborator.name,
+                        email: collaborator.email,
+                        position: collaborator.position,
+                        project: collaborator.project,
+                    },
+                    cycle: {
+                        id: cycle.id,
+                        name: cycle.name,
+                    },
+                    autoEvaluationScore: autoEvalScore,
+                    leaderEvaluationScore: leaderEvalScore,
+                    managerEvaluationScore: managerEvalScore,
+                    status,
+                });
+            }
+        }
+        return result;
     }
 }

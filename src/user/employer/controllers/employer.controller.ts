@@ -9,6 +9,8 @@ import { AutoEvaluationDto } from '../dto/auto-evaluation.dto';
 import { Evaluation360Dto } from '../dto/evaluation-360.dto';
 import { MentoringDto } from '../dto/mentoring.dto';
 import { ReferenceDto } from '../dto/references.dto';
+import { ApiBody } from '@nestjs/swagger';
+import { exampleAutoEvaluation } from 'src/common/decorators/post-bodies.examples';
 
 @ApiTags('Colaborador')
 @ApiAuth()
@@ -43,7 +45,8 @@ export class EmployerController {
         return this.service.getEvaluationData(userId, cycleId);
     }
 
-    @Post('evaluations/:cycleId/autoevaluation')
+    @Post('evaluations/:cycleId/auto')
+    @ApiBody({ schema: { example: exampleAutoEvaluation } })
     submitAutoEvaluation(
         @Param('cycleId', ParseIntPipe) cycleId: number,
         @Body() dto: AutoEvaluationDto,
