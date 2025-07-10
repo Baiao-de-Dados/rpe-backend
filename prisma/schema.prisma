@@ -27,6 +27,12 @@ model User {
   userRoles     UserRoleLink[]  @relation("UserRoleUser")
   assignedRoles UserRoleLink[]  @relation("AssignedByAdmin")
   projectMember ProjectMember[]
+  leaderAssignments LeaderAssignment[]
+  managedProjects Project[] @relation("UserToManagedProjects")
+  leaderEvaluationAssignments LeaderEvaluationAssignment[] @relation("LeaderEvaluationAssignment")
+  collaboratorEvaluationAssignments LeaderEvaluationAssignment[] @relation("CollaboratorEvaluationAssignment")
+  managerEvaluations ManagerEvaluation[] @relation("ManagerEvaluations")
+  collaboratorEvaluations ManagerEvaluation[] @relation("CollaboratorEvaluations")
 }
 
 model UserRoleLink {
@@ -63,6 +69,7 @@ model Criterion {
   criterionTrackConfigs CriterionTrackConfig[]
   criterionTrackCycleConfigs CriterionTrackCycleConfig[]
   autoEvaluationAssignments AutoEvaluationAssignment[]
+  managerEvaluationCriterias ManagerEvaluationCriteria[]
 }
 
 
@@ -79,6 +86,8 @@ model CycleConfig {
   Evaluation       Evaluation[]
 
   criterionTrackCycleConfigs CriterionTrackCycleConfig[]
+  leaderEvaluationAssignments LeaderEvaluationAssignment[]
+  managerEvaluations ManagerEvaluation[]
 
   @@unique([name])
 }
@@ -193,8 +202,50 @@ model Reference {
   @@map("Reference")
 }
 
+// avaliacao de leader
+model LeaderEvaluation {
+  id           Int      @id @default(autoincrement())
+  leaderId     Int
+  collaboratorId Int
+  cycleId      Int
+  justification String
+  score        Float
+  strengths    String?
+  improvements String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+// avaliacao de gestor
+model ManagerEvaluation {
+  id             Int                        @id @default(autoincrement())
+  cycleId        Int
+  managerId      Int
+  collaboratorId Int
+  createdAt      DateTime                   @default(now())
+  updatedAt      DateTime                   @updatedAt
+
+  criterias      ManagerEvaluationCriteria[]
+
+  // Relacionamentos
+  cycle          CycleConfig                @relation(fields: [cycleId], references: [id])
+  manager        User                       @relation("ManagerEvaluations", fields: [managerId], references: [id])
+  collaborator   User                       @relation("CollaboratorEvaluations", fields: [collaboratorId], references: [id])
+}
+
+model ManagerEvaluationCriteria {
+  id                  Int               @id @default(autoincrement())
+  managerEvaluationId Int
+  criteriaId          Int
+  score               Int
+  justification       String
+
+  managerEvaluation   ManagerEvaluation @relation(fields: [managerEvaluationId], references: [id])
+  criteria            Criterion         @relation(fields: [criteriaId], references: [id])
+}
+
+
 model Project {
-  id          Int           @id @default(autoincrement())
+  id          Int      @id @default(autoincrement())
   name        String
   description String?
   status      ProjectStatus @default(ACTIVE)
@@ -202,12 +253,14 @@ model Project {
   endDate     DateTime?
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
-
-  members ProjectMember[]
+  managerId   Int      
+  manager     User     @relation("UserToManagedProjects", fields: [managerId], references: [id])
+  members     ProjectMember[]
+  leaderAssignments LeaderAssignment[]
 }
 
 model ProjectMember {
-  id        Int       @id @default(autoincrement())
+  id        Int      @id @default(autoincrement())
   projectId Int
   userId    Int
   startDate DateTime  @default(now())
@@ -216,6 +269,32 @@ model ProjectMember {
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+//serve para dar assigment de lider de um projeto para um usuário
+model LeaderAssignment {
+  id        Int      @id @default(autoincrement())
+  projectId Int
+  leaderId  Int
+
+  project   Project  @relation(fields: [projectId], references: [id])
+  leader    User     @relation(fields: [leaderId], references: [id])
+
+  @@unique([projectId, leaderId])
+}
+// serve par armazenar qual lider vai avaliar quem
+model LeaderEvaluationAssignment {
+  id            Int      @id @default(autoincrement())
+  leaderId      Int
+  collaboratorId Int
+  cycleId       Int
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  leader      User        @relation("LeaderEvaluationAssignment", fields: [leaderId], references: [id])
+  collaborator User       @relation("CollaboratorEvaluationAssignment", fields: [collaboratorId], references: [id])
+  cycle       CycleConfig @relation(fields: [cycleId], references: [id])
+
+  @@unique([collaboratorId, cycleId])
 }
 
 model Log {

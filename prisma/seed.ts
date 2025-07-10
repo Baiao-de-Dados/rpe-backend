@@ -115,6 +115,93 @@ async function main() {
         },
     });
 
+    console.log('👨‍💼 Criando gestor...');
+
+    // Usuário Gestor
+    const encryptedEmailManager = encrypt('manager@teste.com');
+    const manager = await prisma.user.create({
+        data: {
+            email: encryptedEmailManager,
+            password: hashedPassword,
+            name: 'Carlos Gestor',
+            position: 'Gerente de Projeto',
+            mentorId: mentor.id,
+            trackId: trackBackend.id,
+            userRoles: {
+                create: [{ role: 'MANAGER' }],
+            },
+        },
+    });
+
+    console.log('👨‍💻 Criando líderes...');
+
+    // Usuário Líder 1
+    const encryptedEmailLeader1 = encrypt('leader1@teste.com');
+    const leader1 = await prisma.user.create({
+        data: {
+            email: encryptedEmailLeader1,
+            password: hashedPassword,
+            name: 'Pedro Líder',
+            position: 'Tech Lead Backend',
+            mentorId: mentor.id,
+            trackId: trackBackend.id,
+            userRoles: {
+                create: [{ role: 'LEADER' }],
+            },
+        },
+    });
+
+    // Usuário Líder 2
+    const encryptedEmailLeader2 = encrypt('leader2@teste.com');
+    const leader2 = await prisma.user.create({
+        data: {
+            email: encryptedEmailLeader2,
+            password: hashedPassword,
+            name: 'Sofia Líder',
+            position: 'Tech Lead Frontend',
+            mentorId: mentor.id,
+            trackId: trackFrontend.id,
+            userRoles: {
+                create: [{ role: 'LEADER' }],
+            },
+        },
+    });
+
+    console.log('🏢 Criando projeto...');
+
+    // Projeto
+    const project = await prisma.project.create({
+        data: {
+            name: 'Sistema de Avaliações',
+            description: 'Projeto para desenvolvimento do sistema de avaliações da RocketCorp',
+            status: 'ACTIVE',
+            managerId: manager.id,
+        },
+    });
+
+    console.log('👥 Adicionando membros ao projeto...');
+
+    // Adicionar membros ao projeto (gestor, líderes e desenvolvedores)
+    await prisma.projectMember.createMany({
+        data: [
+            { projectId: project.id, userId: manager.id }, // Gestor
+            { projectId: project.id, userId: leader1.id }, // Líder 1
+            { projectId: project.id, userId: leader2.id }, // Líder 2
+            { projectId: project.id, userId: userBackend.id }, // Dev Backend
+            { projectId: project.id, userId: userFrontend.id }, // Dev Frontend
+        ],
+    });
+
+    console.log('🔗 Criando assignments de líderes...');
+
+    // Assignment de líderes ao projeto
+    await prisma.leaderAssignment.createMany({
+        data: [
+            { projectId: project.id, leaderId: leader1.id },
+            { projectId: project.id, leaderId: leader2.id },
+        ],
+    });
+
     console.log('🏗️ Criando pilares...');
 
     // Pilares: Comportamento, Execução e Gestão
@@ -218,6 +305,14 @@ async function main() {
     console.log(`   - Backend: backend@teste.com (senha: senha123) - ID: ${userBackend.id}`);
     console.log(`   - Frontend: frontend@teste.com (senha: senha123) - ID: ${userFrontend.id}`);
     console.log(`   - RH: rh@teste.com (senha: senha123) - ID: ${userRh.id}`);
+    console.log(`   - Gestor: manager@teste.com (senha: senha123) - ID: ${manager.id}`);
+    console.log(`   - Líder 1: leader1@teste.com (senha: senha123) - ID: ${leader1.id}`);
+    console.log(`   - Líder 2: leader2@teste.com (senha: senha123) - ID: ${leader2.id}`);
+
+    console.log('\n🏢 Projeto:');
+    console.log(`   - Sistema de Avaliações (ID: ${project.id})`);
+    console.log(`   - Gestor: Carlos Gestor (ID: ${manager.id})`);
+    console.log(`   - Líderes: Pedro Líder (ID: ${leader1.id}), Sofia Líder (ID: ${leader2.id})`);
 
     console.log('\n🏗️ Pilares:');
     console.log(`   - Comportamento (ID: ${pilarComportamento.id})`);
@@ -230,11 +325,13 @@ async function main() {
     console.log('   - Gestão e Liderança: 3 critérios');
 
     console.log('\n🧪 Próximos passos:');
-    console.log('1. Login como rh@teste.com');
-    console.log('2. Configurar trilhas/cargos dos usuários');
-    console.log('3. Configurar critérios por trilha/cargo via API');
-    console.log('4. Criar e ativar ciclos de avaliação');
-    console.log('5. Testar com diferentes usuários');
+    console.log('1. Login como manager@teste.com (gestor)');
+    console.log('2. Testar assignment de líderes via API /manager/assign-leader');
+    console.log('3. Listar líderes via API /manager/projects/:projectId/leaders');
+    console.log('4. Configurar trilhas/cargos dos usuários');
+    console.log('5. Configurar critérios por trilha/cargo via API');
+    console.log('6. Criar e ativar ciclos de avaliação');
+    console.log('7. Testar com diferentes usuários');
 }
 
 // Executar o seed
