@@ -160,6 +160,9 @@ export class CollaboratorsService {
                 mentoring: true,
                 reference: true,
                 cycleConfig: true,
+                evaluatee: {
+                    include: { mentor: true }, // Inclui o mentor do avaliado
+                },
             },
         });
 
@@ -211,7 +214,7 @@ export class CollaboratorsService {
                 ? {
                       rating: evaluation.mentoring.score,
                       justification: evaluation.mentoring.justification,
-                      mentorName: 'Mentor Name Placeholder', // Ajuste conforme necessário
+                      mentorName: evaluation.evaluatee.mentor?.name || 'Mentor não informado',
                   }
                 : null,
         }));

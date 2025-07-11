@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { SaveEqualizationDto } from './dto/save-equalization.dto';
 
@@ -29,6 +29,17 @@ export class EqualizationService {
         if (!evaluation) {
             throw new NotFoundException(
                 `Avaliação não encontrada para o ciclo ${cycleId} e colaborador ${collaboratorId}.`,
+            );
+        }
+
+        // Verifica se já existe uma equalização para esta avaliação
+        const existingEqualization = await this.prisma.equalization.findFirst({
+            where: { evaluationId: evaluation.id },
+        });
+
+        if (existingEqualization) {
+            throw new BadRequestException(
+                `Já existe uma equalização para o ciclo ${cycleId} e colaborador ${collaboratorId}.`,
             );
         }
 

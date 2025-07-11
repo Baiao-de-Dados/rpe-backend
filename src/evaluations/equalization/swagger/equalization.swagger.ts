@@ -6,7 +6,7 @@ export function ApiSaveEqualization() {
         ApiTags('Equalização'),
         ApiOperation({
             summary: 'Salvar a equalização de um colaborador',
-            description: 'Salva a nota final e a justificativa de um colaborador em um ciclo específico.',
+            description: 'Salva a nota final (pode ser decimal) e a justificativa de um colaborador em um ciclo específico.',
         }),
         ApiResponse({
             status: 201,

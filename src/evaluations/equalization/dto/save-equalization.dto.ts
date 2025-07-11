@@ -1,12 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsInt, Min, IsString, IsNotEmpty } from 'class-validator';
+import { IsNumber, Min, IsString, IsNotEmpty } from 'class-validator';
 
 export class SaveEqualizationDto {
     @ApiProperty({
         example: 1,
         description: 'ID do ciclo de avaliação',
     })
-    @IsInt({ message: 'O parâmetro cycleId deve ser um número inteiro.' })
+    @IsNumber({}, { message: 'O parâmetro cycleId deve ser um número.' })
     @Min(1, { message: 'O parâmetro cycleId deve ser maior ou igual a 1.' })
     cycleId: number;
 
@@ -14,7 +14,7 @@ export class SaveEqualizationDto {
         example: 5,
         description: 'ID do colaborador',
     })
-    @IsInt({ message: 'O parâmetro collaboratorId deve ser um número inteiro.' })
+    @IsNumber({}, { message: 'O parâmetro collaboratorId deve ser um número.' })
     @Min(1, { message: 'O parâmetro collaboratorId deve ser maior ou igual a 1.' })
     collaboratorId: number;
 
@@ -22,7 +22,7 @@ export class SaveEqualizationDto {
         example: 4.5,
         description: 'Nota final do colaborador no ciclo',
     })
-    @IsInt({ message: 'O parâmetro rating deve ser um número inteiro.' })
+    @IsNumber({}, { message: 'O parâmetro rating deve ser um número.' })
     rating: number;
 
     @ApiProperty({
