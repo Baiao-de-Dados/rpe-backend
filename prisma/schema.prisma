@@ -13,8 +13,8 @@ model User {
   password   String
   name       String
   position   String
-  mentorId   Int
-  mentor     User     @relation("Mentor", fields: [mentorId], references: [id])
+  mentorId   Int?
+  mentor     User?     @relation("Mentor", fields: [mentorId], references: [id])
   mentees    User[]   @relation("Mentor")
   trackId    Int
   track      Track?   @relation(fields: [trackId], references: [id])
@@ -27,6 +27,7 @@ model User {
   userRoles     UserRoleLink[]  @relation("UserRoleUser")
   assignedRoles UserRoleLink[]  @relation("AssignedByAdmin")
   projectMember ProjectMember[]
+  notes      Notes[]
 }
 
 model UserRoleLink {
@@ -224,6 +225,16 @@ model Log {
   action    String // ex: "EXPORT_EVALUATIONS", "LOGIN", etc.
   metadata  Json
   createdAt DateTime @default(now())
+}
+
+model Notes {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @unique
+  notes     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 enum EvaluationStatus {
