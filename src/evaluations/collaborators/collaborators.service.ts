@@ -141,4 +141,79 @@ export class CollaboratorsService {
 
         return response;
     }
+
+    async getCollaboratorEvaluations(collaboratorId: number) {
+        const evaluations = await this.prisma.evaluation.findMany({
+            where: {
+                evaluatorId: collaboratorId,
+                status: 'COMPLETED',
+            },
+            include: {
+                autoEvaluation: {
+                    include: {
+                        assignments: {
+                            include: { criterion: true },
+                        },
+                    },
+                },
+                evaluation360: true,
+                mentoring: true,
+                reference: true,
+                cycleConfig: true,
+            },
+        });
+
+        if (!evaluations.length) {
+            throw new NotFoundException('Nenhuma avaliação encontrada para o colaborador especificado.');
+        }
+
+        return evaluations.map((evaluation) => ({
+            cycleName: evaluation.cycleConfig.name,
+            selfAssessment: evaluation.autoEvaluation
+                ? {
+                      pillars: evaluation.autoEvaluation.assignments.map((assignment) => ({
+                          pillarName: `Pillar ${assignment.criterion.pillarId}`,
+                          criteria: [
+                              {
+                                  criteriaName: assignment.criterion.name,
+                                  rating: assignment.score,
+                                  weight: 20, // Ajuste conforme necessário
+                                  managerRating: 5, // Ajuste conforme necessário
+                                  justification: assignment.justification,
+                              },
+                          ],
+                      })),
+                  }
+                : null,
+            evaluation360: evaluation.evaluation360
+                ? {
+                      evaluation: [
+                          {
+                              collaratorName: `Evaluator ${evaluation.evaluatorId}`,
+                              collaboratorPosition: 'Position not available', // Ajuste conforme necessário
+                              rating: evaluation.evaluation360.score,
+                              improvements: evaluation.evaluation360.improvements,
+                              strengths: evaluation.evaluation360.strengths,
+                          },
+                      ],
+                  }
+                : null,
+            reference: evaluation.reference
+                ? [
+                      {
+                          collaratorName: `Evaluator ${evaluation.evaluatorId}`,
+                          collaboratorPosition: 'Position not available', // Ajuste conforme necessário
+                          justification: evaluation.reference.justification,
+                      },
+                  ]
+                : null,
+            mentoring: evaluation.mentoring
+                ? {
+                      rating: evaluation.mentoring.score,
+                      justification: evaluation.mentoring.justification,
+                      mentorName: 'Mentor Name Placeholder', // Ajuste conforme necessário
+                  }
+                : null,
+        }));
+    }
 }

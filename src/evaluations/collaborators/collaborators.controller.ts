@@ -8,6 +8,7 @@ import { ApiGetCollaboratorsScores } from './swagger/collaborators.swagger';
 import { GetCollaboratorsScoresDto } from './dto/get-collaborators-scores.dto';
 import { QueryValidationPipe } from '../../common/pipes/query-validation.pipe';
 import { ApiGetCollaboratorEvaluationCommittee, ApiGetCollaboratorEvaluationManager } from './swagger/collaborators-evaluation.swagger';
+import { ApiGetCollaboratorEvaluations } from './swagger/collaborators-evaluations.swagger';
 
 @ApiTags('Colaboradores')
 @Controller('collaborators')
@@ -48,6 +49,19 @@ export class CollaboratorsController {
             throw new BadRequestException('cycleId and collaboratorId are required.');
         }
         return this.collaboratorsService.getCollaboratorEvaluation(query.cycleId, query.collaboratorId, 'MANAGER');
+    }
+
+    @RequireRH()
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Get('evaluations')
+    @ApiGetCollaboratorEvaluations()
+    async getCollaboratorEvaluations(
+        @Query(new QueryValidationPipe()) query: GetCollaboratorsScoresDto,
+    ) {
+        if (!query.collaboratorId) {
+            throw new BadRequestException('collaboratorId is required.');
+        }
+        return this.collaboratorsService.getCollaboratorEvaluations(query.collaboratorId);
     }
 }
 
