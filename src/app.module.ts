@@ -18,6 +18,7 @@ import { RolesGuard } from './auth/guards/roles.guard';
 import { TrackModule } from './track/track.module';
 import { ImportUsersModule } from './import-export/import-users/import-users.module';
 import { ImportEvaluationsModule } from './import-export/import-evaluations/import-evaluations.module';
+import { LogModule } from './log/log.module';
 
 @Module({
     imports: [
@@ -47,6 +48,7 @@ import { ImportEvaluationsModule } from './import-export/import-evaluations/impo
         TrackModule,
         ImportUsersModule,
         ImportEvaluationsModule,
+        LogModule,
     ],
     controllers: [AppController],
     providers: [

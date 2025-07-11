@@ -8,10 +8,12 @@ import { RhModule } from './rh/rh.module';
 import { EmployerModule } from './employer/employer.module';
 import { MulterModule } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
+import { LogModule } from 'src/log/log.module';
 @Module({
     imports: [
         PrismaModule,
         CryptoModule,
+        LogModule,
         RhModule,
         EmployerModule,
         MulterModule.register({
