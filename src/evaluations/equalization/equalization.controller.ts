@@ -5,6 +5,7 @@ import { RolesGuard } from '../../auth/guards/roles.guard';
 import { RequireCommittee } from '../../auth/decorators/roles.decorator';
 import { EqualizationService } from './equalization.service';
 import { SaveEqualizationDto } from './dto/save-equalization.dto';
+import { ApiSaveEqualization, ApiEditEqualization } from './swagger/equalization.swagger';
 
 @ApiTags('Equalização')
 @Controller('equalization')
@@ -14,6 +15,7 @@ export class EqualizationController {
     @RequireCommittee()
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Post()
+    @ApiSaveEqualization()
     async saveEqualization(@Body() dto: SaveEqualizationDto) {
         if (!dto.cycleId || !dto.collaboratorId || dto.rating === undefined || !dto.justification) {
             throw new BadRequestException('cycleId, collaboratorId, rating, and justification are required.');
@@ -24,6 +26,7 @@ export class EqualizationController {
     @RequireCommittee()
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Put()
+    @ApiEditEqualization()
     async editEqualization(@Body() dto: SaveEqualizationDto) {
         if (!dto.cycleId || !dto.collaboratorId || dto.rating === undefined || !dto.justification) {
             throw new BadRequestException('cycleId, collaboratorId, rating, and justification are required.');
