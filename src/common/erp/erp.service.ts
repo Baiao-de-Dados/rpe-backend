@@ -1,14 +1,18 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ErpSyncDto } from './dto/erp-sync.dto';
 import { ErpUserDto } from './dto/erp-user.dto';
 import { ErpProjectDto } from './dto/erp-project.dto';
 import { ProjectStatus, UserRole } from '@prisma/client';
 import { ErpProjectMemberDto } from './dto/erp-project-member.dto';
+import { AuthService } from 'src/auth/auth.service';
 
 @Injectable()
 export class ErpService {
-    constructor(private readonly prisma: PrismaService) {}
+    constructor(
+        private readonly prisma: PrismaService,
+        private readonly authService: AuthService,
+    ) {}
 
     async buildErpJson(): Promise<ErpSyncDto> {
         const users = await this.prisma.user.findMany({
@@ -65,24 +69,41 @@ export class ErpService {
             });
         }
 
-        // Usuários (upsert + remoção)
+        // Usuários (criação via AuthService para garantir autenticação)
         const incomingEmails = dto.users.map((u) => u.email);
         for (const u of dto.users) {
-            await this.prisma.user.upsert({
-                where: { email: u.email },
-                update: {
-                    name: u.name,
-                    track: { connect: { name: u.track } },
-                    position: u.position,
-                },
-                create: {
-                    email: u.email,
-                    password: 'change_me',
-                    name: u.name,
-                    position: u.position,
-                    track: { connect: { name: u.track } },
-                },
-            });
+            const role = (u.primaryRole as UserRole) || UserRole.EMPLOYER;
+            let mentorId: number | undefined = undefined;
+            if (u.mentorEmail) {
+                const mentor = await this.prisma.user.findUnique({
+                    where: { email: u.mentorEmail },
+                });
+                mentorId = mentor?.id;
+            }
+            try {
+                await this.authService.createUserWithRoles(
+                    u.email,
+                    'change_me',
+                    u.name,
+                    u.position,
+                    [role],
+                    mentorId,
+                );
+            } catch (e) {
+                if (e instanceof ConflictException) {
+                    // Usuário já existe, pode atualizar dados básicos se quiser
+                    await this.prisma.user.update({
+                        where: { email: u.email },
+                        data: {
+                            name: u.name,
+                            position: u.position,
+                            track: { connect: { name: u.track } },
+                        },
+                    });
+                } else {
+                    throw e;
+                }
+            }
         }
         await this.prisma.user.deleteMany({
             where: { email: { notIn: incomingEmails } },

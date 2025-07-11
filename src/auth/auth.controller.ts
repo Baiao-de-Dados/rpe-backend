@@ -68,8 +68,8 @@ export class AuthController {
             createUserDto.password,
             createUserDto.name,
             createUserDto.position,
-            createUserDto.mentorId,
             createUserDto.roles,
+            createUserDto.mentorId,
             admin.id,
         );
     }
@@ -92,7 +92,6 @@ export class AuthController {
             'admin123',
             'System Admin',
             'Administrador',
-            0,
             [UserRole.ADMIN],
         );
 

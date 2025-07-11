@@ -139,8 +139,8 @@ export class AuthService {
         password: string,
         name: string,
         position: string,
-        mentorId: number,
         roles: UserRole[],
+        mentorId?: number,
         assignedBy?: number,
     ): Promise<UserPublic> {
         const encryptedEmail = this.encryptionService.encrypt(email);
@@ -167,7 +167,7 @@ export class AuthService {
                     password: hashedPassword,
                     name,
                     position,
-                    mentorId,
+                    ...(mentorId !== undefined ? { mentorId } : {}),
                     trackId: defaultTrack.id,
                 },
             });
