@@ -7,7 +7,7 @@ import { AppController } from './app.controller';
 import { UserModule } from './user/user.module';
 import { AuthModule } from './auth/auth.module';
 import { ErpModule } from './common/erp/erp.module';
-import { CycleConfigModule } from './evaluations/cycles/cycle-config.module';
+import { CycleConfigModule } from './cycles/cycle-config.module';
 import { ConfigModule } from '@nestjs/config';
 import { AppService } from './app.service';
 import { CommonModule } from './common/common.module';

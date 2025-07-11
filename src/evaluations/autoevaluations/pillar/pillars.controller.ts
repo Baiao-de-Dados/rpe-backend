@@ -6,7 +6,7 @@ import { UpdatePillarDto } from './dto/update-pillar.dto';
 import { ApiCreate, ApiDelete, ApiGet, ApiUpdate } from 'src/common/decorators/api-crud.decorator';
 import { ApiAuth } from 'src/common/decorators/api-auth.decorator';
 import { OnlyRH } from 'src/auth/decorators/roles.decorator';
-import { CycleConfigService } from 'src/evaluations/cycles/cycle-config.service';
+import { CycleConfigService } from 'src/cycles/cycle-config.service';
 
 @ApiTags('Pilares')
 @ApiAuth()

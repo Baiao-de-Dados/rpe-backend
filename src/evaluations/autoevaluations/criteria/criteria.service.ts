@@ -5,7 +5,7 @@ import { UpdateCriterionDto } from './dto/update-criterion.dto';
 import { UpdateCriterionTrackConfigDto } from './dto/update-criterion-track-config.dto';
 import { BatchUpdateCriteriaDto } from './dto/batch-update-criteria.dto';
 import { TrackConfigDto } from './dto/track-config.dto';
-import { CycleConfigService } from 'src/evaluations/cycles/cycle-config.service';
+import { CycleConfigService } from '../../../cycles/cycle-config.service';
 
 @Injectable()
 export class CriteriaService {

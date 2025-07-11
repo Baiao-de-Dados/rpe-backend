@@ -1,11 +1,11 @@
 import { ConflictException, Injectable } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from '../../prisma/prisma.service';
 import { ErpSyncDto } from './dto/erp-sync.dto';
 import { ErpUserDto } from './dto/erp-user.dto';
 import { ErpProjectDto } from './dto/erp-project.dto';
 import { ProjectStatus, UserRole } from '@prisma/client';
 import { ErpProjectMemberDto } from './dto/erp-project-member.dto';
-import { AuthService } from 'src/auth/auth.service';
+import { AuthService } from '../../auth/auth.service';
 
 @Injectable()
 export class ErpService {

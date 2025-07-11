@@ -28,23 +28,20 @@ export class CycleConfigResponseDto {
     description?: string;
 
     @ApiProperty({ example: '2025-01-01T00:00:00Z', description: 'Data de início do ciclo' })
-    startDate: Date;
+    startDate: string;
 
     @ApiProperty({ example: '2025-06-30T23:59:59Z', description: 'Data de fim do ciclo' })
-    endDate: Date;
-
-    @ApiProperty({ example: '2025-01-01T00:00:00Z', description: 'Data de criação' })
-    createdAt: Date;
-
-    @ApiProperty({ example: '2025-01-01T00:00:00Z', description: 'Data de atualização' })
-    updatedAt: Date;
+    endDate: string;
 
     @ApiProperty({ example: true, description: 'Se o ciclo está ativo' })
     isActive: boolean;
 
-    @ApiProperty({
-        description:
-            'Configurações dos critérios (agora vazio, pois usamos CriterionTrackCycleConfig)',
-    })
+    @ApiProperty({ example: '2025-01-01T00:00:00Z', description: 'Data de criação' })
+    createdAt: string;
+
+    @ApiProperty({ example: '2025-01-01T00:00:00Z', description: 'Data de atualização' })
+    updatedAt: string;
+
+    @ApiProperty({ type: [PillarConfigResponseDto], description: 'Pilares do ciclo' })
     criteriaPillars: any[];
 }

@@ -39,5 +39,6 @@ export class CreateCycleConfigDto {
     @IsArray()
     @ValidateNested({ each: true })
     @Type(() => PillarConfigDto)
-    pillarConfigs: PillarConfigDto[];
+    @IsOptional()
+    pillars?: PillarConfigDto[];
 }

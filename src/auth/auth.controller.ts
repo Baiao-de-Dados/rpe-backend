@@ -7,9 +7,9 @@ import { RequireAdmin } from './decorators/roles.decorator';
 import { UserFromJwt } from './strategies/jwt.strategy';
 import { UserRole } from '@prisma/client';
 import { RolesGuard } from './guards/roles.guard';
-import { ApiAuth } from 'src/common/decorators/api-auth.decorator';
-import { ApiCreate, ApiGet } from 'src/common/decorators/api-crud.decorator';
-import { ApiStandardResponses } from 'src/common/decorators/api-standard-responses.decorator';
+import { ApiAuth } from '../common/decorators/api-auth.decorator';
+import { ApiCreate, ApiGet } from '../common/decorators/api-crud.decorator';
+import { ApiStandardResponses } from '../common/decorators/api-standard-responses.decorator';
 
 export class LoginDto {
     email: string;

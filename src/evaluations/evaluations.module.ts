@@ -8,7 +8,7 @@ import { Evaluation360Module } from './evaluation360/evaluation360.module';
 import { ReferencesModule } from './references/references.module';
 import { MentoringModule } from './mentoring/mentoring.module';
 import { CycleValidationService } from './services/cycle-validation.service';
-import { CycleConfigModule } from './cycles/cycle-config.module';
+import { CycleConfigModule } from '../cycles/cycle-config.module';
 import { AutoEvaluationModule } from './autoevaluations/autoevaluations.module';
 
 @Module({
