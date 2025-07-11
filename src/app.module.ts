@@ -20,6 +20,7 @@ import { ImportUsersModule } from './import-export/import-users/import-users.mod
 import { ImportEvaluationsModule } from './import-export/import-evaluations/import-evaluations.module';
 import { ExportEvaluationsModule } from './import-export/export-evaluations/export-evaluations.module';
 import { CollaboratorsModule } from './evaluations/collaborators/collaborators.module';
+import { EqualizationModule } from './evaluations/equalization/equalization.module';
 
 @Module({
     imports: [
@@ -51,6 +52,7 @@ import { CollaboratorsModule } from './evaluations/collaborators/collaborators.m
         ImportEvaluationsModule,
         ExportEvaluationsModule,
         CollaboratorsModule,
+        EqualizationModule,
     ],
     controllers: [AppController],
     providers: [
