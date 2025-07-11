@@ -1,80 +1,9 @@
+import { IsNumber, IsArray, ValidateNested, IsDefined } from 'class-validator';
+import { AutoAvaliacaoDto } from '../autoevaluations/dto/autoavaliacao.dto';
+import { Avaliacao360Dto } from '../evaluation360/dto/avaliacao360.dto';
+import { MentoringDto } from '../mentoring/dto/mentoring.dto';
+import { ReferenciaDto } from '../references/dto/referencia.dto';
 import { Type } from 'class-transformer';
-import {
-    IsString,
-    IsNumber,
-    IsArray,
-    IsOptional,
-    ValidateNested,
-    IsDefined,
-} from 'class-validator';
-
-class CriterioDto {
-    @IsNumber()
-    criterioId: number;
-
-    @IsNumber()
-    nota: number;
-
-    @IsString()
-    justificativa: string;
-}
-
-class PilarDto {
-    @IsNumber()
-    pilarId: number;
-
-    @IsArray()
-    @ValidateNested({ each: true })
-    @Type(() => CriterioDto)
-    criterios: CriterioDto[];
-}
-
-class AutoAvaliacaoDto {
-    @IsArray()
-    @ValidateNested({ each: true })
-    @Type(() => PilarDto)
-    pilares: PilarDto[];
-}
-
-class Avaliacao360Dto {
-    @IsNumber()
-    avaliadoId: number;
-
-    @IsString()
-    @IsOptional()
-    pontosFortes?: string;
-
-    @IsString()
-    @IsOptional()
-    pontosMelhoria?: string;
-
-    @IsString()
-    justificativa: string;
-}
-
-class MentoringDto {
-    @IsNumber()
-    mentorId: number;
-
-    @IsString()
-    justificativa: string;
-
-    @IsOptional()
-    @IsNumber()
-    leaderId?: number;
-
-    @IsOptional()
-    @IsString()
-    leaderJustificativa?: string;
-}
-
-class ReferenciaDto {
-    @IsNumber()
-    colaboradorId: number;
-
-    @IsString()
-    justificativa: string;
-}
 
 export class CreateEvaluationDto {
     @IsNumber()

@@ -8,7 +8,7 @@ const SECRET = process.env.ENCRYPTION_KEY;
 if (!SECRET) {
     throw new Error('ENCRYPTION_KEY environment variable is not set');
 }
-const KEY = crypto.createHash('sha256').update(SECRET).digest();
+const KEY = crypto.createHash('sha256').update(SECRET).digest(); // adicionar sal e pepper -> hash(salt + bcrypt + pepper)
 
 @Injectable()
 export class EncryptionService {

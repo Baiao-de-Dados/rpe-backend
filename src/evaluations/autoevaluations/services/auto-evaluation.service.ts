@@ -1,12 +1,13 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { CycleValidationService } from '../../services/cycle-validation.service';
+import { PrismaClient } from '@prisma/client';
 
 @Injectable()
 export class AutoEvaluationService {
     constructor(private cycleValidationService: CycleValidationService) {}
 
     async createAutoEvaluation(
-        prisma: any,
+        prisma: PrismaClient,
         autoavaliacao: any,
         colaboradorId: number,
         cycleConfigId: number,

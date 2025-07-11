@@ -1,5 +1,5 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
-import { CycleValidationService } from './cycle-validation.service';
+import { CycleValidationService } from '../../services/cycle-validation.service';
 import { PrismaClient, Evaluation } from '@prisma/client';
 
 @Injectable()
