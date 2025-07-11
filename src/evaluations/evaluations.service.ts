@@ -6,8 +6,9 @@ import { Peer360EvaluationService } from './services/peer360-evaluation.service'
 import { ReferenceService } from './services/reference.service';
 import { AutoEvaluationService } from 'src/evaluations/autoevaluations/services/auto-evaluation.service';
 import { MentorEvaluationService } from './services/mentor-evaluation.service';
-import { CycleConfigService } from 'src/evaluations/cycles/cycle-config.service';
+import { CycleConfigService } from 'src/cycles/cycle-config.service';
 import { ActiveCriteriaUserResponseDto } from './dto/active-criteria-response.dto';
+import type { PrismaClient } from '@prisma/client';
 
 @Injectable()
 export class EvaluationsService {
@@ -35,7 +36,7 @@ export class EvaluationsService {
         await this.validationService.validateEvaluationData(createEvaluationDto);
 
         // Usar transação para garantir atomicidade
-        return await this.prisma.$transaction(async (prisma) => {
+        return await this.prisma.$transaction(async (prisma: PrismaClient) => {
             const evaluations: any[] = [];
 
             // 1. Cria a autoavaliação usando o service (com validação de trilha/cargo)
