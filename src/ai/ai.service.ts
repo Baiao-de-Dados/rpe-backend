@@ -9,11 +9,15 @@ import {
 import { notesConfig } from './config';
 import { colaboradores, criterios, mentor } from './mocks';
 import { GeminiNotesEvaluationResponseDto } from './dto/gemini-notes-evaluation-response.dto';
+import { NotesService } from '../notes/notes.service';
 
 @Injectable()
 export class AiService {
-    private generateNotesData(text: string, cycleId: number): string {
-        console.log(cycleId);
+    constructor(private readonly notesService: NotesService) {}
+
+    private generateNotesData(text: string, userId: number, cycleId: number): string {
+        console.log(cycleId, userId);
+        // Usar o userId e o cycledId para buscar no banco quais são os colaboladores que estão no projeto atual do colaborador, o mentor do colaborador e os critérios de avaliação da trilha do colaborador no ciclo passado
         return `
         Você é um especialista em avaliação de desempenho com foco em análise comportamental baseada em evidências reais. Sua função é gerar avaliações automáticas e responsáveis a partir das anotações do cotidiano de um colaborador seguindo tudo que foi detalhado.
 
@@ -29,10 +33,11 @@ export class AiService {
     }
 
     async gerarAvaliacaoPorAnotacoes(
-        text: string,
+        userId: number,
         cycleId: number,
     ): Promise<GeminiNotesEvaluationResponseDto> {
-        const prompt = this.generateNotesData(text, cycleId);
+        const { notes } = await this.notesService.getNoteByUserId(userId);
+        const prompt = this.generateNotesData(notes, userId, cycleId);
 
         try {
             const response = await ai.models.generateContent({

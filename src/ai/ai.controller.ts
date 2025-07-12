@@ -2,7 +2,6 @@ import { Controller, Post, Body, Res, HttpStatus } from '@nestjs/common';
 import { AiService } from './ai.service';
 import { UserRole } from '@prisma/client';
 import { ExactRoles } from 'src/auth/decorators/roles.decorator';
-import { NotesService } from '../notes/notes.service';
 import { AnalisarAnotacoesDto } from './dto/analisar-anotacoes.dto';
 import { GeminiNotesEvaluationResponseDto } from './dto/gemini-notes-evaluation-response.dto';
 import { ApiTags, ApiOperation, ApiBody, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
@@ -12,10 +11,7 @@ import { Response } from 'express';
 @ApiBearerAuth()
 @Controller('ia')
 export class AiController {
-    constructor(
-        private readonly aiService: AiService,
-        private readonly notesService: NotesService,
-    ) {}
+    constructor(private readonly aiService: AiService) {}
 
     @Post('analisar-anotacoes')
     @ExactRoles(UserRole.EMPLOYER)
@@ -113,15 +109,15 @@ export class AiController {
         @Body() body: AnalisarAnotacoesDto,
         @Res() res: Response,
     ): Promise<void> {
-        const { notes } = await this.notesService.getNoteByUserId(body.userId);
         const result: GeminiNotesEvaluationResponseDto =
-            await this.aiService.gerarAvaliacaoPorAnotacoes(notes, body.cycleId);
+            await this.aiService.gerarAvaliacaoPorAnotacoes(body.userId, body.cycleId);
         if (
             result.code === 'SUCCESS' ||
             result.code === 'NO_INSIGHT' ||
             result.code === 'NO_IDENTIFICATION'
         ) {
             res.status(HttpStatus.OK).json(result);
+            return;
         }
         res.status(HttpStatus.BAD_REQUEST).json(result);
     }
