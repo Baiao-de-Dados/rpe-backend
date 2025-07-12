@@ -1,11 +1,19 @@
-import { Controller, Post, Body, Res, HttpStatus } from '@nestjs/common';
-import { AiService } from './ai.service';
-import { UserRole } from '@prisma/client';
-import { ExactRoles } from 'src/auth/decorators/roles.decorator';
-import { AnalisarAnotacoesDto } from './dto/analisar-anotacoes.dto';
-import { GeminiNotesEvaluationResponseDto } from './dto/gemini-notes-evaluation-response.dto';
-import { ApiTags, ApiOperation, ApiBody, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { Response } from 'express';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import { Controller, Post, Body, Res, HttpStatus } from '@nestjs/common';
+
+import { AiService } from './ai.service';
+
+import { GeminiRequestDto } from './dto/request/gemini-request-dto';
+import { GeminiNotesResponseDto } from './dto/response/gemini-notes-response.dto';
+import { GeminiLeaderResponseDto } from './dto/response/gemini-leader-response.dto';
+import { GeminiCollaboratorResponseDto } from './dto/response/gemini-collaborator-response.dto';
+import { GeminiEqualizationResponseDto } from './dto/response/gemini-equalization-response.dto';
+
+import { GeminiNotesEndpoint } from './decorators/gemini-notes-endpoint.decorator';
+import { GeminiLeaderEndpoint } from './decorators/gemini-leader-endpoint.decorator';
+import { GeminiCollaboratorEndpoint } from './decorators/gemini-collaborator-endpoint.decorator';
+import { GeminiEqualizationEndpoint } from './decorators/gemini-equalization-endpoint.decorator';
 
 @ApiTags('Inteligência Artificial')
 @ApiBearerAuth()
@@ -14,108 +22,59 @@ export class AiController {
     constructor(private readonly aiService: AiService) {}
 
     @Post('analisar-anotacoes')
-    @ExactRoles(UserRole.EMPLOYER)
-    @ApiOperation({
-        summary: 'Gerar avaliações automaticamente baseadas nas anotações do colabolador',
-        description:
-            'Recebe o userId e o cycleId, busca as anotações do usuário e retorna uma avaliação gerada pela IA. Apenas EMPLOYER pode acessar.',
-    })
-    @ApiBody({
-        type: AnalisarAnotacoesDto,
-        description: 'Payload contendo o userId e cycleId',
-        examples: {
-            exemplo: {
-                value: {
-                    userId: 1,
-                    cycleId: 20251,
-                },
-            },
-        },
-    })
-    @ApiResponse({
-        status: 200,
-        description: 'Resposta da IA: SUCCESS ou NO_INSIGHT',
-        schema: {
-            oneOf: [
-                {
-                    example: {
-                        code: 'SUCCESS',
-                        selfAssessment: [
-                            {
-                                pillarId: '12',
-                                criteriaId: 'gente',
-                                rating: 4,
-                                justification:
-                                    'Tenho conseguido apoiar e guiar os colegas nas atividades do time, principalmente em momentos mais desafiadores.',
-                            },
-                        ],
-                        evaluation360: [
-                            {
-                                collaboratorId: 'colab-001',
-                                rating: 4,
-                                strengths:
-                                    'Ele tem um olhar criativo que contribui muito no início dos projetos',
-                                improvements: 'Às vezes poderia ser mais ágil nas entregas',
-                            },
-                        ],
-                        mentoring: {
-                            rating: 5,
-                            justification:
-                                'Miguel sempre me ajuda a enxergar o cenário com mais clareza quando estou diante de uma decisão difícil.',
-                        },
-                        references: [
-                            {
-                                collaboratorId: 'colab-001',
-                                justification:
-                                    'Ele tem um perfil técnico muito forte e sempre traz soluções práticas e bem embasadas.',
-                            },
-                        ],
-                    },
-                },
-                {
-                    example: {
-                        code: 'NO_INSIGHT',
-                    },
-                },
-                {
-                    example: {
-                        code: 'NO_IDENTIFICATION',
-                        written: 'João',
-                        applicable: ['João Silva', 'João Souza'],
-                    },
-                },
-            ],
-        },
-    })
-    @ApiResponse({
-        status: 400,
-        description: 'Erro na resposta da IA ou processamento (ERROR)',
-        schema: {
-            example: {
-                code: 'ERROR',
-                error: 'Mensagem de erro detalhada',
-            },
-        },
-    })
-    @ApiResponse({
-        status: 403,
-        description: 'Acesso negado. Apenas EMPLOYER pode acessar.',
-    })
-    @ApiResponse({
-        status: 500,
-        description: 'Erro interno ou falha na IA.',
-    })
-    async analisarAnotacoes(
-        @Body() body: AnalisarAnotacoesDto,
-        @Res() res: Response,
-    ): Promise<void> {
-        const result: GeminiNotesEvaluationResponseDto =
-            await this.aiService.gerarAvaliacaoPorAnotacoes(body.userId, body.cycleId);
+    @GeminiNotesEndpoint()
+    async GeminiRequest(@Body() body: GeminiRequestDto, @Res() res: Response): Promise<void> {
+        const result: GeminiNotesResponseDto = await this.aiService.gerarAvaliacaoPorAnotacoes(
+            body.userId,
+            body.cycleId,
+        );
         if (
             result.code === 'SUCCESS' ||
             result.code === 'NO_INSIGHT' ||
             result.code === 'NO_IDENTIFICATION'
         ) {
+            res.status(HttpStatus.OK).json(result);
+            return;
+        }
+        res.status(HttpStatus.BAD_REQUEST).json(result);
+    }
+
+    @Post('analisar-colaborador')
+    @GeminiCollaboratorEndpoint()
+    async GeminiCollaborator(@Body() body: GeminiRequestDto, @Res() res: Response): Promise<void> {
+        const result: GeminiCollaboratorResponseDto = await this.aiService.gerarResumoColaborador(
+            body.userId,
+            body.cycleId,
+        );
+        if (result.code === 'SUCCESS' || result.code === 'NO_INSIGHT') {
+            res.status(HttpStatus.OK).json(result);
+            return;
+        }
+        res.status(HttpStatus.BAD_REQUEST).json(result);
+    }
+
+    @Post('resumir-equalizacao')
+    @GeminiEqualizationEndpoint()
+    async GeminiEqualization(@Body() body: GeminiRequestDto, @Res() res: Response): Promise<void> {
+        const result: GeminiEqualizationResponseDto = await this.aiService.gerarEqualization(
+            body.userId,
+            body.cycleId,
+        );
+        if (result.code === 'SUCCESS' || result.code === 'NO_INSIGHT') {
+            res.status(HttpStatus.OK).json(result);
+            return;
+        }
+        res.status(HttpStatus.BAD_REQUEST).json(result);
+    }
+
+    @Post('analisar-liderados')
+    @GeminiLeaderEndpoint()
+    async GeminiLeader(@Body() body: GeminiRequestDto, @Res() res: Response): Promise<void> {
+        const result: GeminiLeaderResponseDto = await this.aiService.gerarResumoLeader(
+            body.userId,
+            body.cycleId,
+        );
+        if (result.code === 'SUCCESS' || result.code === 'NO_INSIGHT') {
             res.status(HttpStatus.OK).json(result);
             return;
         }

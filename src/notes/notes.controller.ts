@@ -6,11 +6,19 @@ import {
     NoteResponseDto,
     NoteSuccessResponseDto,
 } from './dto/notes.dto';
-import { ApiTags, ApiOperation, ApiParam, ApiBody, ApiResponse } from '@nestjs/swagger';
+import {
+    ApiTags,
+    ApiOperation,
+    ApiParam,
+    ApiBody,
+    ApiResponse,
+    ApiBearerAuth,
+} from '@nestjs/swagger';
 import { ExactRoles } from 'src/auth/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
 
 @ApiTags('Notes')
+@ApiBearerAuth()
 @Controller('notes')
 export class NotesController {
     constructor(private readonly notesService: NotesService) {}

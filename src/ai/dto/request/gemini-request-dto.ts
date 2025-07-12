@@ -1,7 +1,7 @@
 import { IsNumber } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
-export class AnalisarAnotacoesDto {
+export class GeminiRequestDto {
     @ApiProperty({ example: 1, description: 'ID do usuário a ser analisado' })
     @IsNumber()
     userId: number;

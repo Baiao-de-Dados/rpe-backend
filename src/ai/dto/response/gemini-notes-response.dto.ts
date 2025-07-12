@@ -55,7 +55,7 @@ export class GeminiReferenceDto {
     justification: string;
 }
 
-export class GeminiNotesEvaluationResponseDto {
+export class GeminiNotesResponseDto {
     @ApiProperty({
         example: 'SUCCESS',
         enum: ['SUCCESS', 'NO_INSIGHT', 'ERROR', 'NO_IDENTIFICATION'],

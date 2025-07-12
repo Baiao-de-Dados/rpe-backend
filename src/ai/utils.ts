@@ -1,4 +1,7 @@
-import { GeminiNotesEvaluationResponseDto } from './dto/gemini-notes-evaluation-response.dto';
+import { GeminiNotesResponseDto } from './dto/response/gemini-notes-response.dto';
+import { GeminiCollaboratorResponseDto } from './dto/response/gemini-collaborator-response.dto';
+import { GeminiEqualizationResponseDto } from './dto/response/gemini-equalization-response.dto';
+import { GeminiLeaderResponseDto } from './dto/response/gemini-leader-response.dto';
 
 export type GeminiSelfAssessmentItem = {
     pillarId: number;
@@ -72,7 +75,7 @@ function isValidReferencesItem(item: GeminiReferenceItem): boolean {
     );
 }
 
-function isValidGeminiEvaluationResponse(data: GeminiNotesEvaluationResponseDto): boolean {
+function isValidGeminiNotesResponse(data: GeminiNotesResponseDto): boolean {
     return (
         typeof data === 'object' &&
         (data.mentoring === null || isValidMentoringItem(data.mentoring as GeminiMentoringItem)) &&
@@ -105,12 +108,57 @@ export function cleanGeminiResponseText(text: string): string {
         .trim();
 }
 
+function isValidGeminiCollaboratorResponse(data: GeminiCollaboratorResponseDto): boolean {
+    return (
+        typeof data === 'object' &&
+        (data.code === 'SUCCESS'
+            ? typeof data.summary === 'string' &&
+              data.summary.trim().length >= 200 &&
+              data.summary.trim().length <= 500
+            : data.code === 'NO_INSIGHT' || data.code === 'ERROR')
+    );
+}
+
+function isValidGeminiEqualizationResponse(data: GeminiEqualizationResponseDto): boolean {
+    return (
+        typeof data === 'object' &&
+        (data.code === 'SUCCESS'
+            ? typeof data.rating === 'number' &&
+              data.rating >= 1 &&
+              data.rating <= 5 &&
+              typeof data.detailedAnalysis === 'string' &&
+              data.detailedAnalysis.trim().length >= 200 &&
+              data.detailedAnalysis.trim().length <= 500 &&
+              typeof data.summary === 'string' &&
+              data.summary.trim().length >= 50 &&
+              data.summary.trim().length <= 200 &&
+              typeof data.discrepancies === 'string' &&
+              data.discrepancies.trim().length >= 100 &&
+              data.discrepancies.trim().length <= 300
+            : data.code === 'NO_INSIGHT' || data.code === 'ERROR')
+    );
+}
+
+function isValidGeminiLeaderResponse(data: GeminiLeaderResponseDto): boolean {
+    return (
+        typeof data === 'object' &&
+        (data.code === 'SUCCESS'
+            ? typeof data.summary === 'string' &&
+              data.summary.trim().length >= 200 &&
+              data.summary.trim().length <= 500
+            : data.code === 'NO_INSIGHT' || data.code === 'ERROR')
+    );
+}
+
 export {
-    isValidNoInsightResponse,
-    isValidSelfAssessmentItem,
-    isValidEvaluation360Item,
     isValidMentoringItem,
     isValidReferencesItem,
-    isValidGeminiEvaluationResponse,
+    isValidEvaluation360Item,
+    isValidSelfAssessmentItem,
+    isValidGeminiNotesResponse,
+    isValidGeminiLeaderResponse,
+    isValidGeminiEqualizationResponse,
+    isValidGeminiCollaboratorResponse,
+    isValidNoInsightResponse,
     isValidNoIdentificationResponse,
 };
