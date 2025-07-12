@@ -41,9 +41,6 @@ export class CriteriaController {
     @ExactRoles(UserRole.RH)
     @ApiCreate('critério')
     async create(@Body() createCriterionDto: CreateCriterionDto) {
-        // Validar se não há ciclo ativo antes de criar critérios
-        await this.cycleConfigService.validateCycleNotActive();
-
         return this.criteriaService.create(createCriterionDto);
     }
 
@@ -72,9 +69,6 @@ export class CriteriaController {
     @ExactRoles(UserRole.RH)
     @ApiUpdate('critérios em lote')
     async batchUpdate(@Body() batchUpdateDto: BatchUpdateCriteriaDto) {
-        // Validar se não há ciclo ativo antes de atualizar critérios
-        //await this.cycleConfigService.validateCycleNotActive();
-
         return this.criteriaService.batchUpdate(batchUpdateDto);
     }
 
@@ -82,9 +76,6 @@ export class CriteriaController {
     @ExactRoles(UserRole.RH)
     @ApiDelete('critério')
     async remove(@Param('id', ParseIntPipe) id: number) {
-        // Validar se não há ciclo ativo antes de remover critérios
-        //await this.cycleConfigService.validateCycleNotActive();
-
         return this.criteriaService.remove(id);
     }
 

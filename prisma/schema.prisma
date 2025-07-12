@@ -79,7 +79,7 @@ model CycleConfig {
   description String?
   startDate   DateTime
   endDate     DateTime
-  isActive    Boolean  @default(false)
+  done        Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Req } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { OnlyManager } from 'src/auth/decorators/roles.decorator';
 import { ApiAuth } from 'src/common/decorators/api-auth.decorator';
@@ -91,6 +91,12 @@ export class ManagerController {
     @Get('collaborators/evaluations-summary')
     getCollaboratorsEvaluationsSummary(@CurrentUser('id') userId: number) {
         return this.managerService.getCollaboratorsEvaluationsSummary(userId);
+    }
+
+    @Get('collaborators-evaluations-details')
+    async getCollaboratorsEvaluationsDetails(@Req() req) {
+        // Supondo que o id do gestor está em req.user.id
+        return this.managerService.getCollaboratorsEvaluationsDetails(req.user.id);
     }
 
     @Get('auto-evaluation/:userId')

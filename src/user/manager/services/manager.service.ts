@@ -4,6 +4,11 @@ import { AssignLeaderDto } from '../dto/assign-leader.dto';
 import { AssignLeaderEvaluationDto } from '../dto/assign-leader-evaluation.dto';
 import { ManagerEvaluationDto } from '../dto/manager-evaluation.dto';
 
+function isCycleActive(cycle: { done: boolean; startDate: Date; endDate: Date }): boolean {
+    const now = new Date();
+    return !cycle.done && now >= cycle.startDate && now <= cycle.endDate;
+}
+
 @Injectable()
 export class ManagerService {
     constructor(private readonly prisma: PrismaService) {}
@@ -629,7 +634,7 @@ export class ManagerService {
         let collaboratorIds = projects.flatMap((project) => project.members.map((m) => m.userId));
         collaboratorIds = collaboratorIds.filter((id) => id !== managerId);
         // Buscar todos os ciclos ativos
-        const cycles = await this.prisma.cycleConfig.findMany({ where: { isActive: true } });
+        const cycles = (await this.prisma.cycleConfig.findMany()).filter(isCycleActive);
         const cycleIds = cycles.map((c) => c.id);
         // Total esperado de avaliações: para cada colaborador em cada ciclo ativo
         const totalExpected = collaboratorIds.length * cycleIds.length;
@@ -660,7 +665,7 @@ export class ManagerService {
         // Todos os colaboradores dos projetos
         const collaboratorIds = projects.flatMap((project) => project.members.map((m) => m.userId));
         // Buscar todos os ciclos ativos
-        const cycles = await this.prisma.cycleConfig.findMany({ where: { isActive: true } });
+        const cycles = (await this.prisma.cycleConfig.findMany()).filter(isCycleActive);
         const cycleIds = cycles.map((c) => c.id);
         // Total esperado de avaliações: para cada colaborador em cada ciclo ativo
         const totalExpected = collaboratorIds.length * cycleIds.length;
@@ -704,7 +709,7 @@ export class ManagerService {
         // Todos os colaboradores dos projetos
         const collaboratorIds = projects.flatMap((project) => project.members.map((m) => m.userId));
         // Buscar ciclos ativos
-        const cycles = await this.prisma.cycleConfig.findMany({ where: { isActive: true } });
+        const cycles = (await this.prisma.cycleConfig.findMany()).filter(isCycleActive);
         const cycleIds = cycles.map((c) => c.id);
         // Buscar assignments de líder para colaborador nos ciclos ativos
         const assignments = await this.prisma.leaderEvaluationAssignment.findMany({
@@ -741,7 +746,7 @@ export class ManagerService {
 
         let collaboratorIds = projects.flatMap((project) => project.members.map((m) => m.userId));
         collaboratorIds = collaboratorIds.filter((id) => id !== managerId);
-        const cycles = await this.prisma.cycleConfig.findMany({ where: { isActive: true } });
+        const cycles = (await this.prisma.cycleConfig.findMany()).filter(isCycleActive);
         const cycleIds = cycles.map((c) => c.id);
         const assignments = await this.prisma.leaderEvaluationAssignment.findMany({
             where: {
@@ -774,7 +779,7 @@ export class ManagerService {
         if (!isMember) {
             throw new NotFoundException('Usuário não pertence a nenhum projeto sob sua gestão.');
         }
-        const activeCycles = await this.prisma.cycleConfig.findMany({ where: { isActive: true } });
+        const activeCycles = (await this.prisma.cycleConfig.findMany()).filter(isCycleActive);
         const cycleIds = activeCycles.map((c) => c.id);
         const evaluation = await this.prisma.evaluation.findFirst({
             where: {
@@ -840,7 +845,7 @@ export class ManagerService {
         collaborators = collaborators.filter((c) => c.id !== managerId);
         const collaboratorIds = collaborators.map((c) => c.id);
         // Buscar ciclos ativos
-        const cycles = await this.prisma.cycleConfig.findMany({ where: { isActive: true } });
+        const cycles = (await this.prisma.cycleConfig.findMany()).filter(isCycleActive);
         if (cycles.length === 0) {
             return [];
         }
@@ -943,6 +948,110 @@ export class ManagerService {
                     leaderEvaluationScore: leaderEvalScore,
                     managerEvaluationScore: managerEvalScore,
                     status,
+                });
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Retorna os detalhes completos das avaliações dos colaboradores sob gestão do manager
+     */
+    async getCollaboratorsEvaluationsDetails(managerId: number) {
+        // Buscar todos os projetos do gestor
+        const projects = await this.prisma.project.findMany({
+            where: { managerId },
+            include: {
+                members: {
+                    include: {
+                        user: {
+                            select: {
+                                id: true,
+                                name: true,
+                                email: true,
+                                position: true,
+                                userRoles: {
+                                    where: { isActive: true },
+                                    select: { role: true },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        });
+        if (projects.length === 0) {
+            throw new NotFoundException('Você não tem permissão para gerenciar projetos.');
+        }
+        // Todos os colaboradores dos projetos (excluindo o próprio manager)
+        let collaborators = projects.flatMap((project) =>
+            project.members.map((member) => ({
+                ...member.user,
+                project: {
+                    projectId: project.id,
+                    projectName: project.name,
+                },
+            })),
+        );
+        collaborators = collaborators.filter((c) => c.id !== managerId);
+        const collaboratorIds = collaborators.map((c) => c.id);
+        // Buscar ciclos ativos
+        const cycles = (await this.prisma.cycleConfig.findMany()).filter(
+            (cycle) => !cycle.done && new Date() >= cycle.startDate && new Date() <= cycle.endDate,
+        );
+        if (cycles.length === 0) {
+            return [];
+        }
+        // Buscar avaliações em lote
+        const evaluations = await this.prisma.evaluation.findMany({
+            where: {
+                evaluateeId: { in: collaboratorIds },
+                cycleConfigId: { in: cycles.map((c) => c.id) },
+            },
+            include: {
+                autoEvaluation: {
+                    include: { assignments: true },
+                },
+                evaluation360: true,
+                mentoring: true,
+                reference: true,
+                cycleConfig: true,
+            },
+        });
+        // Buscar avaliações de líder
+        const leaderEvaluations = await this.prisma.leaderEvaluation.findMany({
+            where: {
+                collaboratorId: { in: collaboratorIds },
+                cycleId: { in: cycles.map((c) => c.id) },
+            },
+        });
+        // Montar resposta detalhada
+        const result: any[] = [];
+        for (const collaborator of collaborators) {
+            for (const cycle of cycles) {
+                const evaluation = evaluations.find(
+                    (ev) => ev.evaluateeId === collaborator.id && ev.cycleConfigId === cycle.id,
+                );
+                const leaderEval = leaderEvaluations.find(
+                    (le) => le.collaboratorId === collaborator.id && le.cycleId === cycle.id,
+                );
+                result.push({
+                    collaborator: {
+                        id: collaborator.id,
+                        name: collaborator.name,
+                        email: collaborator.email,
+                        position: collaborator.position,
+                        project: collaborator.project,
+                    },
+                    cycle: {
+                        id: cycle.id,
+                        name: cycle.name,
+                    },
+                    autoEvaluation: evaluation?.autoEvaluation || null,
+                    evaluation360: evaluation?.evaluation360 || null,
+                    reference: evaluation?.reference || null,
+                    mentoring: evaluation?.mentoring || null,
+                    leaderEvaluation: leaderEval || null,
                 });
             }
         }

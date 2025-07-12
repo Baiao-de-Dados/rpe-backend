@@ -31,10 +31,6 @@ export class CreateCycleConfigDto {
     @IsDateString()
     endDate: string;
 
-    @ApiProperty({ example: true, description: 'Se o ciclo está ativo' })
-    @IsOptional()
-    isActive?: boolean;
-
     @ApiProperty({ type: [PillarConfigDto], description: 'Configurações dos pilares' })
     @IsArray()
     @ValidateNested({ each: true })

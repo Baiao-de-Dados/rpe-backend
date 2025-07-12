@@ -148,8 +148,9 @@ export class EvaluationsService {
 
     async getActiveCriteriaForUser(user: any): Promise<ActiveCriteriaUserResponseDto> {
         // 1. Verificar se existe um ciclo ativo
-        const activeCycle = await this.prisma.cycleConfig.findFirst({
-            where: { isActive: true },
+        const activeCycle = (await this.prisma.cycleConfig.findMany()).find((cycle) => {
+            const now = new Date();
+            return !cycle.done && now >= cycle.startDate && now <= cycle.endDate;
         });
 
         if (!activeCycle) {
@@ -171,8 +172,10 @@ export class EvaluationsService {
         }
 
         // 3. Buscar critérios ativos no ciclo atual
-        const activeCycleCriteria = await this.cycleConfigService.getActiveCriteria();
-        const activeCriteriaIds = new Set(activeCycleCriteria.map((c) => c.id));
+        const activeCycleCriteria = await this.prisma.criterionTrackCycleConfig.findMany({
+            where: { cycleId: activeCycle.id },
+        });
+        const activeCriteriaIds = new Set(activeCycleCriteria.map((c) => c.criterionId));
 
         // 4. Buscar critérios configurados para a trilha/cargo do usuário
         const userTrackCriteria = await this.prisma.criterionTrackConfig.findMany({

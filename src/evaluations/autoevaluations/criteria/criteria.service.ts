@@ -286,7 +286,9 @@ export class CriteriaService {
         }
 
         // Buscar o ciclo ativo
-        const activeCycle = await this.cycleConfigService.getActiveCycle();
+        const activeCycle = (await this.prisma.cycleConfig.findMany()).find(
+            (cycle) => cycle.startDate <= new Date() && cycle.endDate >= new Date(),
+        );
 
         if (!activeCycle) {
             return [];
@@ -663,10 +665,9 @@ export class CriteriaService {
         }
 
         // 3. Desativar ciclos ativos
-        await this.prisma.cycleConfig.updateMany({
-            where: { isActive: true },
-            data: { isActive: false },
-        });
+        // await this.prisma.cycleConfig.updateMany({
+        //     data: { isActive: false },
+        // });
 
         // Usar a data atual como data de início do ciclo
         const startDate = new Date(); // Data de criação
@@ -689,7 +690,6 @@ export class CriteriaService {
                     endDate: new Date(endDate),
                     name: cycleName, // Garante que o nome está correto
                     startDate: startDate,
-                    isActive: true, // Garante que o ciclo atualizado fique ativo
                 },
             });
             // Remove configs antigas desse ciclo
@@ -704,7 +704,6 @@ export class CriteriaService {
                     description: 'Ciclo criado automaticamente ao iniciar ciclo',
                     startDate: startDate,
                     endDate: new Date(endDate),
-                    isActive: true, // Garante que o ciclo criado é ativo
                 },
             });
         }

@@ -44,7 +44,6 @@ export class RHController {
     @Post('pillar')
     @ApiCreate('Pilar')
     async createPillar(@Body() dto: CreatePillarDto) {
-        await this.rh.validateCycleActive();
         return this.rh.createPillar(dto);
     }
 
@@ -69,14 +68,12 @@ export class RHController {
     @Delete('pillar/:id')
     @ApiDelete('Pilar')
     async deletePillar(@Param('id', ParseIntPipe) id: number) {
-        await this.rh.validateCycleActive();
         return this.rh.deletePillar(id);
     }
     // Critérios
     @Post('criteria')
     @ApiCreate('Critério')
     async createCriterion(@Body() dto: CreateCriterionDto) {
-        await this.rh.validateCycleActive();
         return this.rh.createCriterion(dto);
     }
 
@@ -161,7 +158,6 @@ export class RHController {
     @Post('cycle')
     @ApiCreate('Ciclo')
     async createCycle(@Body() dto: CreateCycleConfigDto) {
-        await this.rh.validateCycleActive();
         return this.rh.createCycle(dto);
     }
 
@@ -189,14 +185,12 @@ export class RHController {
         @Param('id', ParseIntPipe) id: number,
         @Body() dto: UpdateCycleConfigDto,
     ): Promise<CycleConfigResponseDto> {
-        await this.rh.validateCycleActive();
         return this.rh.updateCycle(id, dto);
     }
 
     @Delete('cycle/:id')
     @ApiDelete('Ciclo')
     async deleteCycle(@Param('id', ParseIntPipe) id: number) {
-        await this.rh.validateCycleActive();
         return this.rh.deleteCycle(id);
     }
 

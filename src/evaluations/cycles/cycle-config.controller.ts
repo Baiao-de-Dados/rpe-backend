@@ -19,9 +19,7 @@ export class CycleConfigController {
     @RequireRH()
     @ApiCreate('ciclo de avaliação')
     async create(@Body() createCycleConfigDto: CreateCycleConfigDto) {
-        // Validar se não há ciclo ativo antes de criar um novo
-        await this.cycleConfigService.validateCycleNotActive();
-
+        // await this.cycleConfigService.validateCycleNotActive();
         return this.cycleConfigService.create(createCycleConfigDto);
     }
 
@@ -57,9 +55,7 @@ export class CycleConfigController {
         @Param('id', ParseIntPipe) id: number,
         @Body() updateCycleConfigDto: UpdateCycleConfigDto,
     ): Promise<CycleConfigResponseDto> {
-        // Validar se não há ciclo ativo antes de fazer alterações
-        await this.cycleConfigService.validateCycleNotActive();
-
+        // await this.cycleConfigService.validateCycleNotActive();
         return this.cycleConfigService.update(id, updateCycleConfigDto);
     }
 
@@ -68,9 +64,7 @@ export class CycleConfigController {
     @ApiOperation({ summary: 'Remover ciclo de avaliação' })
     @ApiResponse({ status: 200, description: 'Ciclo removido com sucesso' })
     async remove(@Param('id', ParseIntPipe) id: number) {
-        // Validar se não há ciclo ativo antes de fazer alterações
-        await this.cycleConfigService.validateCycleNotActive();
-
+        // await this.cycleConfigService.validateCycleNotActive();
         return this.cycleConfigService.remove(id);
     }
 
@@ -94,5 +88,12 @@ export class CycleConfigController {
     @ApiResponse({ status: 404, description: 'Ciclo não encontrado' })
     async cancelCycle(@Param('id', ParseIntPipe) id: number) {
         return this.cycleConfigService.cancelCycle(id);
+    }
+
+    @Post(':id/done')
+    @ApiOperation({ summary: 'Finalizar ciclo (seta done = true)' })
+    @ApiResponse({ status: 200, description: 'Ciclo finalizado com sucesso' })
+    async finalizeCycle(@Param('id', ParseIntPipe) id: number) {
+        return this.cycleConfigService.finalizeCycle(id);
     }
 }
