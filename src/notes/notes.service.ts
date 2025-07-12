@@ -14,9 +14,15 @@ export class NotesService {
         });
     }
 
-    async getNoteByUserId(userId: number | string) {
-        return await this.prisma.notes.findUnique({
+    async getNoteByUserId(
+        userId: number | string,
+    ): Promise<{ notes: string; updatedAt: Date | null }> {
+        const note = await this.prisma.notes.findUnique({
             where: { userId: Number(userId) },
         });
+        return {
+            notes: note?.notes || '',
+            updatedAt: note?.updatedAt || null,
+        };
     }
 }

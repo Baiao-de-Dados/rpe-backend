@@ -14,9 +14,6 @@ export class GetNoteDto {
 }
 
 export class NoteResponseDto {
-    @ApiProperty({ example: 1, description: 'ID do usuário' })
-    userId: number;
-
     @ApiProperty({ example: 'Texto da anotação', description: 'Conteúdo da anotação' })
     notes: string;
 
