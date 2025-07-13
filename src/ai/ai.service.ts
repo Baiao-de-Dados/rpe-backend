@@ -7,192 +7,52 @@ import {
     cleanGeminiResponseText,
 } from './utils';
 import { notesConfig } from './config';
+import { colaboradores, criterios, mentor } from './mocks';
 import { GeminiNotesResponseDto } from './dto/response/gemini-notes-response.dto';
 import { NotesService } from '../notes/notes.service';
 import { GeminiCollaboratorResponseDto } from './dto/response/gemini-collaborator-response.dto';
 import { GeminiEqualizationResponseDto } from './dto/response/gemini-equalization-response.dto';
 import { GeminiLeaderResponseDto } from './dto/response/gemini-leader-response.dto';
-import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class AiService {
-    constructor(
-        private readonly notesService: NotesService,
-        private readonly prisma: PrismaService,
-    ) {}
+    constructor(private readonly notesService: NotesService) {}
 
-    private async generateNotesData(text: string, userId: number, cycleId: number): Promise<string> {
-        // Busca os colaboradores do projeto atual do colaborador
-        const projectMembers = await this.prisma.projectMember.findMany({
-            where: {
-                project: {
-                    members: {
-                        some: { userId: userId }, // Inclui o colaborador no projeto
-                    },
-                },
-            },
-            include: {
-                project: {
-                    include: {
-                        members: {
-                            include: {
-                                user: true,
-                            },
-                        },
-                    },
-                },
-            },
-        });
-
-        const collaborators = projectMembers.flatMap((member) =>
-            member.project.members
-                .filter((m) => m.userId !== userId) // Exclui o próprio colaborador
-                .map((m) => ({
-                    id: m.user.id,
-                    name: m.user.name,
-                    position: m.user.position,
-                })),
-        );
-
-        // Busca o mentor do colaborador
-        const mentor = await this.prisma.user.findUnique({
-            where: { id: userId },
-            include: { mentor: true },
-        });
-
-        // Busca os critérios de avaliação da trilha do colaborador no ciclo
-        const criteria = await this.prisma.criterionTrackCycleConfig.findMany({
-            where: {
-                track: {
-                    users: {
-                        some: { id: userId },
-                    },
-                },
-                cycleId: cycleId,
-            },
-            include: {
-                criterion: true,
-            },
-        });
-
-        const criterios = criteria.map((c) => ({
-            id: c.criterionId,
-            name: c.criterion?.name ?? 'N/A',
-            description: c.criterion?.description ?? 'N/A',
-            weight: c.weight,
-        }));
-
+    private generateNotesData(text: string, userId: number, cycleId: number): string {
+        console.log(cycleId, userId);
+        // TODO: Usar o userId e o cycledId para buscar no banco:
+        // Os colaboladores que estão no projeto atual do colaborador,
+        // O mentor do colaborador
+        // Os critérios de avaliação da trilha do colaborador no ciclo
         return `
+
         [COLABORADORES]
-        ${JSON.stringify(collaborators, null, 2)}
+        ${JSON.stringify(colaboradores, null, 2)}
         [CRITERIOS]
         ${JSON.stringify(criterios, null, 2)}
         [MENTOR]
-        ${mentor?.mentor ? JSON.stringify({ id: mentor.mentor.id, name: mentor.mentor.name }) : 'Nenhum mentor encontrado'}
+        ${JSON.stringify(mentor, null, 2)}
         [TEXTO]
         ${text}
         `;
     }
 
-    private async generateCollaboratorData(userId: number, cycleId: number): Promise<string> {
-        // Verifica se o resumo já existe no banco
-        const existingSummary = await this.prisma.notes.findFirst({
-            where: {
-                userId: userId,
-                cycle: { id: cycleId },
-            },
-        });
+    private generateCollaboratorData(userId: number, cycleId: number): string {
+        console.log(cycleId, userId);
+        // TODO: Usar o userId e o cycledId para buscar no banco:
+        // A autoavaliação do colaborador no ciclo, com seus pilares, critérios e pesos.
+        // A avaliação do Gestor no ciclo com os mesmos critérios.
+        // A nota final e justificativa que o comitê de equalização deu para o colaborador no ciclo
+        // IMPORTANTE: Esse resumo só é gerado uma vez, então a endpoint tem que verificar se já existe um resumo para o usuário e ciclo. Se não exister, vai gerar e salvar no banco.
+        return `
 
-        if (existingSummary) {
-            return existingSummary.notes; // Retorna o resumo existente
-        }
-
-        // Busca a autoavaliação do colaborador no ciclo
-        const autoEvaluation = await this.prisma.autoEvaluation.findFirst({
-            where: {
-                evaluation: {
-                    evaluateeId: userId,
-                    cycleConfigId: cycleId,
-                },
-            },
-            include: {
-                assignments: {
-                    include: {
-                        criterion: true,
-                    },
-                },
-            },
-        });
-
-        const autoEvaluationData = autoEvaluation
-            ? autoEvaluation.assignments.map((assignment) => ({
-                  criterionName: assignment.criterion.name,
-                  score: assignment.score,
-                  weight: assignment.criterion.weight,
-                  justification: assignment.justification,
-              }))
-            : 'Nenhuma autoavaliação encontrada';
-
-        // Busca a avaliação do gestor no ciclo
-        const managerEvaluation = await this.prisma.managerEvaluation.findFirst({
-            where: {
-                cycleId: cycleId,
-                collaboratorId: userId,
-            },
-            include: {
-                criterias: {
-                    include: {
-                        criteria: true,
-                    },
-                },
-            },
-        });
-
-        const managerEvaluationData = managerEvaluation
-            ? managerEvaluation.criterias.map((criteria) => ({
-                  criterionName: criteria.criteria.name,
-                  score: criteria.score,
-                  justification: criteria.justification,
-              }))
-            : 'Nenhuma avaliação do gestor encontrada';
-
-        // Busca a equalização do comitê no ciclo
-        const equalization = await this.prisma.equalization.findFirst({
-            where: {
-                evaluation: {
-                    evaluateeId: userId,
-                    cycleConfigId: cycleId,
-                },
-            },
-        });
-
-        const equalizationData = equalization
-            ? {
-                  score: equalization.score,
-                  justification: equalization.justification,
-              }
-            : 'Nenhuma equalização encontrada';
-
-        // Gera o resumo
-        const summary = `
         [AUTOAVALIAÇÃO]
-        ${JSON.stringify(autoEvaluationData, null, 2)}
+        ${'JSON.stringify(autoavaliacao, null, 2)'}
         [GESTOR]
-        ${JSON.stringify(managerEvaluationData, null, 2)}
+        ${'JSON.stringify(gestor, null, 2)'}
         [EQUALIZAÇÃO]
-        ${JSON.stringify(equalizationData, null, 2)}
+        ${'JSON.stringify(equalizacao, null, 2)'}
         `;
-
-        // Salva o resumo no banco
-        await this.prisma.notes.create({
-            data: {
-                userId: userId,
-                cycleId: cycleId,
-                notes: summary,
-            },
-        });
-
-        return summary;
     }
 
     private generateEqualizationData(userId: number, cycleId: number): string {
@@ -245,7 +105,7 @@ export class AiService {
         cycleId: number,
     ): Promise<GeminiNotesResponseDto> {
         const { notes } = await this.notesService.getNoteByUserId(userId);
-        const prompt = await this.generateNotesData(notes, userId, cycleId);
+        const prompt = this.generateNotesData(notes, userId, cycleId);
 
         try {
             const response = await ai.models.generateContent({
@@ -320,7 +180,7 @@ export class AiService {
         userId: number,
         cycleId: number,
     ): Promise<GeminiCollaboratorResponseDto> {
-        const prompt = await this.generateCollaboratorData(userId, cycleId);
+        const prompt = this.generateCollaboratorData(userId, cycleId);
         try {
             const response = await ai.models.generateContent({
                 model: 'gemini-2.5-flash',
