@@ -103,10 +103,13 @@ export class RhPanelService {
 
     async getCollaboratorsStatus(): Promise<CollaboratorsStatusDto> {
         // Buscar ciclo ativo diretamente
-        const cycleConfig = await this.prisma.cycleConfig.findFirst({
-            where: { isActive: true },
-            select: { id: true, name: true },
-        });
+        const cycleConfig = (
+            await this.prisma.cycleConfig.findMany({
+                select: { id: true, name: true, startDate: true, endDate: true, done: true },
+            })
+        ).find(
+            (cycle) => !cycle.done && new Date() >= cycle.startDate && new Date() <= cycle.endDate,
+        );
         if (!cycleConfig) {
             throw new NotFoundException('Nenhum ciclo ativo encontrado');
         }
@@ -152,10 +155,13 @@ export class RhPanelService {
 
     async getCollaboratorStatusById(collaboratorId: number): Promise<CollaboratorStatusDto> {
         // Buscar ciclo ativo diretamente
-        const cycleConfig = await this.prisma.cycleConfig.findFirst({
-            where: { isActive: true },
-            select: { id: true, name: true },
-        });
+        const cycleConfig = (
+            await this.prisma.cycleConfig.findMany({
+                select: { id: true, name: true, startDate: true, endDate: true, done: true },
+            })
+        ).find(
+            (cycle) => !cycle.done && new Date() >= cycle.startDate && new Date() <= cycle.endDate,
+        );
         if (!cycleConfig) {
             throw new NotFoundException('Nenhum ciclo ativo encontrado');
         }
@@ -266,10 +272,13 @@ export class RhPanelService {
     // retorna as estatísticas de completude por trilha (track) no ciclo ativo
     async getTrackCompletionStats(): Promise<any> {
         // Buscar ciclo ativo diretamente
-        const cycleConfig = await this.prisma.cycleConfig.findFirst({
-            where: { isActive: true },
-            select: { id: true, name: true },
-        });
+        const cycleConfig = (
+            await this.prisma.cycleConfig.findMany({
+                select: { id: true, name: true, startDate: true, endDate: true, done: true },
+            })
+        ).find(
+            (cycle) => !cycle.done && new Date() >= cycle.startDate && new Date() <= cycle.endDate,
+        );
         if (!cycleConfig) {
             throw new NotFoundException('Nenhum ciclo ativo encontrado');
         }

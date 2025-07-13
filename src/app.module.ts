@@ -19,6 +19,8 @@ import { TrackModule } from './track/track.module';
 import { ImportUsersModule } from './import-export/import-users/import-users.module';
 import { ImportEvaluationsModule } from './import-export/import-evaluations/import-evaluations.module';
 import { LogModule } from './log/log.module';
+import { NotesModule } from './notes/notes.module';
+import { AiModule } from './ai/ai.module';
 
 @Module({
     imports: [
@@ -49,6 +51,8 @@ import { LogModule } from './log/log.module';
         ImportUsersModule,
         ImportEvaluationsModule,
         LogModule,
+        NotesModule,
+        AiModule,
     ],
     controllers: [AppController],
     providers: [

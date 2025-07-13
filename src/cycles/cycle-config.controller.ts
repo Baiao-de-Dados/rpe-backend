@@ -1,84 +1,99 @@
 import { Body, Controller, Get, Param, ParseIntPipe, Post, Put, Delete } from '@nestjs/common';
-import { ApiTags, ApiOperation } from '@nestjs/swagger';
-import { RequireRH } from '../auth/decorators/roles.decorator';
-import { ApiAuth } from '../common/decorators/api-auth.decorator';
-import {
-    ApiCreate,
-    ApiDelete,
-    ApiGet,
-    ApiList,
-    ApiUpdate,
-} from '../common/decorators/api-crud.decorator';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { CycleConfigService } from './cycle-config.service';
-import { CreateCycleConfigDto } from './dto/create-cycle-config.dto';
+import { CreateCycleConfigDto } from '../cycles/dto/create-cycle-config.dto';
 import { UpdateCycleConfigDto } from './dto/update-cycle-config.dto';
 import { CycleConfigResponseDto } from './dto/cycle-config-response.dto';
+import { RequireRH } from 'src/auth/decorators/roles.decorator';
+import { ApiAuth } from 'src/common/decorators/api-auth.decorator';
+import { ApiCreate } from 'src/common/decorators/api-crud.decorator';
 import { ExtendCycleDto } from './dto/extend-cycle.dto';
 
 @ApiTags('Configuração de Ciclo')
 @ApiAuth()
-@RequireRH()
 @Controller('cycle-config')
 export class CycleConfigController {
     constructor(private readonly cycleConfigService: CycleConfigService) {}
 
     @Post()
+    @RequireRH()
     @ApiCreate('ciclo de avaliação')
     async create(@Body() createCycleConfigDto: CreateCycleConfigDto) {
-        // Validar se não há ciclo ativo antes de criar um novo
-        await this.cycleConfigService.validateCycleNotActive();
+        // await this.cycleConfigService.validateCycleNotActive();
         return this.cycleConfigService.create(createCycleConfigDto);
     }
 
+    @RequireRH()
     @Get()
-    @ApiList('ciclos')
+    @ApiOperation({ summary: 'Listar todos os ciclos' })
+    @ApiResponse({ status: 200, type: [CycleConfigResponseDto] })
     async findAll(): Promise<CycleConfigResponseDto[]> {
         return this.cycleConfigService.findAll();
     }
 
+    @RequireRH()
     @Get('active')
     @ApiOperation({ summary: 'Buscar ciclo ativo' })
-    @ApiGet('ciclo ativo')
+    @ApiResponse({ status: 200, type: CycleConfigResponseDto })
     async findActive(): Promise<CycleConfigResponseDto | null> {
         return this.cycleConfigService.findActive();
     }
 
+    @RequireRH()
     @Get(':id')
     @ApiOperation({ summary: 'Buscar ciclo por ID' })
-    @ApiGet('ciclo')
+    @ApiResponse({ status: 200, type: CycleConfigResponseDto })
     async findOne(@Param('id', ParseIntPipe) id: number): Promise<CycleConfigResponseDto> {
         return this.cycleConfigService.findOne(id);
     }
 
     @Put(':id')
-    @ApiUpdate('ciclo')
+    @RequireRH()
+    @ApiOperation({ summary: 'Atualizar ciclo de avaliação' })
+    @ApiResponse({ status: 200, type: CycleConfigResponseDto })
     async update(
         @Param('id', ParseIntPipe) id: number,
         @Body() updateCycleConfigDto: UpdateCycleConfigDto,
     ): Promise<CycleConfigResponseDto> {
-        // Validar se não há ciclo ativo antes de fazer alterações
-        await this.cycleConfigService.validateCycleNotActive();
+        // await this.cycleConfigService.validateCycleNotActive();
         return this.cycleConfigService.update(id, updateCycleConfigDto);
     }
 
     @Delete(':id')
-    @ApiDelete('ciclo')
-    async remove(@Param('id', ParseIntPipe) id: number): Promise<void> {
-        await this.cycleConfigService.remove(id);
+    @RequireRH()
+    @ApiOperation({ summary: 'Remover ciclo de avaliação' })
+    @ApiResponse({ status: 200, description: 'Ciclo removido com sucesso' })
+    async remove(@Param('id', ParseIntPipe) id: number) {
+        // await this.cycleConfigService.validateCycleNotActive();
+        return this.cycleConfigService.remove(id);
     }
 
-    @Put(':id/cancel')
-    @ApiUpdate('ciclo')
-    async cancelCycle(@Param('id', ParseIntPipe) id: number): Promise<void> {
-        await this.cycleConfigService.cancelCycle(id);
-    }
-
-    @Put(':id/extend')
-    @ApiUpdate('ciclo')
+    @Post(':id/extend')
+    @ApiOperation({ summary: 'Prorrogar ciclo ativo' })
+    @ApiResponse({ status: 200, description: 'Ciclo prorrogado com sucesso' })
+    @ApiResponse({ status: 400, description: 'Ciclo não está ativo ou data inválida' })
+    @ApiResponse({ status: 404, description: 'Ciclo não encontrado' })
     async extendCycle(
         @Param('id', ParseIntPipe) id: number,
         @Body() extendCycleDto: ExtendCycleDto,
-    ): Promise<CycleConfigResponseDto> {
-        return this.cycleConfigService.extendCycle(id, extendCycleDto);
+    ) {
+        return await this.cycleConfigService.extendCycle(id, extendCycleDto);
+    }
+
+    @Delete(':id/cancel')
+    @RequireRH()
+    @ApiOperation({ summary: 'Cancelar ciclo ativo' })
+    @ApiResponse({ status: 200, description: 'Ciclo cancelado com sucesso' })
+    @ApiResponse({ status: 400, description: 'Ciclo não está ativo' })
+    @ApiResponse({ status: 404, description: 'Ciclo não encontrado' })
+    async cancelCycle(@Param('id', ParseIntPipe) id: number) {
+        return this.cycleConfigService.cancelCycle(id);
+    }
+
+    @Post(':id/done')
+    @ApiOperation({ summary: 'Finalizar ciclo (seta done = true)' })
+    @ApiResponse({ status: 200, description: 'Ciclo finalizado com sucesso' })
+    async finalizeCycle(@Param('id', ParseIntPipe) id: number) {
+        return this.cycleConfigService.finalizeCycle(id);
     }
 }

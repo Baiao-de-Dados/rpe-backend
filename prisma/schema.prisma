@@ -8,17 +8,14 @@ datasource db {
 }
 
 model User {
-  id       Int    @id @default(autoincrement())
-  email    String @unique
-  password String
-  name     String
-  position String
-
-  // Permite criar usuários sem mentor e depois, só para quem o JSON informar, configurar mentorId.
-  mentorId Int?
-  mentor   User?  @relation("Mentor", fields: [mentorId], references: [id])
-  mentees  User[] @relation("Mentor")
-
+  id         Int      @id @default(autoincrement())
+  email      String   @unique
+  password   String
+  name       String
+  position   String
+  mentorId   Int?
+  mentor     User?     @relation("Mentor", fields: [mentorId], references: [id])
+  mentees    User[]   @relation("Mentor")
   trackId    Int
   track      Track?   @relation(fields: [trackId], references: [id])
   createdAt  DateTime @default(now())
@@ -30,6 +27,15 @@ model User {
   userRoles     UserRoleLink[]  @relation("UserRoleUser")
   assignedRoles UserRoleLink[]  @relation("AssignedByAdmin")
   projectMember ProjectMember[]
+  leaderAssignments LeaderAssignment[]
+  managedProjects Project[] @relation("UserToManagedProjects")
+  leaderEvaluationAssignments LeaderEvaluationAssignment[] @relation("LeaderEvaluationAssignment")
+  collaboratorEvaluationAssignments LeaderEvaluationAssignment[] @relation("CollaboratorEvaluationAssignment")
+  managerEvaluations ManagerEvaluation[] @relation("ManagerEvaluations")
+  collaboratorEvaluations ManagerEvaluation[] @relation("CollaboratorEvaluations")
+  notes      Notes[]
+  leaderEvaluations LeaderEvaluation[] @relation("LeaderEvaluations")
+  collaboratorLeaderEvaluations LeaderEvaluation[] @relation("CollaboratorLeaderEvaluations")
 }
 
 model UserRoleLink {
@@ -63,7 +69,8 @@ model Criterion {
   pillar                     Pillar                      @relation(fields: [pillarId], references: [id], onDelete: Cascade)
   criterionTrackConfigs      CriterionTrackConfig[]
   criterionTrackCycleConfigs CriterionTrackCycleConfig[]
-  autoEvaluationAssignments  AutoEvaluationAssignment[]
+  autoEvaluationAssignments AutoEvaluationAssignment[]
+  managerEvaluationCriterias ManagerEvaluationCriteria[]
 }
 
 model CycleConfig {
@@ -72,12 +79,15 @@ model CycleConfig {
   description String?
   startDate   DateTime
   endDate     DateTime
-  isActive    Boolean  @default(false)
+  done        Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   Evaluation Evaluation[]
   criterionTrackCycleConfigs CriterionTrackCycleConfig[]
+  leaderEvaluationAssignments LeaderEvaluationAssignment[]
+  managerEvaluations ManagerEvaluation[]
+  leaderEvaluations LeaderEvaluation[]
 
   @@unique([name])
 }
@@ -192,8 +202,54 @@ model Reference {
   @@map("Reference")
 }
 
+// avaliacao de leader
+model LeaderEvaluation {
+  id           Int      @id @default(autoincrement())
+  leaderId     Int
+  collaboratorId Int
+  cycleId      Int
+  justification String
+  score        Float
+  strengths    String?
+  improvements String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  cycle        CycleConfig @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  leader       User        @relation("LeaderEvaluations", fields: [leaderId], references: [id], onDelete: Cascade)
+  collaborator User        @relation("CollaboratorLeaderEvaluations", fields: [collaboratorId], references: [id], onDelete: Cascade)
+}
+// avaliacao de gestor
+model ManagerEvaluation {
+  id             Int                        @id @default(autoincrement())
+  cycleId        Int
+  managerId      Int
+  collaboratorId Int
+  createdAt      DateTime                   @default(now())
+  updatedAt      DateTime                   @updatedAt
+
+  criterias      ManagerEvaluationCriteria[]
+
+  // Relacionamentos
+  cycle          CycleConfig                @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  manager        User                       @relation("ManagerEvaluations", fields: [managerId], references: [id], onDelete: Cascade)
+  collaborator   User                       @relation("CollaboratorEvaluations", fields: [collaboratorId], references: [id], onDelete: Cascade)
+}
+
+model ManagerEvaluationCriteria {
+  id                  Int               @id @default(autoincrement())
+  managerEvaluationId Int
+  criteriaId          Int
+  score               Int
+  justification       String
+
+  managerEvaluation   ManagerEvaluation @relation(fields: [managerEvaluationId], references: [id])
+  criteria            Criterion         @relation(fields: [criteriaId], references: [id])
+}
+
+
 model Project {
-  id          Int           @id @default(autoincrement())
+  id          Int      @id @default(autoincrement())
   name        String
   description String?
   status      ProjectStatus @default(ACTIVE)
@@ -201,24 +257,48 @@ model Project {
   endDate     DateTime?
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
-
-  members ProjectMember[]
+  managerId   Int      
+  manager     User     @relation("UserToManagedProjects", fields: [managerId], references: [id])
+  members     ProjectMember[]
+  leaderAssignments LeaderAssignment[]
 }
 
 model ProjectMember {
-  id        Int       @id @default(autoincrement())
+  id        Int      @id @default(autoincrement())
   projectId Int
   userId    Int
   startDate DateTime  @default(now())
   endDate   DateTime?
   createdAt DateTime  @default(now())
-  timeSpent Int       @default(0)
 
-  project Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role    UserRole
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+//serve para dar assigment de lider de um projeto para um usuário
+model LeaderAssignment {
+  id        Int      @id @default(autoincrement())
+  projectId Int
+  leaderId  Int
 
-  @@unique([projectId, userId])
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  leader    User     @relation(fields: [leaderId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, leaderId])
+}
+// serve par armazenar qual lider vai avaliar quem
+model LeaderEvaluationAssignment {
+  id            Int      @id @default(autoincrement())
+  leaderId      Int
+  collaboratorId Int
+  cycleId       Int
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  leader      User        @relation("LeaderEvaluationAssignment", fields: [leaderId], references: [id], onDelete: Cascade)
+  collaborator User       @relation("CollaboratorEvaluationAssignment", fields: [collaboratorId], references: [id], onDelete: Cascade)
+  cycle       CycleConfig @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+
+  @@unique([collaboratorId, cycleId])
 }
 
 model Log {
@@ -227,6 +307,16 @@ model Log {
   action    String // ex: "EXPORT_EVALUATIONS", "LOGIN", etc.
   metadata  Json
   createdAt DateTime @default(now())
+}
+
+model Notes {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @unique
+  notes     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 enum EvaluationStatus {

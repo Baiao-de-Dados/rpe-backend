@@ -9,6 +9,8 @@ import { EmployerModule } from './employer/employer.module';
 import { MulterModule } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { LogModule } from 'src/log/log.module';
+import { ManagerModule } from './manager/manager.module';
+import { LeaderModule } from './leader/leader.module';
 @Module({
     imports: [
         PrismaModule,
@@ -16,6 +18,8 @@ import { LogModule } from 'src/log/log.module';
         LogModule,
         RhModule,
         EmployerModule,
+        ManagerModule,
+        LeaderModule,
         MulterModule.register({
             storage: memoryStorage(),
             limits: { fileSize: 30 * 1024 * 1024 }, // até 30 MB

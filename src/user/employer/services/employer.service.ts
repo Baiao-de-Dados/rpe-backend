@@ -10,7 +10,9 @@ export class EmployerService {
     constructor(private readonly prisma: PrismaService) {}
 
     async getDashboard(userId: number) {
-        const active = await this.prisma.cycleConfig.findFirst({ where: { isActive: true } });
+        const active = (await this.prisma.cycleConfig.findMany()).find(
+            (cycle) => !cycle.done && new Date() >= cycle.startDate && new Date() <= cycle.endDate,
+        );
         if (!active) throw new NotFoundException('Nenhum ciclo ativo');
 
         const daysRemaining = Math.ceil(
@@ -22,7 +24,7 @@ export class EmployerService {
         });
 
         const lastCycle = await this.prisma.cycleConfig.findFirst({
-            where: { isActive: false },
+            where: { done: true },
             orderBy: { endDate: 'desc' },
         });
 
@@ -91,7 +93,10 @@ export class EmployerService {
     async findPendingEvaluations(userId: number, cycleConfigId?: number) {
         const active = cycleConfigId
             ? await this.prisma.cycleConfig.findUnique({ where: { id: cycleConfigId } })
-            : await this.prisma.cycleConfig.findFirst({ where: { isActive: true } });
+            : (await this.prisma.cycleConfig.findMany()).find(
+                  (cycle) =>
+                      !cycle.done && new Date() >= cycle.startDate && new Date() <= cycle.endDate,
+              );
 
         if (!active) throw new NotFoundException('Ciclo não encontrado');
 

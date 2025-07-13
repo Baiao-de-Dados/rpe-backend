@@ -156,10 +156,6 @@ export class RHService {
 
     // Ciclos
 
-    async validateCycleActive() {
-        return this.cycleService.validateCycleNotActive();
-    }
-
     async createCycle(dto: CreateCycleConfigDto): Promise<CycleConfigResponseDto> {
         return this.cycleService.create(dto);
     }

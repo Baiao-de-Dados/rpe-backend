@@ -33,7 +33,13 @@ export class CycleConfigResponseDto {
     @ApiProperty({ example: '2025-06-30T23:59:59Z', description: 'Data de fim do ciclo' })
     endDate: string;
 
-    @ApiProperty({ example: true, description: 'Se o ciclo está ativo' })
+    @ApiProperty({ example: false, description: 'Se o ciclo foi finalizado' })
+    done: boolean;
+
+    @ApiProperty({
+        example: true,
+        description: 'Se o ciclo está ativo (calculado automaticamente)',
+    })
     isActive: boolean;
 
     @ApiProperty({ example: '2025-01-01T00:00:00Z', description: 'Data de criação' })

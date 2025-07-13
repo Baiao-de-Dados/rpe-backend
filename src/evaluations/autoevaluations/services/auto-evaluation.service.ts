@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { CycleValidationService } from '../../services/cycle-validation.service';
-import { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '@prisma/client';
 
 @Injectable()
 export class AutoEvaluationService {
@@ -8,11 +8,19 @@ export class AutoEvaluationService {
 
     async createAutoEvaluation(
         prisma: PrismaClient,
-        autoavaliacao: any,
+        autoavaliacao: {
+            pilares: Array<{
+                criterios: Array<{
+                    criterioId: number;
+                    nota: number;
+                    justificativa: string;
+                }>;
+            }>;
+        },
         colaboradorId: number,
         cycleConfigId: number,
         userTrack?: number,
-    ) {
+    ): Promise<import('@prisma/client').Evaluation | null> {
         if (autoavaliacao && autoavaliacao.pilares && autoavaliacao.pilares.length > 0) {
             // Buscar ciclo pelo id
             const activeCycle = await prisma.cycleConfig.findFirst({
@@ -43,9 +51,10 @@ export class AutoEvaluationService {
             await this.cycleValidationService.validateActiveCycle(prisma, 'AUTOEVALUATION');
 
             // Verificar se o ciclo enviado corresponde ao ciclo ativo
-            const currentActiveCycle = await prisma.cycleConfig.findFirst({
-                where: { isActive: true },
-            });
+            const currentActiveCycle = (await prisma.cycleConfig.findMany()).find(
+                (cycle) =>
+                    !cycle.done && new Date() >= cycle.startDate && new Date() <= cycle.endDate,
+            );
 
             if (currentActiveCycle && cycleConfigId !== currentActiveCycle.id) {
                 throw new BadRequestException(
@@ -82,7 +91,7 @@ export class AutoEvaluationService {
                     await prisma.autoEvaluationAssignment.create({
                         data: {
                             evaluationId: autoEvaluation.id,
-                            criterionId: parseInt(criterio.criterioId, 10),
+                            criterionId: criterio.criterioId,
                             score: criterio.nota,
                             justification: criterio.justificativa,
                         },
@@ -95,11 +104,21 @@ export class AutoEvaluationService {
         return null;
     }
 
-    private async validateUserCriteria(prisma: any, autoavaliacao: any, userTrack: number) {
+    private async validateUserCriteria(
+        prisma: PrismaClient,
+        autoavaliacao: {
+            pilares: Array<{
+                criterios: Array<{
+                    criterioId: number;
+                }>;
+            }>;
+        },
+        userTrack: number,
+    ): Promise<void> {
         // Buscar configurações de critério para a trilha do usuário no ciclo ativo
-        const activeCycle = await prisma.cycleConfig.findFirst({
-            where: { isActive: true },
-        });
+        const activeCycle = (await prisma.cycleConfig.findMany()).find(
+            (cycle) => !cycle.done && new Date() >= cycle.startDate && new Date() <= cycle.endDate,
+        );
 
         if (!activeCycle) {
             throw new BadRequestException('Nenhum ciclo ativo encontrado');
@@ -109,14 +128,10 @@ export class AutoEvaluationService {
             where: {
                 trackId: userTrack,
                 cycleId: activeCycle.id,
-                isActive: true,
+                // Remover isActive se não existe no schema
             },
             include: {
-                criterion: {
-                    include: {
-                        pillar: true,
-                    },
-                },
+                criterion: true,
             },
         });
 
@@ -127,8 +142,8 @@ export class AutoEvaluationService {
         }
 
         // Criar conjunto de critérios autorizados para o usuário
-        const authorizedCriteriaIds = new Set(
-            userTrackCriteria.map((config: any) => config.criterionId),
+        const authorizedCriteriaIds = new Set<number>(
+            userTrackCriteria.map((config) => config.criterionId),
         );
 
         // Validar se todos os critérios enviados estão autorizados para o usuário
@@ -154,13 +169,15 @@ export class AutoEvaluationService {
 
         // Verificar se todos os critérios obrigatórios foram incluídos
         const missingCriteria = userTrackCriteria
-            .map((config: any) => config.criterionId)
-            .filter((id: number) => !submittedCriteriaIds.has(id));
+            .map((config) => config.criterionId)
+            .filter((id) => !submittedCriteriaIds.has(id));
 
         if (missingCriteria.length > 0) {
             const missingCriteriaNames = userTrackCriteria
-                .filter((config: any) => missingCriteria.includes(config.criterionId))
-                .map((config: any) => config.criterion.name)
+                .filter((config) => missingCriteria.includes(config.criterionId))
+                .map((config) =>
+                    config.criterion ? config.criterion.name : `ID ${config.criterionId}`,
+                )
                 .join(', ');
 
             throw new BadRequestException(
@@ -169,11 +186,21 @@ export class AutoEvaluationService {
         }
     }
 
-    private async validateCycleCriteria(prisma: any, autoavaliacao: any, userTrack?: number) {
+    private async validateCycleCriteria(
+        prisma: PrismaClient,
+        autoavaliacao: {
+            pilares: Array<{
+                criterios: Array<{
+                    criterioId: number;
+                }>;
+            }>;
+        },
+        userTrack?: number,
+    ): Promise<void> {
         // 1. Verificar se existe um ciclo ativo
-        const activeCycle = await prisma.cycleConfig.findFirst({
-            where: { isActive: true },
-        });
+        const activeCycle = (await prisma.cycleConfig.findMany()).find(
+            (cycle) => !cycle.done && new Date() >= cycle.startDate && new Date() <= cycle.endDate,
+        );
 
         if (!activeCycle) {
             throw new BadRequestException('Nenhum ciclo de avaliação ativo encontrado');
@@ -194,33 +221,32 @@ export class AutoEvaluationService {
         }
 
         // 3. Buscar critérios ativos no ciclo atual
-        const activeCycleCriteria = await prisma.cycleConfig.findFirst({
-            where: { isActive: true },
-            include: {
-                criterionTrackCycleConfigs: {
-                    where: { isActive: true },
-                    include: { criterion: true },
-                },
-            },
-        });
-
-        const activeCriteriaIds = new Set(
-            activeCycleCriteria.criterionTrackCycleConfigs.map((config: any) => config.criterionId),
-        );
-
-        // 4. Buscar critérios configurados para a trilha do usuário
-        const userTrackCriteria = await prisma.criterionTrackCycleConfig.findMany({
+        // Busca todos os critérios ativos para o ciclo
+        const activeCycleCriteria = await prisma.criterionTrackCycleConfig.findMany({
             where: {
-                trackId: userTrack || undefined,
                 cycleId: activeCycle.id,
-                isActive: true,
+                // Remover isActive se não existe no schema
             },
             select: {
                 criterionId: true,
             },
         });
+        const activeCriteriaIds = new Set<number>(
+            activeCycleCriteria.map((config) => config.criterionId),
+        );
 
-        const userTrackCriteriaIds = new Set(userTrackCriteria.map((config) => config.criterionId));
+        // 4. Buscar critérios configurados para a trilha do usuário
+        const userTrackCriteria = await prisma.criterionTrackConfig.findMany({
+            where: {
+                trackId: userTrack || undefined,
+            },
+            select: {
+                criterionId: true,
+            },
+        });
+        const userTrackCriteriaIds = new Set<number>(
+            userTrackCriteria.map((config) => config.criterionId),
+        );
 
         // 5. Validar se todos os critérios enviados estão ativos no ciclo E configurados para a trilha
         for (const pilar of autoavaliacao.pilares) {
