@@ -34,6 +34,8 @@ model User {
   managerEvaluations ManagerEvaluation[] @relation("ManagerEvaluations")
   collaboratorEvaluations ManagerEvaluation[] @relation("CollaboratorEvaluations")
   notes      Notes[]
+  leaderEvaluations LeaderEvaluation[] @relation("LeaderEvaluations")
+  collaboratorLeaderEvaluations LeaderEvaluation[] @relation("CollaboratorLeaderEvaluations")
 }
 
 model UserRoleLink {
@@ -89,6 +91,7 @@ model CycleConfig {
   criterionTrackCycleConfigs CriterionTrackCycleConfig[]
   leaderEvaluationAssignments LeaderEvaluationAssignment[]
   managerEvaluations ManagerEvaluation[]
+  leaderEvaluations LeaderEvaluation[]
 
   @@unique([name])
 }
@@ -215,6 +218,10 @@ model LeaderEvaluation {
   improvements String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  cycle        CycleConfig @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  leader       User        @relation("LeaderEvaluations", fields: [leaderId], references: [id], onDelete: Cascade)
+  collaborator User        @relation("CollaboratorLeaderEvaluations", fields: [collaboratorId], references: [id], onDelete: Cascade)
 }
 // avaliacao de gestor
 model ManagerEvaluation {
@@ -228,9 +235,9 @@ model ManagerEvaluation {
   criterias      ManagerEvaluationCriteria[]
 
   // Relacionamentos
-  cycle          CycleConfig                @relation(fields: [cycleId], references: [id])
-  manager        User                       @relation("ManagerEvaluations", fields: [managerId], references: [id])
-  collaborator   User                       @relation("CollaboratorEvaluations", fields: [collaboratorId], references: [id])
+  cycle          CycleConfig                @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  manager        User                       @relation("ManagerEvaluations", fields: [managerId], references: [id], onDelete: Cascade)
+  collaborator   User                       @relation("CollaboratorEvaluations", fields: [collaboratorId], references: [id], onDelete: Cascade)
 }
 
 model ManagerEvaluationCriteria {
@@ -277,8 +284,8 @@ model LeaderAssignment {
   projectId Int
   leaderId  Int
 
-  project   Project  @relation(fields: [projectId], references: [id])
-  leader    User     @relation(fields: [leaderId], references: [id])
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  leader    User     @relation(fields: [leaderId], references: [id], onDelete: Cascade)
 
   @@unique([projectId, leaderId])
 }
@@ -291,9 +298,9 @@ model LeaderEvaluationAssignment {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  leader      User        @relation("LeaderEvaluationAssignment", fields: [leaderId], references: [id])
-  collaborator User       @relation("CollaboratorEvaluationAssignment", fields: [collaboratorId], references: [id])
-  cycle       CycleConfig @relation(fields: [cycleId], references: [id])
+  leader      User        @relation("LeaderEvaluationAssignment", fields: [leaderId], references: [id], onDelete: Cascade)
+  collaborator User       @relation("CollaboratorEvaluationAssignment", fields: [collaboratorId], references: [id], onDelete: Cascade)
+  cycle       CycleConfig @relation(fields: [cycleId], references: [id], onDelete: Cascade)
 
   @@unique([collaboratorId, cycleId])
 }

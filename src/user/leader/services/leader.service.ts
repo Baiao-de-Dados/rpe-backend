@@ -354,4 +354,14 @@ export class LeaderService {
             melhoriaCicloAnterior,
         };
     }
+
+    async getEvaluation(cycleId: number, collaboratorId: number, leaderId: number) {
+        return this.prisma.leaderEvaluation.findFirst({
+            where: {
+                cycleId,
+                collaboratorId,
+                leaderId,
+            },
+        });
+    }
 }

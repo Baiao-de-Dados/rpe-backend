@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Get, Req } from '@nestjs/common';
+import { Body, Controller, Post, Get, Req, Query } from '@nestjs/common';
 import { LeaderEvaluationDto } from '../dto/leader-evaluation.dto';
 import { LeaderService } from '../services/leader.service';
 import { OnlyLeader } from 'src/auth/decorators/roles.decorator';
@@ -34,5 +34,19 @@ export class LeaderController {
     @Get('brutalfacts')
     async getBrutalfacts(@CurrentUser('id') leaderId: number) {
         return await this.leaderService.getBrutalfacts(leaderId);
+    }
+
+    @Get('evaluation')
+    async getEvaluation(
+        @CurrentUser('id') leaderId: number,
+        @Query('cycleId') cycleId: number,
+        @Query('collaboratorId') collaboratorId: number,
+    ) {
+        const evaluation = await this.leaderService.getEvaluation(
+            Number(cycleId),
+            Number(collaboratorId),
+            leaderId,
+        );
+        return evaluation || {};
     }
 }
