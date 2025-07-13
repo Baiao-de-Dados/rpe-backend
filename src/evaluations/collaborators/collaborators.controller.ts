@@ -2,7 +2,7 @@ import { Controller, Get, UseGuards, Query, BadRequestException } from '@nestjs/
 import { ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
-import { RequireCommittee, RequireRH } from '../../auth/decorators/roles.decorator';
+import { RequireCommittee, RequireRH, RequireManager } from '../../auth/decorators/roles.decorator';
 import { CollaboratorsService } from './collaborators.service';
 import { ApiGetCollaboratorsScores } from './swagger/collaborators.swagger';
 import { GetCollaboratorsScoresDto } from './dto/get-collaborators-scores.dto';
@@ -65,11 +65,5 @@ export class CollaboratorsController {
     }
 }
 
-import { SetMetadata } from '@nestjs/common';
 
-function RequireManager(): MethodDecorator {
-    return (target, propertyKey, descriptor) => {
-        SetMetadata('roles', ['MANAGER'])(target, propertyKey, descriptor);
-    };
-}
 
