@@ -35,7 +35,6 @@ import { TrackConfigDto } from 'src/evaluations/autoevaluations/criteria/dto/tra
 
 @ApiTags('Admin RH')
 @ApiAuth()
-@RequireRH()
 @Controller('rh')
 export class RHController {
     constructor(private readonly rh: RHService) {}
@@ -43,47 +42,55 @@ export class RHController {
     // Pilares
     @Post('pillar')
     @ApiCreate('Pilar')
+    @RequireRH()
     async createPillar(@Body() dto: CreatePillarDto) {
         return this.rh.createPillar(dto);
     }
 
     @Get('pillar')
     @ApiList('Pilares')
+    @RequireRH()
     async findAllPillars() {
         return this.rh.findAllPillars();
     }
 
     @Get('pillar/:id')
     @ApiGet('Pilar')
+    @RequireRH()
     async findOnePillar(@Param('id', ParseIntPipe) id: number) {
         return this.rh.findOnePillar(id);
     }
 
     @Put('pillar/:id')
     @ApiUpdate('Pilar')
+    @RequireRH()
     async updatePillar(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdatePillarDto) {
         return this.rh.updatePillar(id, dto);
     }
 
     @Delete('pillar/:id')
     @ApiDelete('Pilar')
+    @RequireRH()
     async deletePillar(@Param('id', ParseIntPipe) id: number) {
         return this.rh.deletePillar(id);
     }
     // Critérios
     @Post('criteria')
     @ApiCreate('Critério')
+    @RequireRH()
     async createCriterion(@Body() dto: CreateCriterionDto) {
         return this.rh.createCriterion(dto);
     }
 
     @Get('criteria')
     @ApiList('Critérios')
+    @RequireRH()
     findAllCriteria() {
         return this.rh.findAllCriteria();
     }
 
     @Get('criteria/pillar/:pillarId')
+    @RequireRH()
     @ApiGet('Critérios por pilar')
     findCriterionByPillar(@Param('pillarId', ParseIntPipe) pillarId: number) {
         return this.rh.findCriterionByPillar(pillarId);
@@ -91,18 +98,21 @@ export class RHController {
 
     @Get('criteria/:id')
     @ApiGet('Critério')
+    @RequireRH()
     findOneCriterion(@Param('id', ParseIntPipe) id: number) {
         return this.rh.findOneCriterion(id);
     }
 
     @Patch('criteria/:id')
     @ApiUpdate('Critério')
+    @RequireRH()
     async batchUpdateCriterion(@Body() dto: BatchUpdateCriteriaDto) {
         return this.rh.batchUpdateCriteria(dto);
     }
 
     @Delete('criteria/:id')
     @ApiDelete('Critério')
+    @RequireRH()
     deleteCriterion(@Param('id', ParseIntPipe) id: number) {
         return this.rh.deleteCriterion(id);
     }
@@ -131,6 +141,7 @@ export class RHController {
 
     @Patch('criteria/track-config/:criterionId')
     @ApiUpdate('Configuração de Critérios por trilha')
+    @RequireRH()
     async updateCriteriaTrackConfig(
         @Param('criterionId', ParseIntPipe) criterionId: number,
         @Query('track', ParseIntPipe) trackId: number,
@@ -141,6 +152,7 @@ export class RHController {
 
     @Delete('criteria/track-config/:criterionId')
     @ApiDelete('Configuração de Critérios por trilha')
+    @RequireRH()
     async deleteCriteriaTrackConfig(
         @Param('criterionId', ParseIntPipe) criterionId: number,
         @Query('track', ParseIntPipe) trackId: number,
@@ -150,6 +162,7 @@ export class RHController {
 
     @Post('criteria/track-config')
     @ApiCreate('Configuração de critérios por trilha em lote')
+    @RequireRH()
     async createCriteriaConfigBulk(@Body() trackConfigs: TrackConfigDto[]) {
         return await this.rh.createCriteriaTrackConfigBulk(trackConfigs);
     }
@@ -157,6 +170,7 @@ export class RHController {
     // Ciclo
     @Post('cycle')
     @ApiCreate('Ciclo')
+    @RequireRH()
     async createCycle(@Body() dto: CreateCycleConfigDto) {
         return this.rh.createCycle(dto);
     }
@@ -181,6 +195,7 @@ export class RHController {
 
     @Put('cycle/:id')
     @ApiUpdate('Ciclo')
+    @RequireRH()
     async updateCycle(
         @Param('id', ParseIntPipe) id: number,
         @Body() dto: UpdateCycleConfigDto,
@@ -190,6 +205,7 @@ export class RHController {
 
     @Delete('cycle/:id')
     @ApiDelete('Ciclo')
+    @RequireRH()
     async deleteCycle(@Param('id', ParseIntPipe) id: number) {
         return this.rh.deleteCycle(id);
     }
@@ -197,12 +213,14 @@ export class RHController {
     // Usuário do tipo RH
     @Get()
     @ApiList('usuários RH')
+    @RequireRH()
     async findAll(): Promise<RHUserDTO[]> {
         return this.rh.findAll();
     }
 
     @Get(':id')
     @ApiGet('usuário RH')
+    @RequireRH()
     async findOne(@Param('id', ParseIntPipe) id: number): Promise<RHUserDTO> {
         return this.rh.findOne(id);
     }
