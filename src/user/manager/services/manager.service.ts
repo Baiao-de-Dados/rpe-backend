@@ -408,7 +408,7 @@ export class ManagerService {
             throw new NotFoundException('Você não tem permissão para gerenciar projetos.');
         }
 
-        //Separar líderes
+        //Separar líderes e colaboradores
         const allMembers = managerProjects.flatMap((project) =>
             project.members.map((member) => ({
                 ...member.user,
@@ -423,8 +423,10 @@ export class ManagerService {
             member.userRoles.some((role) => role.role === 'LEADER'),
         );
 
-        // Colaboradores: todos os membros (sem filtro de papel)
-        const collaborators = allMembers;
+        // Colaboradores: apenas membros com papel EMPLOYER
+        const collaborators = allMembers.filter((member) =>
+            member.userRoles.some((role) => role.role === 'EMPLOYER'),
+        );
 
         // Buscar atribuições de líderes para avaliações
         const collaboratorIds = collaborators.map((c) => c.id);

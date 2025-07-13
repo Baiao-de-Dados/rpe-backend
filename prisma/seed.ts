@@ -36,9 +36,21 @@ async function main() {
     console.log('👥 Criando usuários...');
 
     console.log('🚀 Criando trilhas...');
-    const trackBackend = await prisma.track.create({ data: { name: 'Backend' } });
-    const trackFrontend = await prisma.track.create({ data: { name: 'Frontend' } });
-    const trackRH = await prisma.track.create({ data: { name: 'RH' } });
+    const trackBackend = await prisma.track.upsert({
+        where: { name: 'Backend' },
+        update: {},
+        create: { name: 'Backend' },
+    });
+    const trackFrontend = await prisma.track.upsert({
+        where: { name: 'Frontend' },
+        update: {},
+        create: { name: 'Frontend' },
+    });
+    const trackRH = await prisma.track.upsert({
+        where: { name: 'RH' },
+        update: {},
+        create: { name: 'RH' },
+    });
 
     // Usuário Mentor Dummy
     const dummyMentor = await prisma.user.create({
@@ -47,7 +59,7 @@ async function main() {
             password: hashedPassword,
             name: 'Dummy',
             position: 'Mentor',
-            mentorId: 1, // valor temporário, será ajustado depois
+            mentorId: null, // será ajustado depois
             trackId: trackBackend.id,
         },
     });
@@ -71,8 +83,10 @@ async function main() {
     });
 
     // Usuário Backend/Desenvolvedor
-    const userBackend = await prisma.user.create({
-        data: {
+    const userBackend = await prisma.user.upsert({
+        where: { email: encryptedEmailBackend },
+        update: {},
+        create: {
             email: encryptedEmailBackend,
             password: hashedPassword,
             name: 'João Backend',
@@ -205,9 +219,21 @@ async function main() {
     console.log('🏗️ Criando pilares...');
 
     // Pilares: Comportamento, Execução e Gestão
-    const pilarComportamento = await prisma.pillar.create({ data: { name: 'COMPORTAMENTO' } });
-    const pilarExecucao = await prisma.pillar.create({ data: { name: 'EXECUÇÃO' } });
-    const pilarGestao = await prisma.pillar.create({ data: { name: 'GESTÃO E LIDERANÇA' } });
+    const pilarComportamento = await prisma.pillar.upsert({
+        where: { name: 'COMPORTAMENTO' },
+        update: {},
+        create: { name: 'COMPORTAMENTO' },
+    });
+    const pilarExecucao = await prisma.pillar.upsert({
+        where: { name: 'EXECUÇÃO' },
+        update: {},
+        create: { name: 'EXECUÇÃO' },
+    });
+    const pilarGestao = await prisma.pillar.upsert({
+        where: { name: 'GESTÃO E LIDERANÇA' },
+        update: {},
+        create: { name: 'GESTÃO E LIDERANÇA' },
+    });
 
     console.log('✅ Criando critérios...');
 
@@ -237,8 +263,13 @@ async function main() {
     ];
 
     for (const criterio of criteriosComportamento) {
-        await prisma.criterion.create({
-            data: {
+        await prisma.criterion.upsert({
+            where: { name: criterio.name },
+            update: {
+                description: criterio.description,
+                pillarId: pilarComportamento.id,
+            },
+            create: {
                 name: criterio.name,
                 description: criterio.description,
                 pillarId: pilarComportamento.id,
@@ -267,8 +298,13 @@ async function main() {
     ];
 
     for (const criterio of criteriosExecucao) {
-        await prisma.criterion.create({
-            data: {
+        await prisma.criterion.upsert({
+            where: { name: criterio.name },
+            update: {
+                description: criterio.description,
+                pillarId: pilarExecucao.id,
+            },
+            create: {
                 name: criterio.name,
                 description: criterio.description,
                 pillarId: pilarExecucao.id,
@@ -290,8 +326,13 @@ async function main() {
     ];
 
     for (const criterio of criteriosGestao) {
-        await prisma.criterion.create({
-            data: {
+        await prisma.criterion.upsert({
+            where: { name: criterio.name },
+            update: {
+                description: criterio.description,
+                pillarId: pilarGestao.id,
+            },
+            create: {
                 name: criterio.name,
                 description: criterio.description,
                 pillarId: pilarGestao.id,
