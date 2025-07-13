@@ -45,7 +45,7 @@ export class SeedService {
             create: { name: 'RH' },
         });
 
-        // 1. Criar Mentor Dummy
+        // 1. Criar Mentor Dummy sem mentorId
         const encryptedEmailDummy = encrypt('dummy@teste.com');
         const dummyMentor = await this.prisma.user.create({
             data: {
@@ -53,7 +53,7 @@ export class SeedService {
                 password: hashedPassword,
                 name: 'Dummy',
                 position: 'Mentor',
-                mentorId: 1, // valor temporário, será ajustado depois
+                mentorId: null,
                 trackId: trackBackend.id,
                 userRoles: { create: [{ role: 'MENTOR' }] },
             },
@@ -116,7 +116,15 @@ export class SeedService {
                 position: 'RH Tester',
                 mentorId: mentor.id,
                 trackId: trackRH.id,
-                userRoles: { create: [{ role: 'RH' }, { role: 'EMPLOYER' }, { role: 'ADMIN' }] },
+                userRoles: {
+                    create: [
+                        { role: 'RH' },
+                        { role: 'EMPLOYER' },
+                        { role: 'ADMIN' },
+                        { role: 'MANAGER' },
+                        { role: 'LEADER' },
+                    ],
+                },
             },
         });
 
