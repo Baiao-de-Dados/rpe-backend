@@ -172,8 +172,8 @@ export class LeaderService {
         const collaboratorIds = assignments.map((a) => a.collaboratorId);
         const cycleIds = assignments.map((a) => a.cycleId);
 
-        // Buscar autoavaliações dos colaboradores
-        const autoEvaluations = await this.prisma.evaluation.findMany({
+        // Buscar avaliações dos colaboradores
+        const evaluations = await this.prisma.evaluation.findMany({
             where: {
                 evaluateeId: { in: collaboratorIds },
                 cycleConfigId: { in: cycleIds },
@@ -182,12 +182,13 @@ export class LeaderService {
                 autoEvaluation: {
                     include: { assignments: true },
                 },
+                evaluation360: true,
             },
         });
 
-        // Filtrar apenas autoavaliações (evaluatorId === evaluateeId)
+        // Mapear autoavaliações
         const autoEvalMap = new Map();
-        for (const ev of autoEvaluations) {
+        for (const ev of evaluations) {
             if (ev.evaluatorId === ev.evaluateeId && ev.autoEvaluation) {
                 const key = `${ev.evaluateeId}-${ev.cycleConfigId}`;
                 if (!autoEvalMap.has(key) || autoEvalMap.get(key).createdAt < ev.createdAt) {
@@ -196,20 +197,14 @@ export class LeaderService {
             }
         }
 
-        // Buscar avaliações de líder (feitas por este líder)
-        const leaderEvaluations = await this.prisma.leaderEvaluation.findMany({
-            where: {
-                leaderId,
-                collaboratorId: { in: collaboratorIds },
-                cycleId: { in: cycleIds },
-            },
-        });
-
-        const leaderEvalMap = new Map();
-        for (const le of leaderEvaluations) {
-            const key = `${le.collaboratorId}-${le.cycleId}`;
-            if (!leaderEvalMap.has(key) || leaderEvalMap.get(key).createdAt < le.createdAt) {
-                leaderEvalMap.set(key, le);
+        // Mapear avaliações 360
+        const eval360Map = new Map();
+        for (const ev of evaluations) {
+            if (ev.evaluatorId !== ev.evaluateeId && ev.evaluation360) {
+                const key = `${ev.evaluateeId}-${ev.cycleConfigId}`;
+                if (!eval360Map.has(key) || eval360Map.get(key).createdAt < ev.createdAt) {
+                    eval360Map.set(key, ev);
+                }
             }
         }
 
@@ -249,10 +244,8 @@ export class LeaderService {
                 autoEvalScore = sum / autoEval.autoEvaluation.assignments.length;
             }
 
-            const leaderEval = leaderEvalMap.get(
-                `${assignment.collaboratorId}-${assignment.cycleId}`,
-            );
-            const leaderEvalScore: number | null = leaderEval ? leaderEval.score : null;
+            const eval360 = eval360Map.get(`${assignment.collaboratorId}-${assignment.cycleId}`);
+            const eval360Score: number | null = eval360?.evaluation360?.score || null;
 
             const managerEval = managerEvalMap.get(
                 `${assignment.collaboratorId}-${assignment.cycleId}`,
@@ -263,7 +256,18 @@ export class LeaderService {
                 managerEvalScore = sum / managerEval.criterias.length;
             }
 
-            const status = managerEvalScore === null ? 'pendente' : 'finalizado';
+            // TODO: Implementar avaliação final (comitê)
+            const finalEvaluationScore: number | null = null;
+
+            // Verificar se todas as avaliações estão concluídas
+            const hasAutoEvaluation = autoEvalScore !== null;
+            const hasEvaluation360 = eval360Score !== null;
+            const hasManagerEvaluation = managerEvalScore !== null;
+
+            const status =
+                hasAutoEvaluation && hasEvaluation360 && hasManagerEvaluation
+                    ? 'finalizado'
+                    : 'pendente';
 
             result.push({
                 collaborator: {
@@ -273,13 +277,10 @@ export class LeaderService {
                     position: assignment.collaborator.position,
                     track: assignment.collaborator.track,
                 },
-                cycle: {
-                    id: assignment.cycle.id,
-                    name: assignment.cycle.name,
-                },
                 autoEvaluationScore: autoEvalScore,
-                leaderEvaluationScore: leaderEvalScore,
+                evaluation360Score: eval360Score,
                 managerEvaluationScore: managerEvalScore,
+                finalEvaluationScore: finalEvaluationScore,
                 status,
             });
         }
