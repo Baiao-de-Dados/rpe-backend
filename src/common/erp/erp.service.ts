@@ -36,24 +36,29 @@ export class ErpService {
         const projects = await this.prisma.project.findMany({
             include: {
                 members: { include: { user: true } },
+                manager: true,
+                leaderAssignments: { include: { leader: true } },
             },
         });
-
-        const toMemberDto = (p: (typeof projects)[0], role: UserRole): ErpProjectMemberDto[] =>
-            p.members
-                .filter((m) => m.role === role)
-                .map((m) => ({
-                    email: m.user.email,
-                    startDate: m.startDate.toISOString(),
-                    endDate: m.endDate ? m.endDate.toISOString() : null,
-                }));
 
         const erpProjects: ErpProjectDto[] = projects.map((p) => ({
             name: p.name,
             status: p.status,
-            manager: toMemberDto(p, UserRole.MANAGER)[0],
-            leaders: toMemberDto(p, UserRole.LEADER),
-            collaborators: toMemberDto(p, UserRole.EMPLOYER),
+            manager: {
+                email: p.manager.email,
+                startDate: new Date().toISOString(),
+                endDate: null,
+            },
+            leaders: p.leaderAssignments.map((la) => ({
+                email: la.leader.email,
+                startDate: new Date().toISOString(),
+                endDate: null,
+            })),
+            collaborators: p.members.map((m) => ({
+                email: m.user.email,
+                startDate: m.startDate.toISOString(),
+                endDate: m.endDate ? m.endDate.toISOString() : null,
+            })),
         }));
 
         return { users: erpUsers, projects: erpProjects };
@@ -120,6 +125,13 @@ export class ErpService {
         // Projetos + membros
         const incomingProjects = dto.projects.map((p) => p.name);
         for (const p of dto.projects) {
+            const managerUser = await this.prisma.user.findUnique({
+                where: { email: p.manager.email },
+            });
+            if (!managerUser) {
+                throw new Error(`Manager user not found for email: ${p.manager.email}`);
+            }
+
             const existingProject = await this.prisma.project.findFirst({
                 where: { name: p.name },
             });
@@ -128,28 +140,48 @@ export class ErpService {
             if (existingProject) {
                 proj = await this.prisma.project.update({
                     where: { id: existingProject.id },
-                    data: { status: p.status as ProjectStatus },
+                    data: {
+                        status: p.status as ProjectStatus,
+                        managerId: managerUser.id,
+                    },
                 });
             } else {
                 proj = await this.prisma.project.create({
-                    data: { name: p.name, status: p.status as ProjectStatus },
+                    data: {
+                        name: p.name,
+                        status: p.status as ProjectStatus,
+                        managerId: managerUser.id,
+                    },
                 });
             }
 
-            // limpa membros existentes
+            // limpa membros existentes e leader assignments
             await this.prisma.projectMember.deleteMany({
                 where: { projectId: proj.id },
             });
 
-            // recria manager, líderes e colaboradores com datas
-            await this.createMember(proj.id, p.manager, UserRole.MANAGER);
+            await this.prisma.leaderAssignment.deleteMany({
+                where: { projectId: proj.id },
+            });
 
-            for (const m of p.leaders) {
-                await this.createMember(proj.id, m, UserRole.LEADER);
+            // recria colaboradores com datas
+            for (const m of p.collaborators) {
+                await this.createMember(proj.id, m);
             }
 
-            for (const m of p.collaborators) {
-                await this.createMember(proj.id, m, UserRole.EMPLOYER);
+            // recria leader assignments
+            for (const leader of p.leaders) {
+                const leaderUser = await this.prisma.user.findUnique({
+                    where: { email: leader.email },
+                });
+                if (leaderUser) {
+                    await this.prisma.leaderAssignment.create({
+                        data: {
+                            projectId: proj.id,
+                            leaderId: leaderUser.id,
+                        },
+                    });
+                }
             }
         }
 
@@ -169,14 +201,19 @@ export class ErpService {
         return 'EMPLOYER';
     }
 
-    private async createMember(projectId: number, member: ErpProjectMemberDto, role: string) {
+    private async createMember(projectId: number, member: ErpProjectMemberDto) {
+        const user = await this.prisma.user.findUnique({
+            where: { email: member.email },
+        });
+        if (!user) {
+            throw new Error(`User not found for email: ${member.email}`);
+        }
         return this.prisma.projectMember.create({
             data: {
-                project: { connect: { id: projectId } },
-                user: { connect: { email: member.email } },
-                role: role as UserRole,
+                projectId: projectId,
+                userId: user.id,
                 startDate: new Date(member.startDate),
-                endDate: member.endDate ? new Date(member.endDate) : undefined,
+                endDate: member.endDate ? new Date(member.endDate) : null,
             },
         });
     }

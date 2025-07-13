@@ -10,19 +10,27 @@ import { MentoringModule } from './mentoring/mentoring.module';
 import { CycleValidationService } from './services/cycle-validation.service';
 import { CycleConfigModule } from '../cycles/cycle-config.module';
 import { AutoEvaluationModule } from './autoevaluations/autoevaluations.module';
+import { CollaboratorsService } from './collaborators/collaborators.service';
+import { LogModule } from 'src/log/log.module';
 
 @Module({
     imports: [
         PrismaModule,
         CryptoModule,
         CycleConfigModule,
+        LogModule,
         AutoEvaluationModule,
         Evaluation360Module,
         ReferencesModule,
         MentoringModule,
     ],
     controllers: [EvaluationsController],
-    providers: [EvaluationsService, EvaluationValidationService, CycleValidationService],
-    exports: [forwardRef(() => AutoEvaluationModule), CycleValidationService],
+    providers: [
+        EvaluationsService,
+        EvaluationValidationService,
+        CycleValidationService,
+        CollaboratorsService,
+    ],
+    exports: [forwardRef(() => AutoEvaluationModule), CycleValidationService, CollaboratorsService],
 })
 export class EvaluationsModule {}

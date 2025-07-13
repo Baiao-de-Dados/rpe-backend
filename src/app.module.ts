@@ -21,6 +21,9 @@ import { ImportEvaluationsModule } from './import-export/import-evaluations/impo
 import { LogModule } from './log/log.module';
 import { NotesModule } from './notes/notes.module';
 import { AiModule } from './ai/ai.module';
+import { ExportEvaluationsModule } from './import-export/export-evaluations/export-evaluations.module';
+import { CollaboratorsModule } from './evaluations/collaborators/collaborators.module';
+import { EqualizationModule } from './evaluations/equalization/equalization.module';
 
 @Module({
     imports: [
@@ -53,6 +56,9 @@ import { AiModule } from './ai/ai.module';
         LogModule,
         NotesModule,
         AiModule,
+        ExportEvaluationsModule,
+        CollaboratorsModule,
+        EqualizationModule,
     ],
     controllers: [AppController],
     providers: [
