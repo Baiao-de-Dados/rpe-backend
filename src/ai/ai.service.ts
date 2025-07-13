@@ -13,25 +13,82 @@ import { NotesService } from '../notes/notes.service';
 import { GeminiCollaboratorResponseDto } from './dto/response/gemini-collaborator-response.dto';
 import { GeminiEqualizationResponseDto } from './dto/response/gemini-equalization-response.dto';
 import { GeminiLeaderResponseDto } from './dto/response/gemini-leader-response.dto';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class AiService {
-    constructor(private readonly notesService: NotesService) {}
+    constructor(
+        private readonly notesService: NotesService,
+        private readonly prisma: PrismaService,
+    ) {}
 
-    private generateNotesData(text: string, userId: number, cycleId: number): string {
-        console.log(cycleId, userId);
-        // TODO: Usar o userId e o cycledId para buscar no banco:
-        // Os colaboladores que estão no projeto atual do colaborador,
-        // O mentor do colaborador
-        // Os critérios de avaliação da trilha do colaborador no ciclo
+    private async generateNotesData(text: string, userId: number, cycleId: number): Promise<string> {
+        // Busca os colaboradores do projeto atual do colaborador
+        const projectMembers = await this.prisma.projectMember.findMany({
+            where: {
+                userId: userId,
+                project: {
+                    members: {
+                        some: { userId: { not: userId } }, // Exclui o próprio colaborador
+                    },
+                },
+            },
+            include: {
+                project: {
+                    include: {
+                        members: {
+                            include: {
+                                user: true,
+                            },
+                        },
+                    },
+                },
+            },
+        });
+
+        const collaborators = projectMembers.flatMap((member) =>
+            member.project.members.map((m) => ({
+                id: m.user.id,
+                name: m.user.name,
+                position: m.user.position,
+            })),
+        );
+
+        // Busca o mentor do colaborador
+        const mentor = await this.prisma.user.findUnique({
+            where: { id: userId },
+            include: { mentor: true },
+        });
+
+        // Busca os critérios de avaliação da trilha do colaborador no ciclo
+        const criteria = await this.prisma.criterionTrackCycleConfig.findMany({
+            where: {
+                cycleId: cycleId,
+                track: {
+                    users: {
+                        some: { id: userId },
+                    },
+                },
+            },
+            include: {
+                criterion: true,
+            },
+        });
+
+        const criterios = criteria.map((c) => ({
+            id: c.criterion.id,
+            name: c.criterion.name,
+            description: c.criterion.description,
+            weight: c.weight,
+        }));
+
         return `
-
         [COLABORADORES]
-        ${JSON.stringify(colaboradores, null, 2)}
+        ${JSON.stringify(collaborators, null, 2)}
         [CRITERIOS]
         ${JSON.stringify(criterios, null, 2)}
         [MENTOR]
-        ${JSON.stringify(mentor, null, 2)}
+        ${mentor?.mentor ? JSON.stringify({ id: mentor.mentor.id, name: mentor.mentor.name }) : 'Nenhum mentor encontrado'}
         [TEXTO]
         ${text}
         `;
@@ -105,7 +162,7 @@ export class AiService {
         cycleId: number,
     ): Promise<GeminiNotesResponseDto> {
         const { notes } = await this.notesService.getNoteByUserId(userId);
-        const prompt = this.generateNotesData(notes, userId, cycleId);
+        const prompt = await this.generateNotesData(notes, userId, cycleId);
 
         try {
             const response = await ai.models.generateContent({
