@@ -14,7 +14,9 @@ import { RequireCommittee } from '../../auth/decorators/roles.decorator';
 import { ApiExportEvaluations } from './swagger/export-evaluations.swagger';
 import { ValidateExportEvaluationsDto } from './dto/validate-export-evaluations.dto';
 import { QueryValidationPipe } from '../../common/pipes/query-validation.pipe';
+import { ApiAuth } from 'src/common/decorators/api-auth.decorator';
 
+@ApiAuth()
 @ApiTags('Exportação')
 @Controller('export/evaluations')
 export class ExportEvaluationsController {

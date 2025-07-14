@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Post } from '@nestjs/common';
 import { ErpSyncDto } from './dto/erp-sync.dto';
 import { ErpService } from './erp.service';
-import { RequireAdmin } from 'src/auth/decorators/roles.decorator';
+import { OnlyAdmin, RequireAdmin } from '../../auth/decorators/roles.decorator';
 import { ApiAuth } from '../decorators/api-auth.decorator';
 
 @RequireAdmin()
