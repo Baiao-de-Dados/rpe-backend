@@ -1,19 +1,18 @@
 import { Controller, Post, Put, Body, UseGuards, BadRequestException } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../../auth/guards/roles.guard';
-import { RequireCommittee } from '../../auth/decorators/roles.decorator';
+import { RequireAdmin, RequireCommittee } from '../../auth/decorators/roles.decorator';
 import { EqualizationService } from './equalization.service';
 import { SaveEqualizationDto } from './dto/save-equalization.dto';
 import { ApiSaveEqualization, ApiEditEqualization } from './swagger/equalization.swagger';
+import { ApiAuth } from 'src/common/decorators/api-auth.decorator';
 
+@ApiAuth()
 @ApiTags('Equalização')
 @Controller('equalization')
 export class EqualizationController {
     constructor(private readonly equalizationService: EqualizationService) {}
 
-    @RequireCommittee()
-    @UseGuards(JwtAuthGuard, RolesGuard)
+    @RequireAdmin()
     @Post()
     @ApiSaveEqualization()
     async saveEqualization(@Body() dto: SaveEqualizationDto) {
@@ -24,7 +23,6 @@ export class EqualizationController {
     }
 
     @RequireCommittee()
-    @UseGuards(JwtAuthGuard, RolesGuard)
     @Put()
     @ApiEditEqualization()
     async editEqualization(@Body() dto: SaveEqualizationDto) {
