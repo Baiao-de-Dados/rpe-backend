@@ -22,7 +22,6 @@ export class CycleConfigController {
         return this.cycleConfigService.create(createCycleConfigDto);
     }
 
-    @RequireRH()
     @Get()
     @ApiOperation({ summary: 'Listar todos os ciclos' })
     @ApiResponse({ status: 200, type: [CycleConfigResponseDto] })
@@ -30,7 +29,6 @@ export class CycleConfigController {
         return this.cycleConfigService.findAll();
     }
 
-    @RequireRH()
     @Get('active')
     @ApiOperation({ summary: 'Buscar ciclo ativo' })
     @ApiResponse({ status: 200, type: CycleConfigResponseDto })
@@ -38,7 +36,6 @@ export class CycleConfigController {
         return this.cycleConfigService.findActive();
     }
 
-    @RequireRH()
     @Get(':id')
     @ApiOperation({ summary: 'Buscar ciclo por ID' })
     @ApiResponse({ status: 200, type: CycleConfigResponseDto })
