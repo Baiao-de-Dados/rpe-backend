@@ -334,7 +334,13 @@
         "startDate": "2024-02-15T14:00:00.000Z",
         "endDate": "2024-03-30T18:00:00.000Z"
       },
-      "leaders": [],
+      "leaders": [
+        {
+          "email": "maria.vitoria@rocketcorp.com",
+          "startDate": "2024-01-05T09:30:00.000Z",
+          "endDate": "2024-06-30T18:00:00.000Z"
+        }
+      ],
       "collaborators": [
         {
           "email": "valentina.martins@rocketcorp.com",
