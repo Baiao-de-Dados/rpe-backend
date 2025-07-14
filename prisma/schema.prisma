@@ -79,8 +79,8 @@ model CycleConfig {
   id          Int      @id @default(autoincrement())
   name        String // ex: "2025.1", "2025.2"
   description String?
-  startDate   DateTime
-  endDate     DateTime
+  startDate   DateTime?
+  endDate     DateTime?
   done        Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

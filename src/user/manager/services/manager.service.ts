@@ -3,11 +3,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { AssignLeaderDto } from '../dto/assign-leader.dto';
 import { AssignLeaderEvaluationDto } from '../dto/assign-leader-evaluation.dto';
 import { ManagerEvaluationDto } from '../dto/manager-evaluation.dto';
-
-function isCycleActive(cycle: { done: boolean; startDate: Date; endDate: Date }): boolean {
-    const now = new Date();
-    return !cycle.done && now >= cycle.startDate && now <= cycle.endDate;
-}
+import { isCycleActiveUtil } from 'src/cycles/utils';
 
 @Injectable()
 export class ManagerService {
@@ -636,7 +632,7 @@ export class ManagerService {
         let collaboratorIds = projects.flatMap((project) => project.members.map((m) => m.userId));
         collaboratorIds = collaboratorIds.filter((id) => id !== managerId);
         // Buscar todos os ciclos ativos
-        const cycles = (await this.prisma.cycleConfig.findMany()).filter(isCycleActive);
+        const cycles = (await this.prisma.cycleConfig.findMany()).filter(isCycleActiveUtil);
         const cycleIds = cycles.map((c) => c.id);
         // Total esperado de avaliações: para cada colaborador em cada ciclo ativo
         const totalExpected = collaboratorIds.length * cycleIds.length;
@@ -666,7 +662,7 @@ export class ManagerService {
         // Todos os colaboradores dos projetos
         const collaboratorIds = projects.flatMap((project) => project.members.map((m) => m.userId));
         // Buscar todos os ciclos ativos
-        const cycles = (await this.prisma.cycleConfig.findMany()).filter(isCycleActive);
+        const cycles = (await this.prisma.cycleConfig.findMany()).filter(isCycleActiveUtil);
         const cycleIds = cycles.map((c) => c.id);
         // Total esperado de avaliações: para cada colaborador em cada ciclo ativo
         const totalExpected = collaboratorIds.length * cycleIds.length;
@@ -709,7 +705,7 @@ export class ManagerService {
         // Todos os colaboradores dos projetos
         const collaboratorIds = projects.flatMap((project) => project.members.map((m) => m.userId));
         // Buscar ciclos ativos
-        const cycles = (await this.prisma.cycleConfig.findMany()).filter(isCycleActive);
+        const cycles = (await this.prisma.cycleConfig.findMany()).filter(isCycleActiveUtil);
         const cycleIds = cycles.map((c) => c.id);
         // Buscar assignments de líder para colaborador nos ciclos ativos
         const assignments = await this.prisma.leaderEvaluationAssignment.findMany({
@@ -746,7 +742,7 @@ export class ManagerService {
 
         let collaboratorIds = projects.flatMap((project) => project.members.map((m) => m.userId));
         collaboratorIds = collaboratorIds.filter((id) => id !== managerId);
-        const cycles = (await this.prisma.cycleConfig.findMany()).filter(isCycleActive);
+        const cycles = (await this.prisma.cycleConfig.findMany()).filter(isCycleActiveUtil);
         const cycleIds = cycles.map((c) => c.id);
         const assignments = await this.prisma.leaderEvaluationAssignment.findMany({
             where: {
@@ -779,7 +775,7 @@ export class ManagerService {
         if (!isMember) {
             throw new NotFoundException('Usuário não pertence a nenhum projeto sob sua gestão.');
         }
-        const activeCycles = (await this.prisma.cycleConfig.findMany()).filter(isCycleActive);
+        const activeCycles = (await this.prisma.cycleConfig.findMany()).filter(isCycleActiveUtil);
         const cycleIds = activeCycles.map((c) => c.id);
         const evaluation = await this.prisma.evaluation.findFirst({
             where: {
@@ -845,7 +841,7 @@ export class ManagerService {
         collaborators = collaborators.filter((c) => c.id !== managerId);
         const collaboratorIds = collaborators.map((c) => c.id);
         // Buscar ciclos ativos
-        const cycles = (await this.prisma.cycleConfig.findMany()).filter(isCycleActive);
+        const cycles = (await this.prisma.cycleConfig.findMany()).filter(isCycleActiveUtil);
         if (cycles.length === 0) {
             return [];
         }
@@ -997,7 +993,12 @@ export class ManagerService {
         const collaboratorIds = collaborators.map((c) => c.id);
         // Buscar ciclos ativos
         const cycles = (await this.prisma.cycleConfig.findMany()).filter(
-            (cycle) => !cycle.done && new Date() >= cycle.startDate && new Date() <= cycle.endDate,
+            (cycle) =>
+                !cycle.done &&
+                cycle.startDate !== null &&
+                cycle.endDate !== null &&
+                new Date() >= cycle.startDate &&
+                new Date() <= cycle.endDate,
         );
         if (cycles.length === 0) {
             return [];
