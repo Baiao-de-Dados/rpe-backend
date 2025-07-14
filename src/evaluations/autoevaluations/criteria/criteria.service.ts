@@ -6,6 +6,7 @@ import { UpdateCriterionTrackConfigDto } from './dto/update-criterion-track-conf
 import { BatchUpdateCriteriaDto } from './dto/batch-update-criteria.dto';
 import { TrackConfigDto } from './dto/track-config.dto';
 import { CycleConfigService } from '../../../cycles/cycle-config.service';
+import { getBrazilDate } from 'src/cycles/utils';
 
 @Injectable()
 export class CriteriaService {
@@ -287,7 +288,11 @@ export class CriteriaService {
 
         // Buscar o ciclo ativo
         const activeCycle = (await this.prisma.cycleConfig.findMany()).find(
-            (cycle) => cycle.startDate <= new Date() && cycle.endDate >= new Date(),
+            (cycle) =>
+                cycle.startDate !== null &&
+                cycle.endDate !== null &&
+                cycle.startDate <= new Date(getBrazilDate()) &&
+                cycle.endDate >= new Date(getBrazilDate()),
         );
 
         if (!activeCycle) {

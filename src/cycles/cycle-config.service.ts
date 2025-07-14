@@ -4,30 +4,26 @@ import { CreateCycleConfigDto } from './dto/create-cycle-config.dto';
 import { UpdateCycleConfigDto } from './dto/update-cycle-config.dto';
 import { CycleConfigResponseDto } from './dto/cycle-config-response.dto';
 import { ExtendCycleDto } from './dto/extend-cycle.dto';
-
-function isCycleActiveUtil(cycle: { done: boolean; startDate: Date; endDate: Date }): boolean {
-    const now = new Date();
-    return !cycle.done && now >= cycle.startDate && now <= cycle.endDate;
-}
+import { isCycleActiveUtil, getCurrentSemesterName } from './utils';
 
 @Injectable()
 export class CycleConfigService {
     constructor(private prisma: PrismaService) {}
 
     async create(createCycleConfigDto: CreateCycleConfigDto): Promise<CycleConfigResponseDto> {
-        // Cria o ciclo e suas configurações em uma transação
         return await this.prisma.$transaction(async (prisma) => {
-            const cycle = await prisma.cycleConfig.create({
+            const semesterName = getCurrentSemesterName();
+            const startDate = new Date(createCycleConfigDto.startDate);
+            const endDate = new Date(createCycleConfigDto.endDate);
+
+            const cycle = await prisma.cycleConfig.update({
+                where: { name: semesterName },
                 data: {
-                    name: createCycleConfigDto.name,
-                    description: createCycleConfigDto.description,
-                    startDate: new Date(createCycleConfigDto.startDate),
-                    endDate: new Date(createCycleConfigDto.endDate),
-                    done: false,
+                    startDate,
+                    endDate,
                 },
             });
 
-            // Copiar configs de CriterionTrackConfig para CriterionTrackCycleConfig
             const draftConfigs = await prisma.criterionTrackConfig.findMany();
             if (draftConfigs.length > 0) {
                 await prisma.criterionTrackCycleConfig.createMany({
@@ -45,10 +41,24 @@ export class CycleConfigService {
     }
 
     async findAll(): Promise<CycleConfigResponseDto[]> {
+        const semesterName = getCurrentSemesterName();
+
+        const cycle = await this.prisma.cycleConfig.findUnique({
+            where: { name: semesterName },
+        });
+
+        if (!cycle) {
+            await this.prisma.cycleConfig.create({
+                data: {
+                    name: semesterName,
+                    description: '',
+                    done: false,
+                },
+            });
+        }
+
         const cycles = await this.prisma.cycleConfig.findMany({
-            orderBy: {
-                createdAt: 'desc',
-            },
+            orderBy: { createdAt: 'desc' },
         });
         return Promise.all(cycles.map((cycle) => this.mapToResponseDto(cycle)));
     }
@@ -126,11 +136,13 @@ export class CycleConfigService {
         if (!cycle) {
             throw new NotFoundException(`Ciclo com ID ${id} não encontrado`);
         }
-        // Cancelar todas as avaliações do ciclo
-        await this.prisma.evaluation.deleteMany({
-            where: { cycleConfigId: id },
-        });
-        // Apagar o ciclo do banco de dados
+
+        await this.prisma.leaderEvaluationAssignment.deleteMany({ where: { cycleId: id } });
+        await this.prisma.managerEvaluation.deleteMany({ where: { cycleId: id } });
+        await this.prisma.leaderEvaluation.deleteMany({ where: { cycleId: id } });
+        await this.prisma.criterionTrackCycleConfig.deleteMany({ where: { cycleId: id } });
+        await this.prisma.evaluation.deleteMany({ where: { cycleConfigId: id } });
+
         await this.prisma.cycleConfig.delete({
             where: { id },
         });
@@ -149,7 +161,7 @@ export class CycleConfigService {
         if (newEndDate <= now) {
             throw new BadRequestException('A nova data de fim deve ser posterior à data atual.');
         }
-        if (newEndDate <= cycle.endDate) {
+        if (cycle.endDate !== null && newEndDate <= cycle.endDate) {
             throw new BadRequestException(
                 'A nova data de fim deve ser posterior à data de fim atual.',
             );

@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EncryptionService } from '../cryptography/encryption.service';
 import { UserRole, Prisma } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import { getBrazilDate } from 'src/cycles/utils';
 
 export interface UserPublic {
     id: number;
@@ -105,7 +106,7 @@ export class AuthService {
 
         await this.prisma.user.update({
             where: { id: userId },
-            data: { lastLogged: new Date() },
+            data: { lastLogged: getBrazilDate() },
         });
 
         const userRoles = user.userRoles.map((ur) => ur.role);

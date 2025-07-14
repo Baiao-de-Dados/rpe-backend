@@ -19,11 +19,9 @@ export class CycleConfigController {
     @RequireRH()
     @ApiCreate('ciclo de avaliação')
     async create(@Body() createCycleConfigDto: CreateCycleConfigDto) {
-        // await this.cycleConfigService.validateCycleNotActive();
         return this.cycleConfigService.create(createCycleConfigDto);
     }
 
-    @RequireRH()
     @Get()
     @ApiOperation({ summary: 'Listar todos os ciclos' })
     @ApiResponse({ status: 200, type: [CycleConfigResponseDto] })
@@ -31,7 +29,6 @@ export class CycleConfigController {
         return this.cycleConfigService.findAll();
     }
 
-    @RequireRH()
     @Get('active')
     @ApiOperation({ summary: 'Buscar ciclo ativo' })
     @ApiResponse({ status: 200, type: CycleConfigResponseDto })
@@ -39,7 +36,6 @@ export class CycleConfigController {
         return this.cycleConfigService.findActive();
     }
 
-    @RequireRH()
     @Get(':id')
     @ApiOperation({ summary: 'Buscar ciclo por ID' })
     @ApiResponse({ status: 200, type: CycleConfigResponseDto })

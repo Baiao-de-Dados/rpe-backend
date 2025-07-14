@@ -14,6 +14,7 @@ import { MentorEvaluationService } from '../evaluations/mentoring/service/mentor
 import { CycleConfigService } from 'src/cycles/cycle-config.service';
 import { ActiveCriteriaUserResponseDto } from './dto/active-criteria-response.dto';
 import type { PrismaClient } from '@prisma/client';
+import { getBrazilDate } from 'src/cycles/utils';
 
 @Injectable()
 export class EvaluationsService {
@@ -73,8 +74,10 @@ export class EvaluationsService {
                     const activeCycle = (await prisma.cycleConfig.findMany()).find(
                         (cycle) =>
                             !cycle.done &&
-                            new Date() >= cycle.startDate &&
-                            new Date() <= cycle.endDate,
+                            cycle.startDate !== null &&
+                            cycle.endDate !== null &&
+                            new Date(getBrazilDate()) >= cycle.startDate &&
+                            new Date(getBrazilDate()) <= cycle.endDate,
                     );
 
                     if (!activeCycle) {
@@ -337,8 +340,14 @@ export class EvaluationsService {
     async getActiveCriteriaForUser(user: any): Promise<ActiveCriteriaUserResponseDto> {
         // 1. Verificar se existe um ciclo ativo
         const activeCycle = (await this.prisma.cycleConfig.findMany()).find((cycle) => {
-            const now = new Date();
-            return !cycle.done && now >= cycle.startDate && now <= cycle.endDate;
+            const now = new Date(getBrazilDate());
+            return (
+                !cycle.done &&
+                cycle.startDate !== null &&
+                cycle.endDate !== null &&
+                now >= cycle.startDate &&
+                now <= cycle.endDate
+            );
         });
 
         if (!activeCycle) {
@@ -346,16 +355,16 @@ export class EvaluationsService {
         }
 
         // 2. Verificar se o ciclo está dentro do prazo
-        const now = new Date();
-        if (now > activeCycle.endDate) {
+        const now = new Date(getBrazilDate());
+        if (!activeCycle.endDate || now > activeCycle.endDate) {
             throw new BadRequestException(
-                `O ciclo ${activeCycle.name} expirou em ${activeCycle.endDate.toLocaleDateString()}`,
+                `O ciclo ${activeCycle.name} expirou em ${activeCycle.endDate ? activeCycle.endDate.toLocaleDateString() : 'data indefinida'}`,
             );
         }
 
-        if (now < activeCycle.startDate) {
+        if (!activeCycle.startDate || now < activeCycle.startDate) {
             throw new BadRequestException(
-                `O ciclo ${activeCycle.name} ainda não começou. Início previsto para ${activeCycle.startDate.toLocaleDateString()}`,
+                `O ciclo ${activeCycle.name} ainda não começou. Início previsto para ${activeCycle.startDate ? activeCycle.startDate.toLocaleDateString() : 'data indefinida'}`,
             );
         }
 

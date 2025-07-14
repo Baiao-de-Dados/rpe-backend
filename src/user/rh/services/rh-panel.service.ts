@@ -4,6 +4,7 @@ import { RoleCompletionStatsDto } from '../dto/roles.dashboard.dto';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { DashboardStatsDto } from '../dto/dashboard-stats.dto';
+import { getBrazilDate } from 'src/cycles/utils';
 
 @Injectable()
 export class RhPanelService {
@@ -104,7 +105,7 @@ export class RhPanelService {
                 cycleEndDate: this.getCycleEndDate(cycleConfig.name),
             },
             currentCycle: cycleConfig.name,
-            lastUpdated: new Date().toISOString(),
+            lastUpdated: new Date(getBrazilDate()).toISOString(),
         };
     }
 
@@ -115,7 +116,12 @@ export class RhPanelService {
                 select: { id: true, name: true, startDate: true, endDate: true, done: true },
             })
         ).find(
-            (cycle) => !cycle.done && new Date() >= cycle.startDate && new Date() <= cycle.endDate,
+            (cycle) =>
+                !cycle.done &&
+                cycle.startDate !== null &&
+                cycle.endDate !== null &&
+                new Date(getBrazilDate()) >= cycle.startDate &&
+                new Date(getBrazilDate()) <= cycle.endDate,
         );
         if (!cycleConfig) {
             throw new NotFoundException('Nenhum ciclo ativo encontrado');
@@ -174,7 +180,12 @@ export class RhPanelService {
                 select: { id: true, name: true, startDate: true, endDate: true, done: true },
             })
         ).find(
-            (cycle) => !cycle.done && new Date() >= cycle.startDate && new Date() <= cycle.endDate,
+            (cycle) =>
+                !cycle.done &&
+                cycle.startDate !== null &&
+                cycle.endDate !== null &&
+                new Date(getBrazilDate()) >= cycle.startDate &&
+                new Date(getBrazilDate()) <= cycle.endDate,
         );
         if (!cycleConfig) {
             throw new NotFoundException('Nenhum ciclo ativo encontrado');
@@ -294,7 +305,7 @@ export class RhPanelService {
 
         return {
             roles,
-            lastUpdated: new Date().toISOString(),
+            lastUpdated: new Date(getBrazilDate()).toISOString(),
         };
     }
 
@@ -306,7 +317,12 @@ export class RhPanelService {
                 select: { id: true, name: true, startDate: true, endDate: true, done: true },
             })
         ).find(
-            (cycle) => !cycle.done && new Date() >= cycle.startDate && new Date() <= cycle.endDate,
+            (cycle) =>
+                !cycle.done &&
+                cycle.startDate !== null &&
+                cycle.endDate !== null &&
+                new Date(getBrazilDate()) >= cycle.startDate &&
+                new Date(getBrazilDate()) <= cycle.endDate,
         );
         if (!cycleConfig) {
             throw new NotFoundException('Nenhum ciclo ativo encontrado');
@@ -360,7 +376,7 @@ export class RhPanelService {
 
         return {
             tracks,
-            lastUpdated: new Date().toISOString(),
+            lastUpdated: new Date(getBrazilDate()).toISOString(),
         };
     }
 

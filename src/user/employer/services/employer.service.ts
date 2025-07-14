@@ -4,21 +4,28 @@ import { AutoEvaluationDto } from '../dto/auto-evaluation.dto';
 import { Evaluation360Dto } from '../dto/evaluation-360.dto';
 import { MentoringDto } from '../dto/mentoring.dto';
 import { ReferenceDto } from '../dto/references.dto';
+import { getBrazilDate } from 'src/cycles/utils';
 
 @Injectable()
 export class EmployerService {
     constructor(private readonly prisma: PrismaService) {}
 
     async getDashboard(userId: number) {
-        const active = await this.prisma.cycleConfig.findFirst({
-            where: {
-                done: false,
-                startDate: { lte: new Date() },
-                endDate: { gte: new Date() },
-            },
-        });
+        const active = (await this.prisma.cycleConfig.findMany()).find(
+            (cycle) =>
+                !cycle.done &&
+                cycle.startDate !== null &&
+                cycle.endDate !== null &&
+                new Date(getBrazilDate()) >= cycle.startDate &&
+                new Date(getBrazilDate()) <= cycle.endDate,
+        );
+        if (!active) throw new NotFoundException('Nenhum ciclo ativo');
 
-        if (!active) throw new NotFoundException('Ciclo ativo não encontrado');
+        const daysRemaining = active.endDate
+            ? Math.ceil(
+                  (active.endDate.getTime() - getBrazilDate().getTime()) / (1000 * 60 * 60 * 24),
+              )
+            : null;
 
         const pendingCount = await this.prisma.evaluation.count({
             where: { evaluatorId: userId, cycleConfigId: active.id },
@@ -57,6 +64,7 @@ export class EmployerService {
             activeCycle: active,
             pendingCount,
             lastEvaluation,
+            daysRemaining,
         };
     }
 
@@ -89,13 +97,14 @@ export class EmployerService {
     async findPendingEvaluations(userId: number, cycleConfigId?: number) {
         const active = cycleConfigId
             ? await this.prisma.cycleConfig.findUnique({ where: { id: cycleConfigId } })
-            : await this.prisma.cycleConfig.findFirst({
-                  where: {
-                      done: false,
-                      startDate: { lte: new Date() },
-                      endDate: { gte: new Date() },
-                  },
-              });
+            : (await this.prisma.cycleConfig.findMany()).find(
+                  (cycle) =>
+                      !cycle.done &&
+                      cycle.startDate !== null &&
+                      cycle.endDate !== null &&
+                      new Date(getBrazilDate()) >= cycle.startDate &&
+                      new Date(getBrazilDate()) <= cycle.endDate,
+              );
 
         if (!active) throw new NotFoundException('Ciclo não encontrado');
 
