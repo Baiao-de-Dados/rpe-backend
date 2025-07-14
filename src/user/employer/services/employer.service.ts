@@ -498,7 +498,12 @@ export class EmployerService {
             new Set(projectMembers.map((pm) => pm.userId)),
         ).filter((id) => id !== userId);
         const sameProjectUsers = await this.prisma.user.findMany({
-            where: { id: { in: sameProjectUserIds } },
+            where: {
+                id: { in: sameProjectUserIds },
+                userRoles: {
+                    some: { role: 'EMPLOYER' },
+                },
+            },
             select: { id: true, name: true, email: true, position: true },
         });
 
@@ -512,21 +517,9 @@ export class EmployerService {
             });
         }
 
-        // 3. Buscar pessoas indicadas como referência pelo usuário
-        const references = await this.prisma.reference.findMany({
-            where: { evaluation: { evaluatorId: userId } },
-            select: { collaboratorId: true },
-        });
-        const referenceIds = references.map((r) => r.collaboratorId);
-        const referencedUsers = await this.prisma.user.findMany({
-            where: { id: { in: referenceIds } },
-            select: { id: true, name: true, email: true, position: true },
-        });
-
         return {
             sameProjectUsers,
             mentor,
-            referencedUsers,
         };
     }
 
