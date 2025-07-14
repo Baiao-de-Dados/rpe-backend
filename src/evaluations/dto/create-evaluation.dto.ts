@@ -30,5 +30,5 @@ export class CreateEvaluationDto {
     @IsArray()
     @ValidateNested({ each: true })
     @Type(() => ReferenciaDto)
-    referencias: ReferenciaDto[];
+    referencias?: ReferenciaDto[];
 }

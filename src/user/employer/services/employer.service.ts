@@ -474,6 +474,53 @@ export class EmployerService {
         });
     }
 
+    async getUserNetwork(userId: number) {
+        // 1. Buscar todos os usuários do mesmo projeto
+        const projectMemberships = await this.prisma.projectMember.findMany({
+            where: { userId },
+            select: { projectId: true },
+        });
+        const projectIds = projectMemberships.map((pm) => pm.projectId);
+        const projectMembers = await this.prisma.projectMember.findMany({
+            where: { projectId: { in: projectIds } },
+            select: { userId: true },
+        });
+        const sameProjectUserIds = Array.from(
+            new Set(projectMembers.map((pm) => pm.userId)),
+        ).filter((id) => id !== userId);
+        const sameProjectUsers = await this.prisma.user.findMany({
+            where: { id: { in: sameProjectUserIds } },
+            select: { id: true, name: true, email: true, position: true },
+        });
+
+        // 2. Buscar mentor do usuário
+        const user = await this.prisma.user.findUnique({ where: { id: userId } });
+        let mentor: any = null;
+        if (user?.mentorId) {
+            mentor = await this.prisma.user.findUnique({
+                where: { id: user.mentorId },
+                select: { id: true, name: true, email: true, position: true },
+            });
+        }
+
+        // 3. Buscar pessoas indicadas como referência pelo usuário
+        const references = await this.prisma.reference.findMany({
+            where: { evaluation: { evaluatorId: userId } },
+            select: { collaboratorId: true },
+        });
+        const referenceIds = references.map((r) => r.collaboratorId);
+        const referencedUsers = await this.prisma.user.findMany({
+            where: { id: { in: referenceIds } },
+            select: { id: true, name: true, email: true, position: true },
+        });
+
+        return {
+            sameProjectUsers,
+            mentor,
+            referencedUsers,
+        };
+    }
+
     private formatAutoEvaluationPilares(assignments: any[]) {
         const pilaresMap = new Map();
         for (const a of assignments) {

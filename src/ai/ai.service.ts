@@ -7,7 +7,6 @@ import {
     cleanGeminiResponseText,
 } from './utils';
 import { notesConfig } from './config';
-import { colaboradores, criterios, mentor } from './mocks';
 import { GeminiNotesResponseDto } from './dto/response/gemini-notes-response.dto';
 import { NotesService } from '../notes/notes.service';
 import { GeminiCollaboratorResponseDto } from './dto/response/gemini-collaborator-response.dto';
@@ -22,7 +21,11 @@ export class AiService {
         private readonly prisma: PrismaService,
     ) {}
 
-    private async generateNotesData(text: string, userId: number, cycleId: number): Promise<string> {
+    private async generateNotesData(
+        text: string,
+        userId: number,
+        cycleId: number,
+    ): Promise<string> {
         // Busca os colaboradores do projeto atual do colaborador
         const projectMembers = await this.prisma.projectMember.findMany({
             where: { userId: userId },

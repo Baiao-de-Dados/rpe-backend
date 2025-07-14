@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+    Injectable,
+    NotFoundException,
+    BadRequestException,
+    ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateEvaluationDto } from '../dto/create-evaluation.dto';
 import {
@@ -18,7 +23,7 @@ export class EvaluationValidationService {
 
         await this.validateColaborador(colaboradorIdNum);
         await this.validateCriterios(autoavaliacao);
-        await this.validateAvaliacao360(avaliacao360);
+        await this.validateAvaliacao360(avaliacao360, colaboradorIdNum);
         await this.validateMentoring(mentoring, colaboradorIdNum);
         await this.validateReferencias(referencias);
         this.validateDuplicates(avaliacao360, referencias);
@@ -58,49 +63,39 @@ export class EvaluationValidationService {
         }
     }
 
-    private async validateAvaliacao360(avaliacao360: Avaliacao360Dto[] | undefined): Promise<void> {
-        if (!avaliacao360 || avaliacao360.length === 0) {
-            return;
-        }
-        // Validar se os avaliados existem
-        const avaliadoIds = avaliacao360
-            .map((av) => av.avaliadoId)
-            .filter((id) => id !== undefined && id !== null);
-
-        if (avaliadoIds.length === 0) {
-            return;
-        }
-
-        const avaliadosExistentes = await this.prisma.user.findMany({
-            where: { id: { in: avaliadoIds } },
+    async validateAvaliacao360(avaliacao360: Avaliacao360Dto[], colaboradorId: number) {
+        if (!avaliacao360 || avaliacao360.length === 0) return;
+        // Buscar todos os projetos do colaborador
+        const projetosColaborador = await this.prisma.projectMember.findMany({
+            where: { userId: colaboradorId },
+            select: { projectId: true },
         });
-        if (avaliadosExistentes.length !== avaliadoIds.length) {
-            const idsExistentes = avaliadosExistentes.map((u) => u.id);
-            const idsNaoExistentes = avaliadoIds.filter((id) => !idsExistentes.includes(id));
-            throw new NotFoundException(
-                `Avaliados não encontrados: ${idsNaoExistentes.join(', ')}`,
-            );
+        const projetosIds = projetosColaborador.map((p) => p.projectId);
+        for (const avaliacao of avaliacao360) {
+            // Buscar se o avaliado está em algum projeto em comum
+            const membroComum = await this.prisma.projectMember.findFirst({
+                where: {
+                    userId: avaliacao.avaliadoId,
+                    projectId: { in: projetosIds },
+                },
+            });
+            if (!membroComum) {
+                throw new ForbiddenException(
+                    'Só é possível avaliar pessoas que estão no mesmo projeto que você (360).',
+                );
+            }
         }
     }
 
-    private async validateMentoring(
-        mentoring: MentoringDto | undefined,
-        colaboradorId: number,
-    ): Promise<void> {
-        if (!mentoring || !mentoring.mentorId) {
-            return;
-        }
-
-        // Validar se o mentor existe
-        const mentor = await this.prisma.user.findUnique({
-            where: { id: mentoring.mentorId },
-        });
-        if (!mentor) {
-            throw new NotFoundException(`Mentor com ID ${mentoring.mentorId} não encontrado`);
-        }
-
-        if (mentoring.mentorId === colaboradorId) {
-            throw new BadRequestException('O colaborador não pode ser seu próprio mentor');
+    async validateMentoring(mentoring: MentoringDto, colaboradorId: number) {
+        if (!mentoring || !mentoring.mentorId) return;
+        // Buscar o usuário do colaborador
+        const colaborador = await this.prisma.user.findUnique({ where: { id: colaboradorId } });
+        if (!colaborador) throw new ForbiddenException('Colaborador não encontrado');
+        if (colaborador.mentorId !== mentoring.mentorId) {
+            throw new ForbiddenException(
+                'Só é possível avaliar como mentor quem realmente é seu mentor.',
+            );
         }
     }
 
