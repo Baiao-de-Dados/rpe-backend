@@ -73,6 +73,8 @@ export class EvaluationsService {
                     const activeCycle = (await prisma.cycleConfig.findMany()).find(
                         (cycle) =>
                             !cycle.done &&
+                            cycle.startDate &&
+                            cycle.endDate &&
                             new Date() >= cycle.startDate &&
                             new Date() <= cycle.endDate,
                     );

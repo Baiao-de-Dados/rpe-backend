@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Req } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Req, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { OnlyManager } from 'src/auth/decorators/roles.decorator';
 import { ApiAuth } from 'src/common/decorators/api-auth.decorator';
@@ -105,5 +105,19 @@ export class ManagerController {
         @CurrentUser('id') managerId: number,
     ) {
         return this.managerService.getUserAutoEvaluation(userId, managerId);
+    }
+
+    @Get('all-collaborators-evaluations')
+    async getAllCollaboratorsEvaluations(@CurrentUser('id') managerId: number) {
+        return this.managerService.getAllCollaboratorsEvaluations(managerId);
+    }
+
+    @Get('collaborator-evaluation-result')
+    async getCollaboratorEvaluationResult(
+        @CurrentUser('id') managerId: number,
+        @Query('collaboratorId', ParseIntPipe) collaboratorId: number,
+        @Query('cycleConfigId', ParseIntPipe) cycleConfigId: number,
+    ) {
+        return this.managerService.getCollaboratorEvaluationResult(managerId, collaboratorId, cycleConfigId);
     }
 }
