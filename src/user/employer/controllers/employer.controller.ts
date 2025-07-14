@@ -1,16 +1,10 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, ParseIntPipe, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { RequireEmployer } from 'src/auth/decorators/roles.decorator';
 import { ApiAuth } from 'src/common/decorators/api-auth.decorator';
 import { EmployerService } from '../services/employer.service';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { FiltersDto } from '../dto/filters.dto';
-import { AutoEvaluationDto } from '../dto/auto-evaluation.dto';
-import { Evaluation360Dto } from '../dto/evaluation-360.dto';
-import { MentoringDto } from '../dto/mentoring.dto';
-import { ReferenceDto } from '../dto/references.dto';
-import { ApiBody } from '@nestjs/swagger';
-import { exampleAutoEvaluation } from 'src/common/decorators/post-bodies.examples';
 
 @ApiTags('Colaborador')
 @ApiAuth()
@@ -36,7 +30,7 @@ export class EmployerController {
     ) {
         return this.service.findPendingEvaluations(userId, CycleConfigId);
     }
-
+    /*
     @Get('evaluations/:cycleId')
     getEvaluationData(
         @Param('cycleId', ParseIntPipe) cycleId: number,
@@ -72,7 +66,7 @@ export class EmployerController {
     ) {
         return this.service.submitMentoring(userId, cycleId, dto);
     }
-    /*
+
     @Post('evaluations/:cycleId/references')
     submitReferences(
         @Param('cycleId', ParseIntPipe) cycleId: number,
@@ -89,5 +83,13 @@ export class EmployerController {
     ) {
         return this.service.completeEvaluation(userId, cycleId);
     }
-        */
+*/
+
+    @Get('evaluation-result')
+    async getEvaluationResultForCycle(
+        @Query('cycleConfigId', ParseIntPipe) cycleConfigId: number,
+        @CurrentUser('id') userId: number,
+    ) {
+        return this.service.getEvaluationResultForCycle(userId, cycleConfigId);
+    }
 }

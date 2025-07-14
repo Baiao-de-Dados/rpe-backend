@@ -1,12 +1,16 @@
-import { Controller, Get, Param, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Param, ParseIntPipe, Query } from '@nestjs/common';
 import { ApiTags, ApiQuery, ApiParam } from '@nestjs/swagger';
 import { CollaboratorsService } from './collaborators.service';
+
 import {
     ApiGetCollaboratorsScores,
     ApiGetCollaboratorEvaluation,
     ApiGetCollaboratorEvaluationHistory,
 } from './swagger/collaborators.swagger';
 import { RequireCommittee, RequireManager, RequireRH } from 'src/auth/decorators/roles.decorator';
+
+import { CurrentUser } from '../../auth/decorators/current-user.decorator';
+
 
 @ApiTags('Colaboradores')
 @Controller('collaborators')

@@ -282,4 +282,77 @@ export class EmployerService {
 
         return { message: 'Avaliação completada com sucesso' };
     }
+
+    async getEvaluationResultForCycle(userId: number, cycleConfigId: number) {
+        const evaluation = await this.prisma.evaluation.findFirst({
+            where: {
+                evaluatorId: userId,
+                cycleConfigId,
+            },
+            include: {
+                evaluator: { include: { track: true } },
+                autoEvaluation: { include: { assignments: { include: { criterion: true } } } },
+                evaluation360: true,
+                mentoring: true,
+                reference: true,
+            },
+        });
+        if (!evaluation) {
+            throw new NotFoundException('Nenhuma avaliação encontrada para este ciclo.');
+        }
+        return {
+            id: evaluation.id,
+            cycleConfigId: evaluation.cycleConfigId,
+            userId: evaluation.evaluatorId,
+            user: evaluation.evaluator
+                ? {
+                      id: evaluation.evaluator.id,
+                      name: evaluation.evaluator.name,
+                      track: evaluation.evaluator.track?.name ?? null,
+                  }
+                : null,
+            autoEvaluation: evaluation.autoEvaluation
+                ? {
+                      pilares: this.formatAutoEvaluationPilares(
+                          evaluation.autoEvaluation.assignments,
+                      ),
+                  }
+                : null,
+            evaluation360: evaluation.evaluation360.map((ev) => ({
+                avaliadoId: ev.evaluatedId,
+                pontosFortes: ev.strengths,
+                pontosMelhoria: ev.improvements,
+                score: ev.score,
+            })),
+            mentoring: evaluation.mentoring
+                ? {
+                      mentorId: evaluation.mentoring.mentorId,
+                      justificativa: evaluation.mentoring.justification,
+                      score: evaluation.mentoring.score,
+                  }
+                : null,
+            reference: evaluation.reference.map((ref) => ({
+                colaboradorId: ref.collaboratorId,
+                justificativa: ref.justification,
+            })),
+        };
+    }
+
+    private formatAutoEvaluationPilares(assignments: any[]) {
+        const pilaresMap = new Map();
+        for (const a of assignments) {
+            if (!pilaresMap.has(a.criterion.pillarId)) {
+                pilaresMap.set(a.criterion.pillarId, {
+                    pilarId: a.criterion.pillarId,
+                    criterios: [],
+                });
+            }
+            pilaresMap.get(a.criterion.pillarId).criterios.push({
+                criterioId: a.criterionId,
+                nota: a.score,
+                justificativa: a.justification,
+            });
+        }
+        return Array.from(pilaresMap.values());
+    }
 }

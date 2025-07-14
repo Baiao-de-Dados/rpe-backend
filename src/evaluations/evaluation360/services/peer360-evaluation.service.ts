@@ -41,6 +41,25 @@ export class Peer360EvaluationService {
                 );
             }
 
+            // Validar se avaliador e avaliado estão no mesmo projeto
+            const commonProject = await prisma.projectMember.findFirst({
+                where: {
+                    userId: colaboradorId,
+                    project: {
+                        members: {
+                            some: {
+                                userId: avaliacao.avaliadoId,
+                            },
+                        },
+                    },
+                },
+            });
+            if (!commonProject) {
+                throw new BadRequestException(
+                    'Só é possível avaliar pessoas que estão no mesmo projeto que você.',
+                );
+            }
+
             const peerEvaluation = await prisma.evaluation.create({
                 data: {
                     evaluatorId: colaboradorId,
