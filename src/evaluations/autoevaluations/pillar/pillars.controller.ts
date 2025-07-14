@@ -6,7 +6,7 @@ import { UpdatePillarDto } from './dto/update-pillar.dto';
 import { ApiCreate, ApiDelete, ApiGet, ApiUpdate } from 'src/common/decorators/api-crud.decorator';
 import { ApiAuth } from 'src/common/decorators/api-auth.decorator';
 import { OnlyRH } from 'src/auth/decorators/roles.decorator';
-import { CycleConfigService } from 'src/evaluations/cycles/cycle-config.service';
+import { CycleConfigService } from 'src/cycles/cycle-config.service';
 
 @ApiTags('Pilares')
 @ApiAuth()
@@ -21,9 +21,6 @@ export class PillarsController {
     @Post()
     @ApiCreate('pilar')
     async create(@Body() createPillarDto: CreatePillarDto) {
-        // Validar se não há ciclo ativo antes de criar pilares
-        await this.cycleConfigService.validateCycleNotActive();
-
         return this.pillarsService.create(createPillarDto);
     }
 
@@ -45,9 +42,6 @@ export class PillarsController {
     @Patch(':id')
     @ApiUpdate('pilar')
     async update(@Param('id', ParseIntPipe) id: number, @Body() updatePillarDto: UpdatePillarDto) {
-        // Validar se não há ciclo ativo antes de atualizar pilares
-        await this.cycleConfigService.validateCycleNotActive();
-
         return this.pillarsService.update(id, updatePillarDto);
     }
 
@@ -55,9 +49,6 @@ export class PillarsController {
     @Delete(':id')
     @ApiDelete('pilar')
     async remove(@Param('id', ParseIntPipe) id: number) {
-        // Validar se não há ciclo ativo antes de remover pilares
-        await this.cycleConfigService.validateCycleNotActive();
-
         return this.pillarsService.remove(id);
     }
 }

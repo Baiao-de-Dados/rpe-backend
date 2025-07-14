@@ -45,7 +45,41 @@ export class SeedService {
             create: { name: 'RH' },
         });
 
-        // Usuários normais (usar upsert)
+        // 1. Criar Mentor Dummy sem mentorId
+        const encryptedEmailDummy = encrypt('dummy@teste.com');
+        const dummyMentor = await this.prisma.user.create({
+            data: {
+                email: encryptedEmailDummy,
+                password: hashedPassword,
+                name: 'Dummy',
+                position: 'Mentor',
+                mentorId: null,
+                trackId: trackBackend.id,
+                userRoles: { create: [{ role: 'MENTOR' }] },
+            },
+        });
+
+        // 2. Criar Mentor real, apontando para o dummy
+        const encryptedEmailMentor = encrypt('mentor@teste.com');
+        const mentor = await this.prisma.user.create({
+            data: {
+                email: encryptedEmailMentor,
+                password: hashedPassword,
+                name: 'Mentor Dummy',
+                position: 'Mentor',
+                mentorId: dummyMentor.id,
+                trackId: trackBackend.id,
+                userRoles: { create: [{ role: 'MENTOR' }] },
+            },
+        });
+
+        // 3. Atualizar o dummy para apontar para o mentor real
+        await this.prisma.user.update({
+            where: { id: dummyMentor.id },
+            data: { mentorId: mentor.id },
+        });
+
+        // 4. Agora sim, criar os demais usuários, referenciando o mentor real
         await this.prisma.user.upsert({
             where: { email: encryptedEmailBackend },
             update: {},
@@ -54,7 +88,7 @@ export class SeedService {
                 password: hashedPassword,
                 name: 'João Backend',
                 position: 'DEV Backend',
-                mentorId: 0,
+                mentorId: mentor.id,
                 trackId: trackBackend.id,
                 userRoles: { create: [{ role: 'EMPLOYER' }] },
             },
@@ -67,7 +101,7 @@ export class SeedService {
                 password: hashedPassword,
                 name: 'Maria Frontend',
                 position: 'DEV Frontend',
-                mentorId: 0,
+                mentorId: mentor.id,
                 trackId: trackFrontend.id,
                 userRoles: { create: [{ role: 'EMPLOYER' }] },
             },
@@ -80,9 +114,17 @@ export class SeedService {
                 password: hashedPassword,
                 name: 'Ana RH',
                 position: 'RH Tester',
-                mentorId: 0,
+                mentorId: mentor.id,
                 trackId: trackRH.id,
-                userRoles: { create: [{ role: 'RH' }, { role: 'EMPLOYER' }, { role: 'ADMIN' }] },
+                userRoles: {
+                    create: [
+                        { role: 'RH' },
+                        { role: 'EMPLOYER' },
+                        { role: 'ADMIN' },
+                        { role: 'MANAGER' },
+                        { role: 'LEADER' },
+                    ],
+                },
             },
         });
 
@@ -96,10 +138,104 @@ export class SeedService {
                 password: await bcrypt.hash('admin123', 10),
                 name: 'System Admin',
                 position: 'Administrador',
-                mentorId: 0,
-                trackId: 0,
+                mentorId: mentor.id,
+                trackId: trackBackend.id,
                 userRoles: { create: [{ role: 'ADMIN' }] },
             },
+        });
+
+        // Usuário Gestor
+        const encryptedEmailManager = encrypt('manager@teste.com');
+        const manager = await this.prisma.user.create({
+            data: {
+                email: encryptedEmailManager,
+                password: hashedPassword,
+                name: 'Carlos Gestor',
+                position: 'Gerente de Projeto',
+                mentorId: mentor.id,
+                trackId: trackBackend.id,
+                userRoles: {
+                    create: [{ role: 'MANAGER' }],
+                },
+            },
+        });
+
+        // Usuário Líder 1
+        const encryptedEmailLeader1 = encrypt('leader1@teste.com');
+        const leader1 = await this.prisma.user.create({
+            data: {
+                email: encryptedEmailLeader1,
+                password: hashedPassword,
+                name: 'Pedro Líder',
+                position: 'Tech Lead Backend',
+                mentorId: mentor.id,
+                trackId: trackBackend.id,
+                userRoles: {
+                    create: [{ role: 'LEADER' }],
+                },
+            },
+        });
+
+        // Usuário Líder 2
+        const encryptedEmailLeader2 = encrypt('leader2@teste.com');
+        const leader2 = await this.prisma.user.create({
+            data: {
+                email: encryptedEmailLeader2,
+                password: hashedPassword,
+                name: 'Sofia Líder',
+                position: 'Tech Lead Frontend',
+                mentorId: mentor.id,
+                trackId: trackFrontend.id,
+                userRoles: {
+                    create: [{ role: 'LEADER' }],
+                },
+            },
+        });
+
+        // Usuário Backend
+        const userBackend = await this.prisma.user.findUnique({
+            where: { email: encryptedEmailBackend },
+        });
+        // Usuário Frontend
+        const userFrontend = await this.prisma.user.findUnique({
+            where: { email: encryptedEmailFrontend },
+        });
+
+        // Projeto
+        const project = await this.prisma.project.create({
+            data: {
+                name: 'Sistema de Avaliações',
+                description: 'Projeto para desenvolvimento do sistema de avaliações da RocketCorp',
+                status: 'ACTIVE',
+                managerId: manager.id,
+            },
+        });
+
+        console.log('👥 Adicionando membros ao projeto...');
+
+        // Adicionar membros ao projeto (gestor, líderes e desenvolvedores)
+        const projectMembers = [
+            { projectId: project.id, userId: manager.id }, // Gestor
+            { projectId: project.id, userId: leader1.id }, // Líder 1
+            { projectId: project.id, userId: leader2.id }, // Líder 2
+            { projectId: project.id, userId: userBackend?.id }, // Dev Backend
+            { projectId: project.id, userId: userFrontend?.id }, // Dev Frontend
+        ]
+            .filter((member) => typeof member.userId === 'number')
+            .map((member) => ({ projectId: member.projectId, userId: member.userId as number }));
+
+        await this.prisma.projectMember.createMany({
+            data: projectMembers,
+        });
+
+        console.log('🔗 Criando assignments de líderes...');
+
+        // Assignment de líderes ao projeto
+        await this.prisma.leaderAssignment.createMany({
+            data: [
+                { projectId: project.id, leaderId: leader1.id },
+                { projectId: project.id, leaderId: leader2.id },
+            ],
         });
 
         // Pilares (usar upsert)
@@ -144,8 +280,13 @@ export class SeedService {
             },
         ];
         for (const criterio of criteriosComportamento) {
-            await this.prisma.criterion.create({
-                data: {
+            await this.prisma.criterion.upsert({
+                where: { name: criterio.name },
+                update: {
+                    description: criterio.description,
+                    pillarId: pilarComportamento.id,
+                },
+                create: {
                     name: criterio.name,
                     description: criterio.description,
                     pillarId: pilarComportamento.id,
@@ -172,8 +313,13 @@ export class SeedService {
             },
         ];
         for (const criterio of criteriosExecucao) {
-            await this.prisma.criterion.create({
-                data: {
+            await this.prisma.criterion.upsert({
+                where: { name: criterio.name },
+                update: {
+                    description: criterio.description,
+                    pillarId: pilarExecucao.id,
+                },
+                create: {
                     name: criterio.name,
                     description: criterio.description,
                     pillarId: pilarExecucao.id,
@@ -193,8 +339,13 @@ export class SeedService {
             },
         ];
         for (const criterio of criteriosGestao) {
-            await this.prisma.criterion.create({
-                data: {
+            await this.prisma.criterion.upsert({
+                where: { name: criterio.name },
+                update: {
+                    description: criterio.description,
+                    pillarId: pilarGestao.id,
+                },
+                create: {
                     name: criterio.name,
                     description: criterio.description,
                     pillarId: pilarGestao.id,
@@ -232,31 +383,31 @@ export class SeedService {
                 name: '2024.1',
                 startDate: new Date('2024-01-01'),
                 endDate: new Date('2024-06-30'),
-                isActive: false,
+                done: false,
             },
             {
                 name: '2024.2',
                 startDate: new Date('2024-07-01'),
                 endDate: new Date('2024-12-31'),
-                isActive: false,
+                done: false,
             },
             {
                 name: '2024.3',
                 startDate: new Date('2024-09-01'),
                 endDate: new Date('2024-11-30'),
-                isActive: false,
+                done: false,
             },
             {
                 name: '2024.4',
                 startDate: new Date('2024-10-01'),
                 endDate: new Date('2024-12-15'),
-                isActive: false,
+                done: false,
             },
             {
                 name: '2025.1',
                 startDate: new Date('2025-01-01'),
                 endDate: new Date('2025-06-30'),
-                isActive: false,
+                done: false,
             },
         ];
 

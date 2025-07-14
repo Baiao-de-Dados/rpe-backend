@@ -16,7 +16,7 @@ import { UpdateCriterionTrackConfigDto } from './dto/update-criterion-track-conf
 import { BatchUpdateCriteriaDto } from './dto/batch-update-criteria.dto';
 import { TrackConfigDto } from './dto/track-config.dto';
 import { TrackConfigResponseDto } from './dto/track-config-response.dto';
-import { ExactRoles } from 'src/auth/decorators/roles.decorator';
+import { ExactRoles } from '../../../auth/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
 import {
     ApiCreate,
@@ -24,9 +24,9 @@ import {
     ApiGet,
     ApiList,
     ApiDelete,
-} from 'src/common/decorators/api-crud.decorator';
-import { ApiAuth } from 'src/common/decorators/api-auth.decorator';
-import { CycleConfigService } from 'src/evaluations/cycles/cycle-config.service';
+} from '../../../common/decorators/api-crud.decorator';
+import { ApiAuth } from '../../../common/decorators/api-auth.decorator';
+import { CycleConfigService } from '../../../cycles/cycle-config.service';
 
 @ApiTags('Critérios')
 @ApiAuth()
@@ -41,9 +41,6 @@ export class CriteriaController {
     @ExactRoles(UserRole.RH)
     @ApiCreate('critério')
     async create(@Body() createCriterionDto: CreateCriterionDto) {
-        // Validar se não há ciclo ativo antes de criar critérios
-        await this.cycleConfigService.validateCycleNotActive();
-
         return this.criteriaService.create(createCriterionDto);
     }
 
@@ -72,9 +69,6 @@ export class CriteriaController {
     @ExactRoles(UserRole.RH)
     @ApiUpdate('critérios em lote')
     async batchUpdate(@Body() batchUpdateDto: BatchUpdateCriteriaDto) {
-        // Validar se não há ciclo ativo antes de atualizar critérios
-        //await this.cycleConfigService.validateCycleNotActive();
-
         return this.criteriaService.batchUpdate(batchUpdateDto);
     }
 
@@ -82,9 +76,6 @@ export class CriteriaController {
     @ExactRoles(UserRole.RH)
     @ApiDelete('critério')
     async remove(@Param('id', ParseIntPipe) id: number) {
-        // Validar se não há ciclo ativo antes de remover critérios
-        //await this.cycleConfigService.validateCycleNotActive();
-
         return this.criteriaService.remove(id);
     }
 

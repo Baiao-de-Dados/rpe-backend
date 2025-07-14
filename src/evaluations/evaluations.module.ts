@@ -4,24 +4,33 @@ import { EvaluationsController } from './evaluations.controller';
 import { PrismaModule } from '../prisma/prisma.module';
 import { EvaluationValidationService } from './services/evaluation-validation.service';
 import { CryptoModule } from '../cryptography/crypto.module';
-import { Peer360EvaluationService } from './services/peer360-evaluation.service';
-import { ReferenceService } from './services/reference.service';
-import { MentorEvaluationService } from './services/mentor-evaluation.service';
+import { Evaluation360Module } from './evaluation360/evaluation360.module';
+import { ReferencesModule } from './references/references.module';
+import { MentoringModule } from './mentoring/mentoring.module';
 import { CycleValidationService } from './services/cycle-validation.service';
-import { CycleConfigModule } from './cycles/cycle-config.module';
+import { CycleConfigModule } from '../cycles/cycle-config.module';
 import { AutoEvaluationModule } from './autoevaluations/autoevaluations.module';
+import { CollaboratorsService } from './collaborators/collaborators.service';
+import { LogModule } from 'src/log/log.module';
 
 @Module({
-    imports: [PrismaModule, CryptoModule, CycleConfigModule, AutoEvaluationModule],
+    imports: [
+        PrismaModule,
+        CryptoModule,
+        CycleConfigModule,
+        LogModule,
+        AutoEvaluationModule,
+        Evaluation360Module,
+        ReferencesModule,
+        MentoringModule,
+    ],
     controllers: [EvaluationsController],
     providers: [
         EvaluationsService,
         EvaluationValidationService,
-        Peer360EvaluationService,
-        ReferenceService,
-        MentorEvaluationService,
         CycleValidationService,
+        CollaboratorsService,
     ],
-    exports: [forwardRef(() => AutoEvaluationModule), CycleValidationService],
+    exports: [forwardRef(() => AutoEvaluationModule), CycleValidationService, CollaboratorsService],
 })
 export class EvaluationsModule {}

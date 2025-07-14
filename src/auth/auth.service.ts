@@ -1,7 +1,7 @@
 import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
-import { EncryptionService } from 'src/cryptography/encryption.service';
+import { EncryptionService } from '../cryptography/encryption.service';
 import { UserRole, Prisma } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
@@ -139,8 +139,8 @@ export class AuthService {
         password: string,
         name: string,
         position: string,
-        mentorId: number,
         roles: UserRole[],
+        mentorId?: number,
         assignedBy?: number,
     ): Promise<UserPublic> {
         const encryptedEmail = this.encryptionService.encrypt(email);
@@ -167,7 +167,7 @@ export class AuthService {
                     password: hashedPassword,
                     name,
                     position,
-                    mentorId,
+                    ...(mentorId !== undefined ? { mentorId } : {}),
                     trackId: defaultTrack.id,
                 },
             });

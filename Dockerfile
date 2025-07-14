@@ -49,4 +49,4 @@ ENV PORT=3000
 EXPOSE 3000
 
 # 4. comando de start otimizado
-CMD ["./scripts/start.sh"]
+CMD ["/bin/sh", "./scripts/start.sh"]

@@ -4,9 +4,9 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 export class CycleValidationService {
     async validateActiveCycle(prisma: any, evaluationType: string): Promise<void> {
         // Buscar ciclo ativo
-        const activeCycle = await prisma.cycleConfig.findFirst({
-            where: { isActive: true },
-        });
+        const activeCycle = (await prisma.cycleConfig.findMany()).find(
+            (cycle) => !cycle.done && new Date() >= cycle.startDate && new Date() <= cycle.endDate,
+        );
 
         if (!activeCycle) {
             throw new BadRequestException('Não há ciclo ativo configurado');

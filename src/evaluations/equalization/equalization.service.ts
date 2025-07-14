@@ -34,7 +34,7 @@ export class EqualizationService {
 
         // Verifica se já existe uma equalização para esta avaliação
         const existingEqualization = await this.prisma.equalization.findFirst({
-            where: { evaluationId: evaluation.id },
+            where: { collaboratorId: evaluation.id },
         });
 
         if (existingEqualization) {
@@ -45,7 +45,7 @@ export class EqualizationService {
 
         return this.prisma.equalization.create({
             data: {
-                evaluationId: evaluation.id,
+                collaboratorId: evaluation.id,
                 justification,
                 score: rating,
             },
@@ -69,7 +69,7 @@ export class EqualizationService {
         }
 
         const equalization = await this.prisma.equalization.findFirst({
-            where: { evaluationId: evaluation.id },
+            where: { collaboratorId: evaluation.id },
         });
 
         if (!equalization) {

@@ -7,7 +7,7 @@ import { AppController } from './app.controller';
 import { UserModule } from './user/user.module';
 import { AuthModule } from './auth/auth.module';
 import { ErpModule } from './common/erp/erp.module';
-import { CycleConfigModule } from './evaluations/cycles/cycle-config.module';
+import { CycleConfigModule } from './cycles/cycle-config.module';
 import { ConfigModule } from '@nestjs/config';
 import { AppService } from './app.service';
 import { CommonModule } from './common/common.module';
@@ -18,6 +18,9 @@ import { RolesGuard } from './auth/guards/roles.guard';
 import { TrackModule } from './track/track.module';
 import { ImportUsersModule } from './import-export/import-users/import-users.module';
 import { ImportEvaluationsModule } from './import-export/import-evaluations/import-evaluations.module';
+import { LogModule } from './log/log.module';
+import { NotesModule } from './notes/notes.module';
+import { AiModule } from './ai/ai.module';
 import { ExportEvaluationsModule } from './import-export/export-evaluations/export-evaluations.module';
 import { CollaboratorsModule } from './evaluations/collaborators/collaborators.module';
 import { EqualizationModule } from './evaluations/equalization/equalization.module';
@@ -50,6 +53,9 @@ import { EqualizationModule } from './evaluations/equalization/equalization.modu
         TrackModule,
         ImportUsersModule,
         ImportEvaluationsModule,
+        LogModule,
+        NotesModule,
+        AiModule,
         ExportEvaluationsModule,
         CollaboratorsModule,
         EqualizationModule,

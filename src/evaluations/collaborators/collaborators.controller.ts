@@ -2,12 +2,15 @@ import { Controller, Get, UseGuards, Query, BadRequestException } from '@nestjs/
 import { ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
-import { RequireCommittee, RequireRH, RequireManager } from '../../auth/decorators/roles.decorator';
+import { RequireCommittee, RequireManager, RequireRH } from '../../auth/decorators/roles.decorator';
 import { CollaboratorsService } from './collaborators.service';
 import { ApiGetCollaboratorsScores } from './swagger/collaborators.swagger';
 import { GetCollaboratorsScoresDto } from './dto/get-collaborators-scores.dto';
 import { QueryValidationPipe } from '../../common/pipes/query-validation.pipe';
-import { ApiGetCollaboratorEvaluationCommittee, ApiGetCollaboratorEvaluationManager } from './swagger/collaborators-evaluation.swagger';
+import {
+    ApiGetCollaboratorEvaluationCommittee,
+    ApiGetCollaboratorEvaluationManager,
+} from './swagger/collaborators-evaluation.swagger';
 import { ApiGetCollaboratorEvaluations } from './swagger/collaborators-evaluations.swagger';
 
 @ApiTags('Colaboradores')
@@ -35,7 +38,11 @@ export class CollaboratorsController {
         if (!query.cycleId || !query.collaboratorId) {
             throw new BadRequestException('cycleId and collaboratorId are required.');
         }
-        return this.collaboratorsService.getCollaboratorEvaluation(query.cycleId, query.collaboratorId, 'COMMITTEE');
+        return this.collaboratorsService.getCollaboratorEvaluation(
+            query.cycleId,
+            query.collaboratorId,
+            'COMMITTEE',
+        );
     }
 
     @RequireManager()
@@ -48,7 +55,11 @@ export class CollaboratorsController {
         if (!query.cycleId || !query.collaboratorId) {
             throw new BadRequestException('cycleId and collaboratorId are required.');
         }
-        return this.collaboratorsService.getCollaboratorEvaluation(query.cycleId, query.collaboratorId, 'MANAGER');
+        return this.collaboratorsService.getCollaboratorEvaluation(
+            query.cycleId,
+            query.collaboratorId,
+            'MANAGER',
+        );
     }
 
     @RequireRH()
@@ -64,6 +75,3 @@ export class CollaboratorsController {
         return this.collaboratorsService.getCollaboratorEvaluations(query.collaboratorId);
     }
 }
-
-
-

@@ -3,16 +3,16 @@ import { RHUserDTO } from '../dto/rh.dto';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { UserRole } from '@prisma/client';
 import { UpdatePillarDto } from 'src/evaluations/autoevaluations/pillar/dto/update-pillar.dto';
-import { CycleConfigService } from 'src/evaluations/cycles/cycle-config.service';
+import { CycleConfigService } from 'src/cycles/cycle-config.service';
 import { PillarsService } from 'src/evaluations/autoevaluations/pillar/pillars.service';
 import { CreatePillarDto } from 'src/evaluations/autoevaluations/pillar/dto/create-pillar.dto';
 import { CreateCriterionDto } from 'src/evaluations/autoevaluations/criteria/dto/create-criterion.dto';
 import { UpdateCriterionDto } from 'src/evaluations/autoevaluations/criteria/dto/update-criterion.dto';
-import { UpdateCycleConfigDto } from 'src/evaluations/cycles/dto/update-cycle-config.dto';
+import { UpdateCycleConfigDto } from 'src/cycles/dto/update-cycle-config.dto';
 import { BatchUpdateCriteriaDto } from 'src/evaluations/autoevaluations/criteria/dto/batch-update-criteria.dto';
 import { TrackConfigDto } from 'src/evaluations/autoevaluations/criteria/dto/track-config.dto';
-import { CreateCycleConfigDto } from 'src/evaluations/cycles/dto/create-cycle-config.dto';
-import { CycleConfigResponseDto } from 'src/evaluations/cycles/dto/cycle-config-response.dto';
+import { CreateCycleConfigDto } from 'src/cycles/dto/create-cycle-config.dto';
+import { CycleConfigResponseDto } from 'src/cycles/dto/cycle-config-response.dto';
 import { UpdateCriterionTrackConfigDto } from 'src/evaluations/autoevaluations/criteria/dto/update-criterion-track-config.dto';
 import { CriteriaService } from 'src/evaluations/autoevaluations/criteria/criteria.service';
 
@@ -155,10 +155,6 @@ export class RHService {
     }
 
     // Ciclos
-
-    async validateCycleActive() {
-        return this.cycleService.validateCycleNotActive();
-    }
 
     async createCycle(dto: CreateCycleConfigDto): Promise<CycleConfigResponseDto> {
         return this.cycleService.create(dto);

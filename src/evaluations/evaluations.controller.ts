@@ -3,12 +3,12 @@ import { EvaluationsService } from './evaluations.service';
 import { CreateEvaluationDto } from './dto/create-evaluation.dto';
 import { ActiveCriteriaUserResponseDto } from './dto/active-criteria-response.dto';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
-import { ApiCreate, ApiGet } from 'src/common/decorators/api-crud.decorator';
-import { ApiAuth } from 'src/common/decorators/api-auth.decorator';
-import { RequireEmployer, RequireRH, RequireLeader } from 'src/auth/decorators/roles.decorator';
+import { ApiCreate, ApiGet } from '../common/decorators/api-crud.decorator';
+import { ApiAuth } from '../common/decorators/api-auth.decorator';
+import { RequireEmployer, RequireRH, RequireLeader } from '../auth/decorators/roles.decorator';
 import { PrismaService } from '../prisma/prisma.service';
-import { CycleConfigService } from 'src/evaluations/cycles/cycle-config.service';
-import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
+import { CycleConfigService } from '../cycles/cycle-config.service';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @ApiTags('Avaliações')
 @ApiAuth()

@@ -2,12 +2,13 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateEvaluationDto } from './dto/create-evaluation.dto';
 import { EvaluationValidationService } from './services/evaluation-validation.service';
-import { Peer360EvaluationService } from './services/peer360-evaluation.service';
-import { ReferenceService } from './services/reference.service';
-import { AutoEvaluationService } from 'src/evaluations/autoevaluations/services/auto-evaluation.service';
-import { MentorEvaluationService } from './services/mentor-evaluation.service';
-import { CycleConfigService } from 'src/evaluations/cycles/cycle-config.service';
+import { Peer360EvaluationService } from '../evaluations/evaluation360/services/peer360-evaluation.service';
+import { ReferenceService } from '../evaluations/references/services/reference.service';
+import { AutoEvaluationService } from '../evaluations/autoevaluations/services/auto-evaluation.service';
+import { MentorEvaluationService } from '../evaluations/mentoring/service/mentor-evaluation.service';
+import { CycleConfigService } from 'src/cycles/cycle-config.service';
 import { ActiveCriteriaUserResponseDto } from './dto/active-criteria-response.dto';
+import type { PrismaClient } from '@prisma/client';
 
 @Injectable()
 export class EvaluationsService {
@@ -35,7 +36,7 @@ export class EvaluationsService {
         await this.validationService.validateEvaluationData(createEvaluationDto);
 
         // Usar transação para garantir atomicidade
-        return await this.prisma.$transaction(async (prisma) => {
+        return await this.prisma.$transaction(async (prisma: PrismaClient) => {
             const evaluations: any[] = [];
 
             // 1. Cria a autoavaliação usando o service (com validação de trilha/cargo)
@@ -148,8 +149,9 @@ export class EvaluationsService {
 
     async getActiveCriteriaForUser(user: any): Promise<ActiveCriteriaUserResponseDto> {
         // 1. Verificar se existe um ciclo ativo
-        const activeCycle = await this.prisma.cycleConfig.findFirst({
-            where: { isActive: true },
+        const activeCycle = (await this.prisma.cycleConfig.findMany()).find((cycle) => {
+            const now = new Date();
+            return !cycle.done && now >= cycle.startDate && now <= cycle.endDate;
         });
 
         if (!activeCycle) {
@@ -171,8 +173,10 @@ export class EvaluationsService {
         }
 
         // 3. Buscar critérios ativos no ciclo atual
-        const activeCycleCriteria = await this.cycleConfigService.getActiveCriteria();
-        const activeCriteriaIds = new Set(activeCycleCriteria.map((c) => c.id));
+        const activeCycleCriteria = await this.prisma.criterionTrackCycleConfig.findMany({
+            where: { cycleId: activeCycle.id },
+        });
+        const activeCriteriaIds = new Set(activeCycleCriteria.map((c) => c.criterionId));
 
         // 4. Buscar critérios configurados para a trilha/cargo do usuário
         const userTrackCriteria = await this.prisma.criterionTrackConfig.findMany({
