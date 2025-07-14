@@ -26,7 +26,6 @@ export class MentorEvaluationService {
         const mentorEvaluation = await prisma.evaluation.create({
             data: {
                 evaluatorId: evaluatorId,
-                evaluateeId: mentorId,
                 cycleConfigId: cycleConfigId,
             },
         });
@@ -35,6 +34,7 @@ export class MentorEvaluationService {
         await prisma.mentoring.create({
             data: {
                 evaluationId: mentorEvaluation.id,
+                mentorId: mentorId,
                 justification: justification,
             },
         });

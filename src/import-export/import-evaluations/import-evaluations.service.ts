@@ -82,14 +82,6 @@ export class ImportEvaluationsService {
                     `Critério ${evaluation.criterion} não encontrado no banco de dados.`,
                 );
             }
-
-            await this.prisma.evaluation.create({
-                data: {
-                    evaluatorId: user.id,
-                    evaluateeId: user.id, // Autoavaliação ou avaliação 360
-                    cycleConfigId: cycle.id, // Associa ao ciclo identificado
-                },
-            });
         }
 
         return `${evaluations.length} avaliações importadas com sucesso no ciclo ${cycleName}.`;

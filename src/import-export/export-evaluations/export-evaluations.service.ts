@@ -7,7 +7,7 @@ export class ExportEvaluationsService {
     constructor(private readonly collaboratorsService: CollaboratorsService) {}
 
     async generateExport(): Promise<Buffer> {
-        const collaborators = await this.collaboratorsService.getCollaboratorsScores();
+        const collaborators = await this.collaboratorsService.getCollaborators();
 
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('Equalização');
@@ -25,20 +25,29 @@ export class ExportEvaluationsService {
         ];
 
         // Adiciona dados
-        for (const collaborator of collaborators) {
-            for (const evaluation of collaborator.evaluations) {
+        collaborators.forEach((collaborator) => {
+            collaborator.evaluations?.forEach((evaluation) => {
+                const autoEvaluationScore =
+                    evaluation.autoEvaluation && evaluation.autoEvaluation.assignments
+                        ? evaluation.autoEvaluation.assignments.reduce(
+                              (sum, a) => sum + a.score,
+                              0,
+                          ) / evaluation.autoEvaluation.assignments.length
+                        : 0;
+
                 worksheet.addRow({
                     name: collaborator.name,
-                    track: collaborator.track,
+                    email: collaborator.email,
                     position: collaborator.position,
-                    cycle: evaluation.cycleId,
-                    autoEvaluationScore: evaluation.autoEvaluationScore,
-                    evaluation360Score: evaluation.evaluation360Score,
-                    mentoringScore: evaluation.mentoringScore,
-                    finalEqualizationScore: evaluation.finalEqualizationScore,
+                    track: collaborator.track,
+                    cycleId: evaluation.cycleConfigId,
+                    autoEvaluationScore: autoEvaluationScore,
+                    evaluation360Score: evaluation.evaluation360?.[0]?.score || 0,
+                    mentoringScore: evaluation.mentoring?.score || 0,
+                    finalEqualizationScore: 0, // Não há mais equalização neste contexto
                 });
-            }
-        }
+            });
+        });
 
         const buffer = await workbook.xlsx.writeBuffer();
         return Buffer.from(buffer);

@@ -10,9 +10,9 @@ export class Peer360EvaluationService {
         prisma: PrismaClient,
         avaliacao360: Array<{
             avaliadoId: number;
-            justificativa: string;
-            pontosFortes?: string;
-            pontosMelhoria?: string;
+            pontosFortes: string;
+            pontosMelhoria: string;
+            score: number;
         }>,
         colaboradorId: number,
         cycleConfigId: number,
@@ -35,14 +35,15 @@ export class Peer360EvaluationService {
                 throw new BadRequestException('ID do avaliado é obrigatório');
             }
 
-            if (!avaliacao.justificativa) {
-                throw new BadRequestException('Justificativa é obrigatória');
+            if (!avaliacao.pontosFortes || !avaliacao.pontosMelhoria) {
+                throw new BadRequestException(
+                    'Pontos fortes e pontos de melhoria são obrigatórios',
+                );
             }
 
             const peerEvaluation = await prisma.evaluation.create({
                 data: {
                     evaluatorId: colaboradorId,
-                    evaluateeId: avaliacao.avaliadoId,
                     cycleConfigId: cycleConfigId,
                 },
             });
@@ -50,9 +51,10 @@ export class Peer360EvaluationService {
             await prisma.evaluation360.create({
                 data: {
                     evaluationId: peerEvaluation.id,
-                    justification: avaliacao.justificativa,
-                    strengths: avaliacao.pontosFortes,
-                    improvements: avaliacao.pontosMelhoria,
+                    evaluatedId: avaliacao.avaliadoId,
+                    strengths: avaliacao.pontosFortes ?? '',
+                    improvements: avaliacao.pontosMelhoria ?? '',
+                    score: avaliacao.score ?? 0,
                 },
             });
 

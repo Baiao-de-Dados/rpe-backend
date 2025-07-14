@@ -16,14 +16,12 @@ export class EvaluationValidationService {
         const { colaboradorId, autoavaliacao, avaliacao360, mentoring, referencias } = data;
         const colaboradorIdNum = colaboradorId;
 
-        await Promise.all([
-            this.validateColaborador(colaboradorIdNum),
-            this.validateCriterios(autoavaliacao),
-            this.validateAvaliacao360(avaliacao360, colaboradorIdNum),
-            this.validateMentoring(mentoring, colaboradorIdNum),
-            this.validateReferencias(referencias, colaboradorIdNum),
-            this.validateDuplicates(avaliacao360, referencias),
-        ]);
+        await this.validateColaborador(colaboradorIdNum);
+        await this.validateCriterios(autoavaliacao);
+        await this.validateAvaliacao360(avaliacao360);
+        await this.validateMentoring(mentoring, colaboradorIdNum);
+        await this.validateReferencias(referencias);
+        this.validateDuplicates(avaliacao360, referencias);
     }
 
     private async validateColaborador(colaboradorId: number): Promise<void> {
@@ -35,14 +33,19 @@ export class EvaluationValidationService {
         }
     }
 
-    private async validateCriterios(autoavaliacao: AutoAvaliacaoDto): Promise<void> {
+    private async validateCriterios(autoavaliacao: AutoAvaliacaoDto | undefined): Promise<void> {
         if (!autoavaliacao || !autoavaliacao.pilares || autoavaliacao.pilares.length === 0) {
             return;
         }
 
-        const criterioIds = autoavaliacao.pilares.flatMap((pilar) =>
-            pilar.criterios.map((criterio) => criterio.criterioId),
-        );
+        const criterioIds = autoavaliacao.pilares
+            .flatMap((pilar) => pilar.criterios.map((criterio) => criterio.criterioId))
+            .filter((id) => id !== undefined && id !== null);
+
+        if (criterioIds.length === 0) {
+            return;
+        }
+
         const criteriosExistentes = await this.prisma.criterion.findMany({
             where: { id: { in: criterioIds } },
         });
@@ -55,15 +58,19 @@ export class EvaluationValidationService {
         }
     }
 
-    private async validateAvaliacao360(
-        avaliacao360: Avaliacao360Dto[],
-        colaboradorId: number,
-    ): Promise<void> {
+    private async validateAvaliacao360(avaliacao360: Avaliacao360Dto[] | undefined): Promise<void> {
         if (!avaliacao360 || avaliacao360.length === 0) {
             return;
         }
+        // Validar se os avaliados existem
+        const avaliadoIds = avaliacao360
+            .map((av) => av.avaliadoId)
+            .filter((id) => id !== undefined && id !== null);
 
-        const avaliadoIds = avaliacao360.map((av) => av.avaliadoId);
+        if (avaliadoIds.length === 0) {
+            return;
+        }
+
         const avaliadosExistentes = await this.prisma.user.findMany({
             where: { id: { in: avaliadoIds } },
         });
@@ -74,40 +81,42 @@ export class EvaluationValidationService {
                 `Avaliados não encontrados: ${idsNaoExistentes.join(', ')}`,
             );
         }
-
-        // Verificar se o colaborador não está se auto-avaliando
-        if (avaliadoIds.includes(colaboradorId)) {
-            throw new BadRequestException('O colaborador não pode se auto-avaliar na avaliação360');
-        }
     }
 
-    private async validateMentoring(mentoring: MentoringDto, colaboradorId: number): Promise<void> {
-        if (!mentoring) {
+    private async validateMentoring(
+        mentoring: MentoringDto | undefined,
+        colaboradorId: number,
+    ): Promise<void> {
+        if (!mentoring || !mentoring.mentorId) {
             return;
         }
 
-        if (mentoring.mentorId) {
-            const mentor = await this.prisma.user.findUnique({
-                where: { id: mentoring.mentorId },
-            });
-            if (!mentor) {
-                throw new NotFoundException(`Mentor com ID ${mentoring.mentorId} não encontrado`);
-            }
-            if (mentoring.mentorId === colaboradorId) {
-                throw new BadRequestException('O colaborador não pode ser seu próprio mentor');
-            }
+        // Validar se o mentor existe
+        const mentor = await this.prisma.user.findUnique({
+            where: { id: mentoring.mentorId },
+        });
+        if (!mentor) {
+            throw new NotFoundException(`Mentor com ID ${mentoring.mentorId} não encontrado`);
+        }
+
+        if (mentoring.mentorId === colaboradorId) {
+            throw new BadRequestException('O colaborador não pode ser seu próprio mentor');
         }
     }
 
-    private async validateReferencias(
-        referencias: ReferenciaDto[],
-        colaboradorId: number,
-    ): Promise<void> {
+    private async validateReferencias(referencias: ReferenciaDto[] | undefined): Promise<void> {
         if (!referencias || referencias.length === 0) {
             return;
         }
+        // Validar se os colaboradores de referência existem
+        const referenciaColaboradorIds = referencias
+            .map((r) => r.colaboradorId)
+            .filter((id) => id !== undefined && id !== null);
 
-        const referenciaColaboradorIds = referencias.map((r) => r.colaboradorId);
+        if (referenciaColaboradorIds.length === 0) {
+            return;
+        }
+
         const referenciaColaboradoresExistentes = await this.prisma.user.findMany({
             where: { id: { in: referenciaColaboradorIds } },
         });
@@ -120,19 +129,16 @@ export class EvaluationValidationService {
                 `Colaboradores de referência não encontrados: ${idsNaoExistentes.join(', ')}`,
             );
         }
-
-        // Verificar se o colaborador não está se auto-referenciando
-        if (referenciaColaboradorIds.includes(colaboradorId)) {
-            throw new BadRequestException('O colaborador não pode se auto-referenciar');
-        }
     }
 
     private validateDuplicates(
-        avaliacao360: Avaliacao360Dto[],
-        referencias: ReferenciaDto[],
+        avaliacao360: Avaliacao360Dto[] | undefined,
+        referencias: ReferenciaDto[] | undefined,
     ): void {
         if (avaliacao360 && avaliacao360.length > 0) {
-            const avaliadoIds = avaliacao360.map((av) => av.avaliadoId);
+            const avaliadoIds = avaliacao360
+                .map((av) => av.avaliadoId)
+                .filter((id) => id !== undefined && id !== null);
             const avaliadoIdsUnicos = new Set(avaliadoIds);
             if (avaliadoIdsUnicos.size !== avaliadoIds.length) {
                 throw new BadRequestException(
@@ -142,7 +148,9 @@ export class EvaluationValidationService {
         }
 
         if (referencias && referencias.length > 0) {
-            const referenciaColaboradorIds = referencias.map((r) => r.colaboradorId);
+            const referenciaColaboradorIds = referencias
+                .map((r) => r.colaboradorId)
+                .filter((id) => id !== undefined && id !== null);
             const referenciaColaboradorIdsUnicos = new Set(referenciaColaboradorIds);
             if (referenciaColaboradorIdsUnicos.size !== referenciaColaboradorIds.length) {
                 throw new BadRequestException(

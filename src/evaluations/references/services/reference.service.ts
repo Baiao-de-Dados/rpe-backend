@@ -26,20 +26,28 @@ export class ReferenceService {
                 throw new BadRequestException('ID do colaborador de referência é obrigatório');
             }
 
-            const evaluation = await prisma.evaluation.create({
-                data: {
+            // Buscar se já existe uma Evaluation para esse colaborador/ciclo
+            let evaluation = await prisma.evaluation.findFirst({
+                where: {
                     evaluatorId: colaboradorId,
-                    evaluateeId:
-                        typeof referencia.colaboradorId === 'string'
-                            ? parseInt(referencia.colaboradorId, 10)
-                            : referencia.colaboradorId,
                     cycleConfigId: cycleConfigId,
                 },
             });
 
+            // Se não existir, cria
+            if (!evaluation) {
+                evaluation = await prisma.evaluation.create({
+                    data: {
+                        evaluatorId: colaboradorId,
+                        cycleConfigId: cycleConfigId,
+                    },
+                });
+            }
+
             await prisma.reference.create({
                 data: {
                     evaluationId: evaluation.id,
+                    collaboratorId: Number(referencia.colaboradorId),
                     justification: referencia.justificativa,
                 },
             });

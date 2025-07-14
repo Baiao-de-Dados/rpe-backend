@@ -22,7 +22,7 @@ export class EvaluationsService {
         private readonly cycleConfigService: CycleConfigService,
     ) {}
 
-    async createEvaluation(createEvaluationDto: CreateEvaluationDto, userTrack?: number) {
+    async createEvaluation(createEvaluationDto: CreateEvaluationDto, user: any) {
         const {
             cycleConfigId,
             colaboradorId,
@@ -32,56 +32,145 @@ export class EvaluationsService {
             referencias,
         } = createEvaluationDto;
 
+        // Extrair o trackId corretamente
+        const userTrackId = user.trackId ?? user.track?.id;
+
         // VALIDAÇÕES PRÉVIAS - Usando o service de validação
         await this.validationService.validateEvaluationData(createEvaluationDto);
 
         // Usar transação para garantir atomicidade
         return await this.prisma.$transaction(async (prisma: PrismaClient) => {
-            const evaluations: any[] = [];
+            // Criar apenas UMA Evaluation para o colaborador/ciclo
+            const evaluation = await prisma.evaluation.create({
+                data: {
+                    evaluatorId: colaboradorId,
+                    cycleConfigId: cycleConfigId,
+                },
+            });
 
-            // 1. Cria a autoavaliação usando o service (com validação de trilha/cargo)
-            const autoEvaluation = await this.autoEvaluationService.createAutoEvaluation(
-                prisma,
-                autoavaliacao,
-                colaboradorId,
-                cycleConfigId,
-                userTrack,
-            );
-            if (autoEvaluation) {
-                evaluations.push(autoEvaluation);
+            // 1. Criar autoavaliação associada à Evaluation criada
+            if (autoavaliacao && autoavaliacao.pilares && autoavaliacao.pilares.length > 0) {
+                // Validar critérios antes de criar (usando a lógica do autoEvaluationService)
+                if (userTrackId) {
+                    // Buscar configurações de critério para a trilha do usuário no ciclo ativo
+                    const activeCycle = (await prisma.cycleConfig.findMany()).find(
+                        (cycle) =>
+                            !cycle.done &&
+                            new Date() >= cycle.startDate &&
+                            new Date() <= cycle.endDate,
+                    );
+
+                    if (!activeCycle) {
+                        throw new BadRequestException('Nenhum ciclo ativo encontrado');
+                    }
+
+                    const userTrackCriteria = await prisma.criterionTrackCycleConfig.findMany({
+                        where: {
+                            trackId: userTrackId,
+                            cycleId: activeCycle.id,
+                        },
+                        include: {
+                            criterion: true,
+                        },
+                    });
+
+                    if (!userTrackCriteria || userTrackCriteria.length === 0) {
+                        throw new BadRequestException(
+                            `Nenhum critério configurado para sua trilha (${userTrackId})`,
+                        );
+                    }
+
+                    // Criar conjunto de critérios autorizados para o usuário
+                    const authorizedCriteriaIds = new Set<number>(
+                        userTrackCriteria.map((config) => config.criterionId),
+                    );
+
+                    // Validar se todos os critérios enviados estão autorizados para o usuário
+                    const submittedCriteriaIds = new Set();
+                    const unauthorizedCriteria: number[] = [];
+
+                    for (const pilar of autoavaliacao.pilares) {
+                        for (const criterio of pilar.criterios) {
+                            const criterionId = criterio.criterioId;
+                            submittedCriteriaIds.add(criterionId);
+
+                            if (!authorizedCriteriaIds.has(criterionId)) {
+                                unauthorizedCriteria.push(criterionId);
+                            }
+                        }
+                    }
+
+                    if (unauthorizedCriteria.length > 0) {
+                        throw new BadRequestException(
+                            `Critérios não autorizados para sua trilha (${userTrackId}): ${unauthorizedCriteria.join(', ')}`,
+                        );
+                    }
+                }
+
+                // Criar o registro de autoavaliação
+                await prisma.autoEvaluation.create({
+                    data: {
+                        evaluationId: evaluation.id,
+                    },
+                });
+
+                // Criar os critérios da autoavaliação
+                for (const pilar of autoavaliacao.pilares) {
+                    for (const criterio of pilar.criterios) {
+                        await prisma.autoEvaluationAssignment.create({
+                            data: {
+                                evaluationId: evaluation.id,
+                                criterionId: criterio.criterioId,
+                                score: criterio.nota,
+                                justification: criterio.justificativa,
+                            },
+                        });
+                    }
+                }
             }
 
-            // 2. Cria as avaliações 360 (PEER_360) usando o service
-            const peerEvaluations = await this.peer360EvaluationService.createPeer360Evaluations(
-                prisma,
-                avaliacao360,
-                colaboradorId,
-                cycleConfigId,
-            );
-            evaluations.push(...peerEvaluations);
+            // 2. Criar avaliações 360 associadas à Evaluation criada
+            if (avaliacao360 && avaliacao360.length > 0) {
+                for (const avaliacao of avaliacao360) {
+                    await prisma.evaluation360.create({
+                        data: {
+                            evaluationId: evaluation.id,
+                            evaluatedId: avaliacao.avaliadoId,
+                            strengths: avaliacao.pontosFortes ?? '',
+                            improvements: avaliacao.pontosMelhoria ?? '',
+                            score: avaliacao.score ?? 0,
+                        },
+                    });
+                }
+            }
 
-            // 3. Cria as avaliações de mentor usando o service
+            // 3. Criar mentoring associado à Evaluation criada
             if (mentoring && mentoring.mentorId && mentoring.justificativa) {
-                const mentorEvaluation = await this.mentorEvaluationService.createMentorEvaluation(
-                    prisma,
-                    mentoring.mentorId,
-                    colaboradorId,
-                    mentoring.justificativa,
-                    cycleConfigId,
-                );
-                evaluations.push(mentorEvaluation);
+                await prisma.mentoring.create({
+                    data: {
+                        evaluationId: evaluation.id,
+                        mentorId: mentoring.mentorId,
+                        justification: mentoring.justificativa,
+                        score: mentoring.score,
+                    },
+                });
             }
 
-            // 4. Cria as referências usando o service
-            await this.referenceService.createReferences(
-                prisma,
-                referencias,
-                colaboradorId,
-                cycleConfigId,
-            );
+            // 4. Criar referências associadas à Evaluation criada
+            if (referencias && referencias.length > 0) {
+                for (const referencia of referencias) {
+                    await prisma.reference.create({
+                        data: {
+                            evaluationId: evaluation.id,
+                            collaboratorId: referencia.colaboradorId,
+                            justification: referencia.justificativa,
+                        },
+                    });
+                }
+            }
 
             // Retorna a estrutura compatível com o formato anterior
-            return this.formatEvaluationResponse(evaluations, colaboradorId, cycleConfigId);
+            return this.formatEvaluationResponse([evaluation], colaboradorId, cycleConfigId);
         });
     }
 
@@ -90,7 +179,6 @@ export class EvaluationsService {
             where: { id },
             include: {
                 evaluator: true,
-                evaluatee: true,
                 autoEvaluation: true,
                 evaluation360: true,
                 mentoring: true,
@@ -105,9 +193,8 @@ export class EvaluationsService {
         return evaluation;
     }
 
-    async findWithFilters(evaluateeId?: number, evaluatorId?: number) {
+    async findWithFilters(evaluatorId?: number) {
         const where: any = {};
-        if (evaluateeId) where.evaluateeId = evaluateeId;
         if (evaluatorId) where.evaluatorId = evaluatorId;
         return this.prisma.evaluation.findMany({
             where,
@@ -117,7 +204,6 @@ export class EvaluationsService {
                 mentoring: true,
                 reference: true,
                 evaluator: true,
-                evaluatee: true,
             },
             orderBy: { createdAt: 'desc' },
         });

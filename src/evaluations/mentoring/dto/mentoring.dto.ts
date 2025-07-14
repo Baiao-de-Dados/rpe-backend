@@ -9,6 +9,10 @@ export class MentoringDto {
 
     @IsOptional()
     @IsNumber()
+    score?: number;
+
+    @IsOptional()
+    @IsNumber()
     leaderId?: number;
 
     @IsOptional()

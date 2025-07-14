@@ -340,6 +340,57 @@ async function main() {
         });
     }
 
+    // Criação de ciclo ativo customizado
+    console.log('🌀 Criando ciclo ativo customizado...');
+    const cicloAtivo = await prisma.cycleConfig.create({
+        data: {
+            name: 'Ciclo Customizado',
+            description: 'Ciclo ativo para testes customizados',
+            startDate: new Date(Date.now() - 1000 * 60 * 60 * 24), // ontem
+            endDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30), // +30 dias
+            done: false,
+        },
+    });
+
+    // Configuração customizada de critérios por ciclo/trilha/pilar
+    // Especificação do usuário:
+    const customConfig = [
+        {
+            trackId: 1, // Backend
+            pillars: [
+                {
+                    id: 1, // Pilar 1
+                    criteria: [
+                        { id: 4, weight: 10 },
+                        { id: 5, weight: 20 },
+                    ],
+                },
+                {
+                    id: 2, // Pilar 2
+                    criteria: [{ id: 6, weight: 30 }],
+                },
+            ],
+        },
+    ];
+
+    // Cria as configs de CriterionTrackCycleConfig
+    for (const track of customConfig) {
+        for (const pillar of track.pillars) {
+            for (const criterio of pillar.criteria) {
+                await prisma.criterionTrackCycleConfig.create({
+                    data: {
+                        cycleId: cicloAtivo.id,
+                        trackId: track.trackId,
+                        criterionId: criterio.id,
+                        weight: criterio.weight,
+                    },
+                });
+            }
+        }
+    }
+
+    console.log('✅ Ciclo ativo customizado criado!');
+
     console.log('✅ Seed concluído com sucesso!');
     console.log('\n📊 Resumo:');
     console.log('👥 Usuários:');

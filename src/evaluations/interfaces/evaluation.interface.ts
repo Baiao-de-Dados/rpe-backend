@@ -17,12 +17,12 @@ export interface Avaliacao360Dto {
     avaliadoId: number;
     pontosFortes?: string;
     pontosMelhoria?: string;
-    justificativa: string;
 }
 
 export interface MentoringDto {
     mentorId: number;
     justificativa: string;
+    score?: number;
     leaderId?: number;
     leaderJustificativa?: string;
 }

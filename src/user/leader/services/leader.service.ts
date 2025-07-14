@@ -175,7 +175,7 @@ export class LeaderService {
         // Buscar avaliações dos colaboradores
         const evaluations = await this.prisma.evaluation.findMany({
             where: {
-                evaluateeId: { in: collaboratorIds },
+                evaluatorId: { in: collaboratorIds },
                 cycleConfigId: { in: cycleIds },
             },
             include: {
@@ -183,25 +183,30 @@ export class LeaderService {
                     include: { assignments: true },
                 },
                 evaluation360: true,
+                mentoring: true,
+                reference: true,
+                evaluator: true,
             },
         });
 
-        // Mapear autoavaliações
+        // Mapear autoavaliações por colaborador e ciclo
         const autoEvalMap = new Map();
         for (const ev of evaluations) {
-            if (ev.evaluatorId === ev.evaluateeId && ev.autoEvaluation) {
-                const key = `${ev.evaluateeId}-${ev.cycleConfigId}`;
+            if (ev.autoEvaluation) {
+                // Só pega a mais recente por ciclo
+                const key = `${ev.evaluatorId}-${ev.cycleConfigId}`;
                 if (!autoEvalMap.has(key) || autoEvalMap.get(key).createdAt < ev.createdAt) {
                     autoEvalMap.set(key, ev);
                 }
             }
         }
 
-        // Mapear avaliações 360
+        // Mapear avaliações 360 por colaborador e ciclo
         const eval360Map = new Map();
         for (const ev of evaluations) {
-            if (ev.evaluatorId !== ev.evaluateeId && ev.evaluation360) {
-                const key = `${ev.evaluateeId}-${ev.cycleConfigId}`;
+            if (ev.evaluation360) {
+                // Só pega a mais recente por ciclo
+                const key = `${ev.evaluatorId}-${ev.cycleConfigId}`;
                 if (!eval360Map.has(key) || eval360Map.get(key).createdAt < ev.createdAt) {
                     eval360Map.set(key, ev);
                 }

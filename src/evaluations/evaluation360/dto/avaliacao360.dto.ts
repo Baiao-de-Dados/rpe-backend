@@ -1,17 +1,20 @@
-import { IsNumber, IsString, IsOptional } from 'class-validator';
+import { IsString, IsNumber, IsNotEmpty, Min, Max } from 'class-validator';
 
 export class Avaliacao360Dto {
     @IsNumber()
+    @IsNotEmpty()
     avaliadoId: number;
 
     @IsString()
-    @IsOptional()
-    pontosFortes?: string;
+    @IsNotEmpty()
+    pontosFortes: string;
 
     @IsString()
-    @IsOptional()
-    pontosMelhoria?: string;
+    @IsNotEmpty()
+    pontosMelhoria: string;
 
-    @IsString()
-    justificativa: string;
+    @IsNumber()
+    @Min(1)
+    @Max(5)
+    score: number;
 }

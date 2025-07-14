@@ -21,15 +21,21 @@ export class EqualizationService {
 
         const evaluation = await this.prisma.evaluation.findFirst({
             where: {
+                evaluatorId: collaboratorId,
                 cycleConfigId: cycleId,
-                evaluateeId: collaboratorId,
+            },
+            include: {
+                autoEvaluation: {
+                    include: { assignments: true },
+                },
+                evaluation360: true,
+                mentoring: true,
+                reference: true,
             },
         });
 
         if (!evaluation) {
-            throw new NotFoundException(
-                `Avaliação não encontrada para o ciclo ${cycleId} e colaborador ${collaboratorId}.`,
-            );
+            throw new NotFoundException('Avaliação não encontrada');
         }
 
         // Verifica se já existe uma equalização para esta avaliação
@@ -43,13 +49,16 @@ export class EqualizationService {
             );
         }
 
-        return this.prisma.equalization.create({
+        // Criar equalização
+        const equalization = await this.prisma.equalization.create({
             data: {
                 evaluationId: evaluation.id,
-                justification,
+                justification: justification,
                 score: rating,
             },
         });
+
+        return equalization;
     }
 
     async editEqualization(dto: SaveEqualizationDto) {
@@ -57,8 +66,8 @@ export class EqualizationService {
 
         const evaluation = await this.prisma.evaluation.findFirst({
             where: {
+                evaluatorId: collaboratorId,
                 cycleConfigId: cycleId,
-                evaluateeId: collaboratorId,
             },
         });
 
@@ -85,5 +94,23 @@ export class EqualizationService {
                 score: rating,
             },
         });
+    }
+
+    async getEqualization(collaboratorId: number, cycleId: number) {
+        const evaluation = await this.prisma.evaluation.findFirst({
+            where: {
+                evaluatorId: collaboratorId,
+                cycleConfigId: cycleId,
+            },
+            include: {
+                equalization: true,
+            },
+        });
+
+        if (!evaluation) {
+            throw new NotFoundException('Avaliação não encontrada');
+        }
+
+        return evaluation.equalization;
     }
 }

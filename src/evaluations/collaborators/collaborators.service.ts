@@ -5,28 +5,19 @@ import { PrismaService } from '../../prisma/prisma.service';
 export class CollaboratorsService {
     constructor(private readonly prisma: PrismaService) {}
 
-    async getCollaboratorsScores(cycleId?: number) {
+    async getCollaborators() {
         const collaborators = await this.prisma.user.findMany({
             include: {
                 track: true,
                 evaluator: {
-                    where: {
-                        status: 'COMPLETED',
-                        ...(cycleId ? { cycleConfigId: cycleId } : {}), // Filtra pelo ciclo, se fornecido
-                    },
                     include: {
                         autoEvaluation: {
-                            include: {
-                                assignments: {
-                                    include: {
-                                        criterion: true, // Inclui os critérios avaliados
-                                    },
-                                },
-                            },
+                            include: { assignments: true },
                         },
                         evaluation360: true,
                         mentoring: true,
                         reference: true,
+                        cycleConfig: true,
                     },
                 },
             },
@@ -34,189 +25,150 @@ export class CollaboratorsService {
 
         return collaborators.map((collaborator) => {
             const evaluations = collaborator.evaluator.map((evaluation) => {
-                const autoEvaluationScore =
-                    (evaluation.autoEvaluation?.assignments?.reduce((sum, a) => sum + a.score, 0) || 0) /
-                    (evaluation.autoEvaluation?.assignments?.length || 1);
-
                 return {
-                    cycleId: evaluation.cycleConfigId,
-                    track: evaluation.trackId || 'Não informado',
-                    autoEvaluationScore,
-                    evaluation360Score: evaluation.evaluation360?.score || null,
-                    mentoringScore: evaluation.mentoring?.score || null,
-                    finalEqualizationScore: evaluation.reference?.justification || null,
+                    id: evaluation.id,
+                    cycleConfigId: evaluation.cycleConfigId,
+                    createdAt: evaluation.createdAt,
+                    updatedAt: evaluation.updatedAt,
+                    autoEvaluation: evaluation.autoEvaluation,
+                    evaluation360: evaluation.evaluation360,
+                    mentoring: evaluation.mentoring,
+                    reference: evaluation.reference,
+                    cycleConfig: evaluation.cycleConfig,
                 };
             });
 
             return {
+                id: collaborator.id,
                 name: collaborator.name,
-                track: collaborator.track?.name || 'Não informado',
+                email: collaborator.email,
                 position: collaborator.position,
+                track: collaborator.track?.name || 'Não informado',
                 evaluations,
             };
         });
-    }
-
-    async getCollaboratorEvaluation(cycleId: number, collaboratorId: number, role: 'COMMITTEE' | 'MANAGER') {
-        const evaluations = await this.prisma.evaluation.findMany({
-            where: {
-                cycleConfigId: cycleId,
-                evaluateeId: collaboratorId,
-                status: 'COMPLETED',
-            },
-            include: {
-                autoEvaluation: {
-                    include: {
-                        assignments: {
-                            include: { criterion: true },
-                        },
-                    },
-                },
-                evaluation360: true,
-                mentoring: true,
-                reference: true,
-            },
-        });
-
-        if (!evaluations.length) {
-            throw new NotFoundException('Nenhuma avaliação encontrada para o colaborador no ciclo especificado.');
-        }
-
-        const response = {
-            selfAssessment: evaluations[0].autoEvaluation
-                ? {
-                      rating: evaluations[0].autoEvaluation.assignments.reduce((sum, a) => sum + a.score, 0) /
-                          evaluations[0].autoEvaluation.assignments.length,
-                      pillars: evaluations[0].autoEvaluation.assignments.map((assignment) => ({
-                          pillarName: `Pillar ${assignment.criterion.pillarId}`,
-                          criteria: [
-                              {
-                                  criteriaName: assignment.criterion.name,
-                                  rating: assignment.score,
-                                  justification: assignment.justification,
-                              },
-                          ],
-                      })),
-                  }
-                : null,
-            evaluation360: evaluations[0].evaluation360
-                ? {
-                      rating: evaluations[0].evaluation360.score,
-                      evaluation: [
-                          {
-                              collaratorName: evaluations[0].evaluatorId ? `Evaluator ${evaluations[0].evaluatorId}` : 'Unknown',
-                              collaboratorPosition: evaluations[0].evaluatorId ? 'Position not available' : 'Unknown',
-                              rating: evaluations[0].evaluation360.score,
-                              improvements: evaluations[0].evaluation360.improvements,
-                              strengths: evaluations[0].evaluation360.strengths,
-                          },
-                      ],
-                  }
-                : null,
-            reference: evaluations[0].reference
-                ? [
-                      {
-                          collaratorName: evaluations[0].evaluatorId ? `Evaluator ${evaluations[0].evaluatorId}` : 'Unknown',
-                          collaboratorPosition: evaluations[0].evaluatorId ? 'Position not available' : 'Unknown',
-                          justification: evaluations[0].reference.justification,
-                      },
-                  ]
-                : null,
-            managerEvaluation: role === 'MANAGER' && evaluations[0].mentoring
-                ? {
-                      rating: evaluations[0].mentoring.score,
-                      pillars: evaluations[0].autoEvaluation?.assignments.map((assignment) => ({
-                          pillarName: `Pillar ${assignment.criterion.pillarId}`,
-                          criteria: [
-                              {
-                                  criteriaName: assignment.criterion.name,
-                                  rating: assignment.score,
-                                  justification: assignment.justification,
-                              },
-                          ],
-                      })),
-                  }
-                : null,
-        };
-
-        return response;
     }
 
     async getCollaboratorEvaluations(collaboratorId: number) {
         const evaluations = await this.prisma.evaluation.findMany({
             where: {
                 evaluatorId: collaboratorId,
-                status: 'COMPLETED',
             },
             include: {
                 autoEvaluation: {
-                    include: {
-                        assignments: {
-                            include: { criterion: true },
-                        },
-                    },
+                    include: { assignments: true },
                 },
                 evaluation360: true,
                 mentoring: true,
                 reference: true,
                 cycleConfig: true,
-                evaluatee: {
-                    include: { mentor: true }, // Inclui o mentor do avaliado
-                },
             },
         });
 
-        if (!evaluations.length) {
-            throw new NotFoundException('Nenhuma avaliação encontrada para o colaborador especificado.');
+        if (evaluations.length === 0) {
+            throw new NotFoundException('Nenhuma avaliação encontrada para este colaborador');
         }
 
-        return evaluations.map((evaluation) => ({
-            cycleName: evaluation.cycleConfig.name,
-            selfAssessment: evaluation.autoEvaluation
+        return {
+            collaborator: {
+                id: collaboratorId,
+            },
+            selfAssessment: evaluations[0].autoEvaluation
                 ? {
-                      pillars: evaluation.autoEvaluation.assignments.map((assignment) => ({
-                          pillarName: `Pillar ${assignment.criterion.pillarId}`,
-                          criteria: [
-                              {
-                                  criteriaName: assignment.criterion.name,
-                                  rating: assignment.score,
-                                  weight: 20, // Ajuste conforme necessário
-                                  managerRating: 5, // Ajuste conforme necessário
-                                  justification: assignment.justification,
-                              },
-                          ],
+                      rating:
+                          evaluations[0].autoEvaluation.assignments.reduce(
+                              (sum, a) => sum + a.score,
+                              0,
+                          ) / evaluations[0].autoEvaluation.assignments.length,
+                      pillars: evaluations[0].autoEvaluation.assignments.map((assignment) => ({
+                          id: assignment.criterionId,
+                          score: assignment.score,
+                          justification: assignment.justification,
                       })),
                   }
                 : null,
-            evaluation360: evaluation.evaluation360
+            evaluation360:
+                evaluations[0].evaluation360 && evaluations[0].evaluation360.length > 0
+                    ? {
+                          rating: evaluations[0].evaluation360[0].score,
+                          strengths: evaluations[0].evaluation360[0].strengths,
+                          improvements: evaluations[0].evaluation360[0].improvements,
+                      }
+                    : null,
+            reference:
+                evaluations[0].reference && evaluations[0].reference.length > 0
+                    ? {
+                          justification: evaluations[0].reference[0].justification,
+                      }
+                    : null,
+            mentoring: evaluations[0].mentoring
                 ? {
-                      evaluation: [
-                          {
-                              collaratorName: `Evaluator ${evaluation.evaluatorId}`,
-                              collaboratorPosition: 'Position not available', // Ajuste conforme necessário
-                              rating: evaluation.evaluation360.score,
-                              improvements: evaluation.evaluation360.improvements,
-                              strengths: evaluation.evaluation360.strengths,
-                          },
-                      ],
+                      rating: evaluations[0].mentoring.score,
+                      pillars: evaluations[0].autoEvaluation?.assignments.map((assignment) => ({
+                          id: assignment.criterionId,
+                          score: assignment.score,
+                          justification: assignment.justification,
+                      })),
                   }
                 : null,
-            reference: evaluation.reference
-                ? [
-                      {
-                          collaratorName: `Evaluator ${evaluation.evaluatorId}`,
-                          collaboratorPosition: 'Position not available', // Ajuste conforme necessário
-                          justification: evaluation.reference.justification,
-                      },
-                  ]
-                : null,
-            mentoring: evaluation.mentoring
-                ? {
-                      rating: evaluation.mentoring.score,
-                      justification: evaluation.mentoring.justification,
-                      mentorName: evaluation.evaluatee.mentor?.name || 'Mentor não informado',
-                  }
-                : null,
-        }));
+        };
+    }
+
+    async getCollaboratorEvaluationHistory(collaboratorId: number) {
+        const evaluations = await this.prisma.evaluation.findMany({
+            where: {
+                evaluatorId: collaboratorId,
+            },
+            include: {
+                autoEvaluation: {
+                    include: { assignments: true },
+                },
+                evaluation360: true,
+                mentoring: true,
+                reference: true,
+                cycleConfig: true,
+            },
+        });
+
+        return evaluations.map((evaluation) => {
+            return {
+                id: evaluation.id,
+                cycleName: evaluation.cycleConfig.name,
+                selfAssessment: evaluation.autoEvaluation
+                    ? {
+                          rating:
+                              evaluation.autoEvaluation.assignments.reduce(
+                                  (sum, a) => sum + a.score,
+                                  0,
+                              ) / evaluation.autoEvaluation.assignments.length,
+                          pillars: evaluation.autoEvaluation.assignments.map((assignment) => ({
+                              id: assignment.criterionId,
+                              score: assignment.score,
+                              justification: assignment.justification,
+                          })),
+                      }
+                    : null,
+                evaluation360:
+                    evaluation.evaluation360 && evaluation.evaluation360.length > 0
+                        ? {
+                              rating: evaluation.evaluation360[0].score,
+                              strengths: evaluation.evaluation360[0].strengths,
+                              improvements: evaluation.evaluation360[0].improvements,
+                          }
+                        : null,
+                reference:
+                    evaluation.reference && evaluation.reference.length > 0
+                        ? {
+                              justification: evaluation.reference[0].justification,
+                          }
+                        : null,
+                mentoring: evaluation.mentoring
+                    ? {
+                          rating: evaluation.mentoring.score,
+                          justification: evaluation.mentoring.justification,
+                      }
+                    : null,
+            };
+        });
     }
 }

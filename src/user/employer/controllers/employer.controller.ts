@@ -72,7 +72,7 @@ export class EmployerController {
     ) {
         return this.service.submitMentoring(userId, cycleId, dto);
     }
-
+    /*
     @Post('evaluations/:cycleId/references')
     submitReferences(
         @Param('cycleId', ParseIntPipe) cycleId: number,
@@ -89,4 +89,5 @@ export class EmployerController {
     ) {
         return this.service.completeEvaluation(userId, cycleId);
     }
+        */
 }

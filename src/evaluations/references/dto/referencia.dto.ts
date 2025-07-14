@@ -1,4 +1,4 @@
-import { IsNumber, IsString } from 'class-validator';
+import { IsString, IsNumber } from 'class-validator';
 
 export class ReferenciaDto {
     @IsNumber()

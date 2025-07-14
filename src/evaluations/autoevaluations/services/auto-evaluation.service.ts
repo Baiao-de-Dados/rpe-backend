@@ -33,7 +33,7 @@ export class AutoEvaluationService {
             // Verificar se já existe uma autoavaliação para este usuário no ciclo
             const existingAutoEvaluation = await prisma.evaluation.findFirst({
                 where: {
-                    evaluateeId: colaboradorId,
+                    evaluatorId: colaboradorId,
                     cycleConfigId: activeCycle.id,
                     autoEvaluation: {
                         isNot: null,
@@ -73,7 +73,6 @@ export class AutoEvaluationService {
             const autoEvaluation = await prisma.evaluation.create({
                 data: {
                     evaluatorId: colaboradorId,
-                    evaluateeId: colaboradorId,
                     cycleConfigId: activeCycle.id,
                 },
             });

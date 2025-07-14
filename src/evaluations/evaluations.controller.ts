@@ -25,25 +25,22 @@ export class EvaluationsController {
     @Post()
     @ApiCreate('avaliação')
     create(@Body() createEvaluationDto: CreateEvaluationDto, @CurrentUser() user: any) {
-        return this.evaluationsService.createEvaluation(createEvaluationDto, user.trackId);
+        return this.evaluationsService.createEvaluation(createEvaluationDto, user);
     }
 
     @RequireRH()
     @Get()
     @ApiGet('avaliações')
-    findAll(
-        @Query('evaluateeId') evaluateeId?: number,
-        @Query('evaluatorId') evaluatorId?: number,
-    ) {
+    findAll(@Query('evaluatorId') evaluatorId?: number) {
         // Lógica unificada para filtros
-        return this.evaluationsService.findWithFilters(evaluateeId, evaluatorId);
+        return this.evaluationsService.findWithFilters(evaluatorId);
     }
 
     @RequireLeader()
     @Get('by-evaluator/:evaluatorId')
     @ApiGet('avaliações por avaliador')
     findByEvaluator(@Param('evaluatorId', ParseIntPipe) evaluatorId: number) {
-        return this.evaluationsService.findWithFilters(undefined, evaluatorId);
+        return this.evaluationsService.findWithFilters(evaluatorId);
     }
 
     @RequireEmployer()

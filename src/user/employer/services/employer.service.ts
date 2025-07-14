@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from '../../../prisma/prisma.service';
 import { AutoEvaluationDto } from '../dto/auto-evaluation.dto';
 import { Evaluation360Dto } from '../dto/evaluation-360.dto';
 import { MentoringDto } from '../dto/mentoring.dto';
@@ -10,17 +10,18 @@ export class EmployerService {
     constructor(private readonly prisma: PrismaService) {}
 
     async getDashboard(userId: number) {
-        const active = (await this.prisma.cycleConfig.findMany()).find(
-            (cycle) => !cycle.done && new Date() >= cycle.startDate && new Date() <= cycle.endDate,
-        );
-        if (!active) throw new NotFoundException('Nenhum ciclo ativo');
+        const active = await this.prisma.cycleConfig.findFirst({
+            where: {
+                done: false,
+                startDate: { lte: new Date() },
+                endDate: { gte: new Date() },
+            },
+        });
 
-        const daysRemaining = Math.ceil(
-            (active.endDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
-        );
+        if (!active) throw new NotFoundException('Ciclo ativo não encontrado');
 
         const pendingCount = await this.prisma.evaluation.count({
-            where: { evaluateeId: userId, cycleConfigId: active.id, status: 'PENDING' },
+            where: { evaluatorId: userId, cycleConfigId: active.id },
         });
 
         const lastCycle = await this.prisma.cycleConfig.findFirst({
@@ -28,91 +29,85 @@ export class EmployerService {
             orderBy: { endDate: 'desc' },
         });
 
-        let lastAvg: number | null = null;
+        let lastEvaluation: { average: number } | null = null;
         if (lastCycle) {
             const evalRecord = await this.prisma.evaluation.findFirst({
                 where: {
-                    evaluateeId: userId,
+                    evaluatorId: userId,
                     cycleConfigId: lastCycle.id,
                 },
             });
+
             if (evalRecord) {
-                const autoEval = await this.prisma.autoEvaluation.findUnique({
+                const autoEvaluation = await this.prisma.autoEvaluation.findUnique({
                     where: { evaluationId: evalRecord.id },
                     include: { assignments: true },
                 });
-                if (autoEval && autoEval.assignments.length > 0) {
-                    lastAvg =
-                        autoEval.assignments.reduce((sum, a) => sum + a.score, 0) /
-                        autoEval.assignments.length;
+
+                if (autoEvaluation && autoEvaluation.assignments.length > 0) {
+                    const average =
+                        autoEvaluation.assignments.reduce((sum, a) => sum + a.score, 0) /
+                        autoEvaluation.assignments.length;
+                    lastEvaluation = { average };
                 }
             }
         }
 
         return {
-            cycleName: active.name,
-            daysRemaining,
+            activeCycle: active,
             pendingCount,
-            lastCycleAvg: lastAvg,
+            lastEvaluation,
         };
     }
 
     async getEvolution(userId: number, cycleConfigId?: number) {
         const filter = cycleConfigId ? { id: cycleConfigId } : {};
-        const cycles = await this.prisma.cycleConfig.findMany({
-            where: filter,
-            orderBy: { startDate: 'asc' },
-        });
+        const cycles = await this.prisma.cycleConfig.findMany({ where: filter });
 
-        return Promise.all(
+        const evolution = await Promise.all(
             cycles.map(async (cycle) => {
-                let avg = 0;
                 const evalRecord = await this.prisma.evaluation.findFirst({
                     where: {
-                        evaluateeId: userId,
+                        evaluatorId: userId,
                         cycleConfigId: cycle.id,
-                        status: 'COMPLETED',
                     },
                 });
-                if (evalRecord) {
-                    const autoEval = await this.prisma.autoEvaluation.findUnique({
-                        where: { evaluationId: evalRecord.id },
-                        include: { assignments: true },
-                    });
-                    if (autoEval && autoEval.assignments.length > 0) {
-                        avg =
-                            autoEval.assignments.reduce((sum, a) => sum + a.score, 0) /
-                            autoEval.assignments.length;
-                    }
-                }
-                return { cycle: cycle.name, average: avg };
+
+                return {
+                    cycleId: cycle.id,
+                    cycleName: cycle.name,
+                    cycleStartDate: cycle.startDate,
+                    cycleEndDate: cycle.endDate,
+                    hasEvaluation: !!evalRecord,
+                };
             }),
         );
+
+        return evolution;
     }
 
     async findPendingEvaluations(userId: number, cycleConfigId?: number) {
         const active = cycleConfigId
             ? await this.prisma.cycleConfig.findUnique({ where: { id: cycleConfigId } })
-            : (await this.prisma.cycleConfig.findMany()).find(
-                  (cycle) =>
-                      !cycle.done && new Date() >= cycle.startDate && new Date() <= cycle.endDate,
-              );
+            : await this.prisma.cycleConfig.findFirst({
+                  where: {
+                      done: false,
+                      startDate: { lte: new Date() },
+                      endDate: { gte: new Date() },
+                  },
+              });
 
         if (!active) throw new NotFoundException('Ciclo não encontrado');
 
-        return this.prisma.evaluation.findMany({
+        // Buscar avaliações pendentes do usuário
+        const pendingEvaluations = await this.prisma.evaluation.findMany({
             where: {
-                evaluateeId: userId,
+                evaluatorId: userId,
                 cycleConfigId: active.id,
-                status: 'PENDING',
-            },
-            select: {
-                id: true,
-                status: true,
-                createdAt: true,
-                updatedAt: true,
             },
         });
+
+        return pendingEvaluations;
     }
 
     async getEvaluationData(userId: number, cycleConfigId: number) {
@@ -122,7 +117,7 @@ export class EmployerService {
         if (!cycle) throw new NotFoundException('Ciclo não existe');
 
         const evalRecord = await this.prisma.evaluation.findFirst({
-            where: { evaluateeId: userId, cycleConfigId },
+            where: { evaluatorId: userId, cycleConfigId },
         });
         if (!evalRecord) throw new NotFoundException('Avaliação não encontrada');
 
@@ -168,17 +163,15 @@ export class EmployerService {
     async submitAutoEvaluation(userId: number, cycleConfigId: number, dto: AutoEvaluationDto) {
         let evalRecord = await this.prisma.evaluation.findFirst({
             where: {
-                evaluateeId: userId,
+                evaluatorId: userId,
                 cycleConfigId,
             },
         });
         if (!evalRecord) {
             evalRecord = await this.prisma.evaluation.create({
                 data: {
-                    evaluateeId: userId,
                     evaluatorId: userId,
                     cycleConfigId,
-                    status: 'PENDING',
                 },
             });
             await this.prisma.autoEvaluation.create({
@@ -212,12 +205,7 @@ export class EmployerService {
             where: { evaluationId: evalRecord.id },
         });
 
-        const average = assignments.reduce((sum, a) => sum + a.score, 0) | assignments.length;
-
-        await this.prisma.evaluation.update({
-            where: { id: evalRecord.id },
-            data: { status: 'COMPLETED' },
-        });
+        const average = assignments.reduce((sum, a) => sum + a.score, 0) / assignments.length;
 
         return { evaluationId: evalRecord.id, average };
     }
@@ -228,18 +216,16 @@ export class EmployerService {
                 const evalRecord = await this.prisma.evaluation.create({
                     data: {
                         evaluatorId: userId,
-                        evaluateeId: r.evaluateeId,
                         cycleConfigId,
-                        status: 'COMPLETED',
                     },
                 });
                 return this.prisma.evaluation360.create({
                     data: {
                         evaluationId: evalRecord.id,
-                        justification: r.justification,
+                        evaluatedId: r.evaluateeId,
                         score: r.score,
-                        strengths: r.strenghts,
-                        improvements: r.improvements,
+                        strengths: r.strenghts ?? '',
+                        improvements: r.improvements ?? '',
                     },
                 });
             }),
@@ -251,14 +237,13 @@ export class EmployerService {
         const evalRecord = await this.prisma.evaluation.create({
             data: {
                 evaluatorId: userId,
-                evaluateeId: dto.menteeId,
                 cycleConfigId,
-                status: 'COMPLETED',
             },
         });
         return this.prisma.mentoring.create({
             data: {
                 evaluationId: evalRecord.id,
+                mentorId: dto.menteeId,
                 justification: dto.justification ?? '',
                 score: dto.score,
             },
@@ -271,14 +256,13 @@ export class EmployerService {
                 const evalRecord = await this.prisma.evaluation.create({
                     data: {
                         evaluatorId: userId,
-                        evaluateeId: r.evaluateeId,
                         cycleConfigId,
-                        status: 'COMPLETED',
                     },
                 });
                 return this.prisma.reference.create({
                     data: {
                         evaluationId: evalRecord.id,
+                        collaboratorId: r.evaluateeId,
                         justification: r.justification ?? '',
                     },
                 });
@@ -290,14 +274,12 @@ export class EmployerService {
     async completeEvaluation(userId: number, cycleConfigId: number) {
         const evalRecord = await this.prisma.evaluation.findFirst({
             where: {
-                evaluateeId: userId,
+                evaluatorId: userId,
                 cycleConfigId,
             },
         });
         if (!evalRecord) throw new NotFoundException('Avaliação não encontrada');
-        return this.prisma.evaluation.update({
-            where: { id: evalRecord.id },
-            data: { status: 'COMPLETED' },
-        });
+
+        return { message: 'Avaliação completada com sucesso' };
     }
 }

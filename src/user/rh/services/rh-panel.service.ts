@@ -4,7 +4,6 @@ import { RoleCompletionStatsDto } from '../dto/roles.dashboard.dto';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { DashboardStatsDto } from '../dto/dashboard-stats.dto';
-import { EvaluationStatus } from '@prisma/client';
 
 @Injectable()
 export class RhPanelService {
@@ -49,43 +48,51 @@ export class RhPanelService {
             where: { cycleConfigId: cycleConfig.id },
             include: {
                 evaluator: true,
-                evaluatee: true,
+                autoEvaluation: {
+                    include: { assignments: true },
+                },
+                evaluation360: true,
+                mentoring: true,
+                reference: true,
+                cycleConfig: true,
             },
             orderBy: { createdAt: 'desc' },
         });
 
         const totalEvaluations = evaluations.length;
         const completedEvaluations = evaluations.filter(
-            (evaluation) => evaluation.status === EvaluationStatus.COMPLETED,
-        ).length;
+            (evaluation) =>
+                evaluation.autoEvaluation ||
+                evaluation.evaluation360 ||
+                evaluation.mentoring ||
+                evaluation.reference,
+        );
 
-        const pendingEvaluations = totalEvaluations - completedEvaluations;
+        const pendingEvaluations = totalEvaluations - completedEvaluations.length;
         const completionPercentage =
-            totalEvaluations > 0 ? Math.round((completedEvaluations / totalEvaluations) * 100) : 0;
+            totalEvaluations > 0
+                ? Math.round((completedEvaluations.length / totalEvaluations) * 100)
+                : 0;
 
-        const autoEvaluationCount = evaluations.filter(
-            (evaluation) =>
-                evaluation.status === EvaluationStatus.COMPLETED &&
-                evaluation.evaluatorId === evaluation.evaluateeId,
+        const autoEvaluationCount = completedEvaluations.filter(
+            (evaluation) => evaluation.autoEvaluation,
         ).length;
 
-        const evaluation360Count = evaluations.filter(
-            (evaluation) =>
-                evaluation.status === EvaluationStatus.COMPLETED &&
-                evaluation.evaluatorId !== evaluation.evaluateeId,
+        const evaluation360Count = completedEvaluations.filter(
+            (evaluation) => evaluation.evaluation360,
         ).length;
 
         return {
             overall: {
                 totalEvaluations,
-                totalCompleted: completedEvaluations,
+                totalCompleted: completedEvaluations.length,
                 totalPending: pendingEvaluations,
                 completionPercentage,
             },
             cycle: {
                 CycleConfigId: cycleConfig.id,
                 totalEvaluations,
-                completedEvaluations,
+                completedEvaluations: completedEvaluations.length,
                 pendingEvaluations,
                 completionPercentage,
                 breakdown: {
@@ -116,25 +123,32 @@ export class RhPanelService {
 
         const evaluations = await this.prisma.evaluation.findMany({
             where: { cycleConfigId: cycleConfig.id },
-            include: { evaluatee: true },
+            include: {
+                evaluator: true,
+                autoEvaluation: true,
+                evaluation360: true,
+                mentoring: true,
+                reference: true,
+            },
             orderBy: { createdAt: 'desc' },
         });
 
         const collaboratorMap = new Map<number, any>();
         for (const ev of evaluations) {
-            const isCompleted = ev.status === EvaluationStatus.COMPLETED;
+            const isCompleted =
+                ev.autoEvaluation || ev.evaluation360 || ev.mentoring || ev.reference;
 
-            collaboratorMap.set(ev.evaluatee.id, {
-                id: ev.evaluatee.id,
-                name: ev.evaluatee.name || 'Sem nome',
-                email: ev.evaluatee.email,
+            collaboratorMap.set(ev.evaluator.id, {
+                id: ev.evaluator.id,
+                name: ev.evaluator.name || 'Sem nome',
+                email: ev.evaluator.email,
                 CycleConfigId: cycleConfig.id.toString(),
                 status: isCompleted ? 'finalizado' : 'pendente',
                 breakdown: {
-                    autoEvaluation: ev.evaluatorId === ev.evaluateeId && isCompleted,
-                    evaluation360: ev.evaluatorId !== ev.evaluateeId && isCompleted,
-                    mentoring: false, // Ajustar depois
-                    references: false,
+                    autoEvaluation: !!ev.autoEvaluation,
+                    evaluation360: !!ev.evaluation360,
+                    mentoring: !!ev.mentoring,
+                    references: !!ev.reference,
                 },
                 createdAt: ev.createdAt.toISOString(),
             });
@@ -169,12 +183,15 @@ export class RhPanelService {
         // Buscar APENAS a avaliação do usuário no ciclo ativo
         const evaluation = await this.prisma.evaluation.findFirst({
             where: {
-                evaluateeId: collaboratorId,
+                evaluatorId: collaboratorId,
                 cycleConfigId: cycleConfig.id,
             },
             include: {
                 evaluator: true,
-                evaluatee: true,
+                autoEvaluation: true,
+                evaluation360: true,
+                mentoring: true,
+                reference: true,
             },
         });
 
@@ -184,19 +201,23 @@ export class RhPanelService {
             );
         }
 
-        const isCompleted = evaluation.status === EvaluationStatus.COMPLETED;
+        const isCompleted =
+            evaluation.autoEvaluation ||
+            evaluation.evaluation360 ||
+            evaluation.mentoring ||
+            evaluation.reference;
 
         return {
-            id: evaluation.evaluatee.id,
-            name: evaluation.evaluatee.name || 'Sem nome',
-            email: evaluation.evaluatee.email,
+            id: evaluation.evaluator.id,
+            name: evaluation.evaluator.name || 'Sem nome',
+            email: evaluation.evaluator.email,
             CycleConfigId: evaluation.cycleConfigId.toString(),
             status: isCompleted ? ('finalizado' as const) : ('pendente' as const),
             breakdown: {
-                autoEvaluation: evaluation.evaluatorId === evaluation.evaluateeId && isCompleted,
-                evaluation360: evaluation.evaluatorId !== evaluation.evaluateeId && isCompleted,
-                mentoring: false,
-                references: false,
+                autoEvaluation: !!evaluation.autoEvaluation,
+                evaluation360: !!evaluation.evaluation360,
+                mentoring: !!evaluation.mentoring,
+                references: !!evaluation.reference,
             },
             createdAt: evaluation.createdAt.toISOString(),
         };
@@ -219,7 +240,7 @@ export class RhPanelService {
         const evaluations = await this.prisma.evaluation.findMany({
             where: { cycleConfigId: parseInt(targetCycle, 10) },
             include: {
-                evaluatee: {
+                evaluator: {
                     include: {
                         userRoles: {
                             where: { isActive: true },
@@ -227,17 +248,25 @@ export class RhPanelService {
                         },
                     },
                 },
+                autoEvaluation: true,
+                evaluation360: true,
+                mentoring: true,
+                reference: true,
             },
         });
 
         const roleStats = new Map<string, { total: number; completed: number; pending: number }>();
 
         evaluations.forEach((evaluation) => {
-            const userRoles = evaluation.evaluatee.userRoles.map((ur) => ur.role);
+            const userRoles = evaluation.evaluator.userRoles.map((ur) => ur.role);
 
             if (userRoles.length === 0) return;
 
-            const isCompleted = evaluation.status === EvaluationStatus.COMPLETED;
+            const isCompleted =
+                evaluation.autoEvaluation ||
+                evaluation.evaluation360 ||
+                evaluation.mentoring ||
+                evaluation.reference;
 
             userRoles.forEach((role) => {
                 const current = roleStats.get(role) || { total: 0, completed: 0, pending: 0 };
@@ -287,7 +316,7 @@ export class RhPanelService {
         const evaluations = await this.prisma.evaluation.findMany({
             where: { cycleConfigId: cycleConfig.id },
             include: {
-                evaluatee: {
+                evaluator: {
                     include: {
                         track: true,
                     },
@@ -302,7 +331,7 @@ export class RhPanelService {
         const trackStats = new Map<string, { total: number; completed: number; pending: number }>();
 
         evaluations.forEach((evaluation) => {
-            const trackName = evaluation.evaluatee.track?.name || 'Sem trilha';
+            const trackName = evaluation.evaluator.track?.name || 'Sem trilha';
             const isCompleted =
                 evaluation.autoEvaluation ||
                 evaluation.evaluation360 ||

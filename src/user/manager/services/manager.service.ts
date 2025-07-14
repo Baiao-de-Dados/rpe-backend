@@ -644,9 +644,8 @@ export class ManagerService {
         // Buscar avaliações padrão já preenchidas (status COMPLETED)
         const filled = await this.prisma.evaluation.count({
             where: {
-                evaluateeId: { in: collaboratorIds },
+                evaluatorId: { in: collaboratorIds },
                 cycleConfigId: { in: cycleIds },
-                status: 'COMPLETED',
             },
         });
         const percentage = Math.round((filled / totalExpected) * 100);
@@ -672,12 +671,11 @@ export class ManagerService {
         // Total esperado de avaliações: para cada colaborador em cada ciclo ativo
         const totalExpected = collaboratorIds.length * cycleIds.length;
         if (totalExpected === 0) return { missing: 0 };
-        // Buscar avaliações padrão já preenchidas (status COMPLETED)
+        // Buscar avaliações padrão já preenchidas
         const filled = await this.prisma.evaluation.count({
             where: {
-                evaluateeId: { in: collaboratorIds },
+                evaluatorId: { in: collaboratorIds },
                 cycleConfigId: { in: cycleIds },
-                status: 'COMPLETED',
             },
         });
         return { missing: totalExpected - filled };
@@ -785,7 +783,7 @@ export class ManagerService {
         const cycleIds = activeCycles.map((c) => c.id);
         const evaluation = await this.prisma.evaluation.findFirst({
             where: {
-                evaluateeId: userId,
+                evaluatorId: userId,
                 cycleConfigId: { in: cycleIds },
             },
             orderBy: { createdAt: 'desc' },
@@ -855,7 +853,7 @@ export class ManagerService {
         // Buscar avaliações em lote
         const autoEvaluations = await this.prisma.evaluation.findMany({
             where: {
-                evaluateeId: { in: collaboratorIds },
+                evaluatorId: { in: collaboratorIds },
                 cycleConfigId: { in: cycleIds },
             },
             include: {
@@ -864,12 +862,12 @@ export class ManagerService {
                 },
             },
         });
-        // Como o campo evaluatorId == evaluateeId para autoavaliação, vamos filtrar manualmente
+        // Mapear autoavaliações por colaborador e ciclo
         const autoEvalMap = new Map();
         for (const ev of autoEvaluations) {
-            if (ev.evaluatorId === ev.evaluateeId && ev.autoEvaluation) {
+            if (ev.autoEvaluation) {
                 // Só pega a mais recente por ciclo
-                const key = `${ev.evaluateeId}-${ev.cycleConfigId}`;
+                const key = `${ev.evaluatorId}-${ev.cycleConfigId}`;
                 if (!autoEvalMap.has(key) || autoEvalMap.get(key).createdAt < ev.createdAt) {
                     autoEvalMap.set(key, ev);
                 }
@@ -1007,7 +1005,7 @@ export class ManagerService {
         // Buscar avaliações em lote
         const evaluations = await this.prisma.evaluation.findMany({
             where: {
-                evaluateeId: { in: collaboratorIds },
+                evaluatorId: { in: collaboratorIds },
                 cycleConfigId: { in: cycles.map((c) => c.id) },
             },
             include: {
@@ -1017,6 +1015,7 @@ export class ManagerService {
                 evaluation360: true,
                 mentoring: true,
                 reference: true,
+                evaluator: true,
                 cycleConfig: true,
             },
         });
@@ -1032,7 +1031,7 @@ export class ManagerService {
         for (const collaborator of collaborators) {
             for (const cycle of cycles) {
                 const evaluation = evaluations.find(
-                    (ev) => ev.evaluateeId === collaborator.id && ev.cycleConfigId === cycle.id,
+                    (ev) => ev.evaluatorId === collaborator.id && ev.cycleConfigId === cycle.id,
                 );
                 const leaderEval = leaderEvaluations.find(
                     (le) => le.collaboratorId === collaborator.id && le.cycleId === cycle.id,
