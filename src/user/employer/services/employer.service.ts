@@ -11,13 +11,18 @@ export class EmployerService {
 
     async getDashboard(userId: number) {
         const active = (await this.prisma.cycleConfig.findMany()).find(
-            (cycle) => !cycle.done && new Date() >= cycle.startDate && new Date() <= cycle.endDate,
+            (cycle) =>
+                !cycle.done &&
+                cycle.startDate !== null &&
+                cycle.endDate !== null &&
+                new Date() >= cycle.startDate &&
+                new Date() <= cycle.endDate,
         );
         if (!active) throw new NotFoundException('Nenhum ciclo ativo');
 
-        const daysRemaining = Math.ceil(
-            (active.endDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
-        );
+        const daysRemaining = active.endDate
+            ? Math.ceil((active.endDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+            : null;
 
         const pendingCount = await this.prisma.evaluation.count({
             where: { evaluateeId: userId, cycleConfigId: active.id, status: 'PENDING' },
@@ -95,7 +100,11 @@ export class EmployerService {
             ? await this.prisma.cycleConfig.findUnique({ where: { id: cycleConfigId } })
             : (await this.prisma.cycleConfig.findMany()).find(
                   (cycle) =>
-                      !cycle.done && new Date() >= cycle.startDate && new Date() <= cycle.endDate,
+                      !cycle.done &&
+                      cycle.startDate !== null &&
+                      cycle.endDate !== null &&
+                      new Date() >= cycle.startDate &&
+                      new Date() <= cycle.endDate,
               );
 
         if (!active) throw new NotFoundException('Ciclo não encontrado');

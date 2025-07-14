@@ -19,7 +19,6 @@ export class CycleConfigController {
     @RequireRH()
     @ApiCreate('ciclo de avaliação')
     async create(@Body() createCycleConfigDto: CreateCycleConfigDto) {
-        // await this.cycleConfigService.validateCycleNotActive();
         return this.cycleConfigService.create(createCycleConfigDto);
     }
 

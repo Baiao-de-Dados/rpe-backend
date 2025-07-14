@@ -108,7 +108,12 @@ export class RhPanelService {
                 select: { id: true, name: true, startDate: true, endDate: true, done: true },
             })
         ).find(
-            (cycle) => !cycle.done && new Date() >= cycle.startDate && new Date() <= cycle.endDate,
+            (cycle) =>
+                !cycle.done &&
+                cycle.startDate !== null &&
+                cycle.endDate !== null &&
+                new Date() >= cycle.startDate &&
+                new Date() <= cycle.endDate,
         );
         if (!cycleConfig) {
             throw new NotFoundException('Nenhum ciclo ativo encontrado');
@@ -160,7 +165,12 @@ export class RhPanelService {
                 select: { id: true, name: true, startDate: true, endDate: true, done: true },
             })
         ).find(
-            (cycle) => !cycle.done && new Date() >= cycle.startDate && new Date() <= cycle.endDate,
+            (cycle) =>
+                !cycle.done &&
+                cycle.startDate !== null &&
+                cycle.endDate !== null &&
+                new Date() >= cycle.startDate &&
+                new Date() <= cycle.endDate,
         );
         if (!cycleConfig) {
             throw new NotFoundException('Nenhum ciclo ativo encontrado');
@@ -277,7 +287,12 @@ export class RhPanelService {
                 select: { id: true, name: true, startDate: true, endDate: true, done: true },
             })
         ).find(
-            (cycle) => !cycle.done && new Date() >= cycle.startDate && new Date() <= cycle.endDate,
+            (cycle) =>
+                !cycle.done &&
+                cycle.startDate !== null &&
+                cycle.endDate !== null &&
+                new Date() >= cycle.startDate &&
+                new Date() <= cycle.endDate,
         );
         if (!cycleConfig) {
             throw new NotFoundException('Nenhum ciclo ativo encontrado');

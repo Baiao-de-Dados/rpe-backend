@@ -287,7 +287,11 @@ export class CriteriaService {
 
         // Buscar o ciclo ativo
         const activeCycle = (await this.prisma.cycleConfig.findMany()).find(
-            (cycle) => cycle.startDate <= new Date() && cycle.endDate >= new Date(),
+            (cycle) =>
+                cycle.startDate !== null &&
+                cycle.endDate !== null &&
+                cycle.startDate <= new Date() &&
+                cycle.endDate >= new Date(),
         );
 
         if (!activeCycle) {

@@ -53,7 +53,11 @@ export class AutoEvaluationService {
             // Verificar se o ciclo enviado corresponde ao ciclo ativo
             const currentActiveCycle = (await prisma.cycleConfig.findMany()).find(
                 (cycle) =>
-                    !cycle.done && new Date() >= cycle.startDate && new Date() <= cycle.endDate,
+                    !cycle.done &&
+                    cycle.startDate !== null &&
+                    cycle.endDate !== null &&
+                    new Date() >= cycle.startDate &&
+                    new Date() <= cycle.endDate,
             );
 
             if (currentActiveCycle && cycleConfigId !== currentActiveCycle.id) {
@@ -117,7 +121,12 @@ export class AutoEvaluationService {
     ): Promise<void> {
         // Buscar configurações de critério para a trilha do usuário no ciclo ativo
         const activeCycle = (await prisma.cycleConfig.findMany()).find(
-            (cycle) => !cycle.done && new Date() >= cycle.startDate && new Date() <= cycle.endDate,
+            (cycle) =>
+                !cycle.done &&
+                cycle.startDate !== null &&
+                cycle.endDate !== null &&
+                new Date() >= cycle.startDate &&
+                new Date() <= cycle.endDate,
         );
 
         if (!activeCycle) {
@@ -199,7 +208,12 @@ export class AutoEvaluationService {
     ): Promise<void> {
         // 1. Verificar se existe um ciclo ativo
         const activeCycle = (await prisma.cycleConfig.findMany()).find(
-            (cycle) => !cycle.done && new Date() >= cycle.startDate && new Date() <= cycle.endDate,
+            (cycle) =>
+                !cycle.done &&
+                cycle.startDate !== null &&
+                cycle.endDate !== null &&
+                new Date() >= cycle.startDate &&
+                new Date() <= cycle.endDate,
         );
 
         if (!activeCycle) {
@@ -208,15 +222,15 @@ export class AutoEvaluationService {
 
         // 2. Verificar se o ciclo está dentro do prazo
         const now = new Date();
-        if (now > activeCycle.endDate) {
+        if (!activeCycle.endDate || now > activeCycle.endDate) {
             throw new BadRequestException(
-                `O ciclo ${activeCycle.name} expirou em ${activeCycle.endDate.toLocaleDateString()}`,
+                `O ciclo ${activeCycle.name} expirou em ${activeCycle.endDate ? activeCycle.endDate.toLocaleDateString() : 'data indefinida'}`,
             );
         }
 
-        if (now < activeCycle.startDate) {
+        if (!activeCycle.startDate || now < activeCycle.startDate) {
             throw new BadRequestException(
-                `O ciclo ${activeCycle.name} ainda não começou. Início previsto para ${activeCycle.startDate.toLocaleDateString()}`,
+                `O ciclo ${activeCycle.name} ainda não começou. Início previsto para ${activeCycle.startDate ? activeCycle.startDate.toLocaleDateString() : 'data indefinida'}`,
             );
         }
 
