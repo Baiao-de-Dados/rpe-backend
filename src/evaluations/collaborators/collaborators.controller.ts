@@ -1,6 +1,7 @@
-import { Controller, Get, Param, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Param, ParseIntPipe, Query } from '@nestjs/common';
 import { ApiTags, ApiQuery, ApiParam } from '@nestjs/swagger';
 import { CollaboratorsService } from './collaborators.service';
+import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 
 @ApiTags('Colaboradores')
 @Controller('collaborators')
