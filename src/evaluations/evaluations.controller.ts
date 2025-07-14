@@ -21,7 +21,6 @@ export class EvaluationsController {
     ) {}
 
     @RequireEmployer()
-    @RequireLeader()
     @Post()
     @ApiCreate('avaliação')
     create(@Body() createEvaluationDto: CreateEvaluationDto, @CurrentUser() user: any) {

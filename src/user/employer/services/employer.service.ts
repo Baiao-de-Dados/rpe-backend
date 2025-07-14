@@ -313,6 +313,7 @@ export class EmployerService {
             id: evaluation.id,
             cycleConfigId: evaluation.cycleConfigId,
             userId: evaluation.evaluatorId,
+            sentDate: evaluation.createdAt,
             user: evaluation.evaluator
                 ? {
                       id: evaluation.evaluator.id,
