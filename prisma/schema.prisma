@@ -158,7 +158,7 @@ model Evaluation {
 model AutoEvaluation {
   evaluationId Int        @id
   evaluation   Evaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
-
+  rating Float?
   assignments AutoEvaluationAssignment[]
 }
 

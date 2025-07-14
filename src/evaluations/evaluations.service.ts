@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+    Injectable,
+    NotFoundException,
+    BadRequestException,
+    ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateEvaluationDto } from './dto/create-evaluation.dto';
 import { EvaluationValidationService } from './services/evaluation-validation.service';
@@ -32,11 +37,22 @@ export class EvaluationsService {
             referencias,
         } = createEvaluationDto;
 
+        // Garante que só pode criar avaliação para si mesmo
+        if (colaboradorId !== user.sub && colaboradorId !== user.id) {
+            throw new ForbiddenException('Você só pode criar avaliações para você mesmo.');
+        }
+
         // Extrair o trackId corretamente
         const userTrackId = user.trackId ?? user.track?.id;
 
         // VALIDAÇÕES PRÉVIAS - Usando o service de validação
         await this.validationService.validateEvaluationData(createEvaluationDto);
+
+        // Buscar o usuário para obter o trackId
+        const userDb = await this.prisma.user.findUnique({
+            where: { id: colaboradorId },
+        });
+        if (!userDb) throw new NotFoundException('Usuário não encontrado');
 
         // Usar transação para garantir atomicidade
         return await this.prisma.$transaction(async (prisma: PrismaClient) => {
@@ -45,6 +61,7 @@ export class EvaluationsService {
                 data: {
                     evaluatorId: colaboradorId,
                     cycleConfigId: cycleConfigId,
+                    trackId: userDb.trackId,
                 },
             });
 
@@ -127,6 +144,31 @@ export class EvaluationsService {
                         });
                     }
                 }
+
+                // Calcular e atualizar o rating da autoavaliação
+                // Buscar assignments e pesos dos critérios para a trilha/ciclo
+                const assignments = await prisma.autoEvaluationAssignment.findMany({
+                    where: { evaluationId: evaluation.id },
+                });
+                const trackId = userTrackId;
+                const cycleId = cycleConfigId;
+                const weights = await prisma.criterionTrackCycleConfig.findMany({
+                    where: { trackId, cycleId },
+                });
+                const weightMap = new Map(weights.map((w) => [w.criterionId, w.weight]));
+                let total = 0;
+                let totalWeight = 0;
+                for (const a of assignments) {
+                    const weight = weightMap.get(a.criterionId) ?? 1;
+                    total += a.score * weight;
+                    totalWeight += weight;
+                }
+                const ratingRaw = totalWeight > 0 ? total / totalWeight : 0;
+                const rating = Math.round(ratingRaw * 10) / 10;
+                await prisma.autoEvaluation.update({
+                    where: { evaluationId: evaluation.id },
+                    data: { rating },
+                });
             }
 
             // 2. Criar avaliações 360 associadas à Evaluation criada
@@ -169,8 +211,67 @@ export class EvaluationsService {
                 }
             }
 
-            // Retorna a estrutura compatível com o formato anterior
-            return this.formatEvaluationResponse([evaluation], colaboradorId, cycleConfigId);
+            // Retorna a estrutura completa com todos os relacionamentos populados (dentro da transação)
+            const evaluationWithRelations = await prisma.evaluation.findUnique({
+                where: { id: evaluation.id },
+                include: {
+                    evaluator: {
+                        include: { track: true },
+                    },
+                    autoEvaluation: {
+                        include: {
+                            assignments: {
+                                include: { criterion: true },
+                            },
+                        },
+                    },
+                    evaluation360: true,
+                    mentoring: true,
+                    reference: true,
+                },
+            });
+
+            if (!evaluationWithRelations) {
+                throw new NotFoundException('Erro ao buscar avaliação recém-criada');
+            }
+
+            return {
+                id: evaluationWithRelations.id,
+                cycleConfigId: evaluationWithRelations.cycleConfigId,
+                userId: evaluationWithRelations.evaluatorId,
+                grade: 0, // Calcule se desejar
+                user: evaluationWithRelations.evaluator
+                    ? {
+                          id: evaluationWithRelations.evaluator.id,
+                          name: evaluationWithRelations.evaluator.name,
+                          track: evaluationWithRelations.evaluator.track?.name ?? null,
+                      }
+                    : null,
+                autoEvaluation: evaluationWithRelations.autoEvaluation
+                    ? {
+                          pilares: this.formatAutoEvaluationPilares(
+                              evaluationWithRelations.autoEvaluation.assignments,
+                          ),
+                      }
+                    : null,
+                evaluation360: evaluationWithRelations.evaluation360.map((ev) => ({
+                    avaliadoId: ev.evaluatedId,
+                    pontosFortes: ev.strengths,
+                    pontosMelhoria: ev.improvements,
+                    score: ev.score,
+                })),
+                mentoring: evaluationWithRelations.mentoring
+                    ? {
+                          mentorId: evaluationWithRelations.mentoring.mentorId,
+                          justificativa: evaluationWithRelations.mentoring.justification,
+                          score: evaluationWithRelations.mentoring.score,
+                      }
+                    : null,
+                reference: evaluationWithRelations.reference.map((ref) => ({
+                    colaboradorId: ref.collaboratorId,
+                    justificativa: ref.justification,
+                })),
+            };
         });
     }
 
@@ -348,5 +449,24 @@ export class EvaluationsService {
             },
             pilares: Array.from(pilaresMap.values()),
         };
+    }
+
+    // Função auxiliar para formatar pilares da autoavaliação
+    private formatAutoEvaluationPilares(assignments: any[]) {
+        const pilaresMap = new Map();
+        for (const a of assignments) {
+            if (!pilaresMap.has(a.criterion.pillarId)) {
+                pilaresMap.set(a.criterion.pillarId, {
+                    pilarId: a.criterion.pillarId,
+                    criterios: [],
+                });
+            }
+            pilaresMap.get(a.criterion.pillarId).criterios.push({
+                criterioId: a.criterionId,
+                nota: a.score,
+                justificativa: a.justification,
+            });
+        }
+        return Array.from(pilaresMap.values());
     }
 }

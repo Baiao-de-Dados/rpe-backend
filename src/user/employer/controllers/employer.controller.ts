@@ -8,9 +8,9 @@ import { FiltersDto } from '../dto/filters.dto';
 import { AutoEvaluationDto } from '../dto/auto-evaluation.dto';
 import { Evaluation360Dto } from '../dto/evaluation-360.dto';
 import { MentoringDto } from '../dto/mentoring.dto';
-import { ReferenceDto } from '../dto/references.dto';
 import { ApiBody } from '@nestjs/swagger';
 import { exampleAutoEvaluation } from 'src/common/decorators/post-bodies.examples';
+import { ReferenceDto } from '../dto/references.dto';
 
 @ApiTags('Colaborador')
 @ApiAuth()
@@ -72,7 +72,7 @@ export class EmployerController {
     ) {
         return this.service.submitMentoring(userId, cycleId, dto);
     }
-    /*
+
     @Post('evaluations/:cycleId/references')
     submitReferences(
         @Param('cycleId', ParseIntPipe) cycleId: number,
@@ -89,5 +89,4 @@ export class EmployerController {
     ) {
         return this.service.completeEvaluation(userId, cycleId);
     }
-        */
 }
