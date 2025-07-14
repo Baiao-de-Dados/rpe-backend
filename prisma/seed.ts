@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
-import { getBrazilDate } from 'src/cycles/utils';
+import { getBrazilDate } from '../src/cycles/utils';
 
 const prisma = new PrismaClient();
 

@@ -12,6 +12,7 @@ import { CycleConfigModule } from '../cycles/cycle-config.module';
 import { AutoEvaluationModule } from './autoevaluations/autoevaluations.module';
 import { CollaboratorsService } from './collaborators/collaborators.service';
 import { LogModule } from 'src/log/log.module';
+import { EvaluationDraftService } from './services/evaluation-draft.service';
 
 @Module({
     imports: [
@@ -30,6 +31,7 @@ import { LogModule } from 'src/log/log.module';
         EvaluationValidationService,
         CycleValidationService,
         CollaboratorsService,
+        EvaluationDraftService,
     ],
     exports: [forwardRef(() => AutoEvaluationModule), CycleValidationService, CollaboratorsService],
 })
