@@ -1,36 +1,300 @@
 {
   "users": [
     {
-      "email": "maria@rocket.com",
-      "name": "Maria Silva",
+      "email": "vitor.gabriel@rocketcorp.com",
+      "name": "Vitor Gabriel",
       "track": "Backend",
-      "primaryRole": "COLLABORATOR",
-      "position": "Dev Senior",
-      "mentorEmail": "joao@rocket.com"
+      "primaryRole": "EMPLOYER",
+      "position": "BUSINESSMAN",
+      "mentorEmail": "luiza.carvalho@rocketcorp.com"
     },
     {
-      "email": "joao@rocket.com",
-      "name": "João Souza",
-      "track": "DevOps",
-      "primaryRole": "LEADER",
-      "position": "Tech Lead",
-      "mentorEmail": "ana@rocket.com"
+      "email": "yuri.da@rocketcorp.com",
+      "name": "Yuri Da",
+      "track": "Backend",
+      "primaryRole": "EMPLOYER",
+      "position": "BUSINESSMAN",
+      "mentorEmail": "luiza.carvalho@rocketcorp.com"
     },
     {
-      "email": "ana@rocket.com",
-      "name": "Ana Costa",
-      "track": "Project Management",
+      "email": "valentina.martins@rocketcorp.com",
+      "name": "Valentina Martins",
+      "track": "Design",
+      "primaryRole": "EMPLOYER",
+      "position": "DESIGNER",
+      "mentorEmail": "lorenzo.cunha@rocketcorp.com"
+    },
+    {
+      "email": "luiza.carvalho@rocketcorp.com",
+      "name": "Luiza Carvalho",
+      "track": "Management",
       "primaryRole": "MANAGER",
-      "position": "Project Manager",
-      "mentorEmail": "carlos@rocket.com"
+      "position": "BUSINESSMAN",
+      "mentorEmail": "lorenzo.cunha@rocketcorp.com"
     },
     {
-      "email": "carlos@rocket.com",
-      "name": "Carlos Pereira",
-      "track": "Frontend",
-      "primaryRole": "COLLABORATOR",
-      "position": "UI Engineer",
-      "mentorEmail": "joao@rocket.com"
+      "email": "lorenzo.cunha@rocketcorp.com",
+      "name": "Lorenzo Cunha",
+      "track": "Design",
+      "primaryRole": "EMPLOYER",
+      "position": "DESIGNER",
+      "mentorEmail": "levi.teixeira@rocketcorp.com"
+    },
+    {
+      "email": "levi.teixeira@rocketcorp.com",
+      "name": "Levi Teixeira",
+      "track": "Mentorship",
+      "primaryRole": "MENTOR",
+      "position": "MENTOR",
+      "mentorEmail": "laura.barros@rocketcorp.com"
+    },
+    {
+      "email": "laura.barros@rocketcorp.com",
+      "name": "Laura Barros",
+      "track": "Architecture",
+      "primaryRole": "MENTOR",
+      "position": "ARCHITECT",
+      "mentorEmail": "pietra.aragao@rocketcorp.com"
+    },
+    {
+      "email": "pietra.aragao@rocketcorp.com",
+      "name": "Pietra Aragão",
+      "track": "Development",
+      "primaryRole": "EMPLOYER",
+      "position": "DEVELOPER",
+      "mentorEmail": "maria.vitoria@rocketcorp.com"
+    },
+    {
+      "email": "maria.vitoria@rocketcorp.com",
+      "name": "Maria Vitória",
+      "track": "Leadership",
+      "primaryRole": "LEADER",
+      "position": "LEADER",
+      "mentorEmail": "samuel.jesus@rocketcorp.com"
+    },
+    {
+      "email": "samuel.jesus@rocketcorp.com",
+      "name": "Samuel Jesus",
+      "track": "Development",
+      "primaryRole": "LEADER",
+      "position": "DEVELOPER",
+      "mentorEmail": "dra.joana@rocketcorp.com"
+    },
+    {
+      "email": "dra.joana@rocketcorp.com",
+      "name": "Dra Joana",
+      "track": "Business",
+      "primaryRole": "EMPLOYER",
+      "position": "BUSINESSMAN",
+      "mentorEmail": "luiza.carvalho@rocketcorp.com"
+    },
+    {
+      "email": "bryan.dias@rocketcorp.com",
+      "name": "Bryan Dias",
+      "track": "Management",
+      "primaryRole": "LEADER",
+      "position": "MANAGER",
+      "mentorEmail": "lorenzo.cunha@rocketcorp.com"
+    },
+    {
+      "email": "emanuel.la.farias@rocketcorp.com",
+      "name": "Emanuella Farias",
+      "track": "Design",
+      "primaryRole": "EMPLOYER",
+      "position": "DESIGNER",
+      "mentorEmail": "valentina.martins@rocketcorp.com"
+    },
+    {
+      "email": "davi.lucas@rocketcorp.com",
+      "name": "Davi Lucas",
+      "track": "Development",
+      "primaryRole": "EMPLOYER",
+      "position": "DEVELOPER",
+      "mentorEmail": "lucas.gabriel@rocketcorp.com"
+    },
+    {
+      "email": "lucas.gabriel@rocketcorp.com",
+      "name": "Lucas Gabriel",
+      "track": "Development",
+      "primaryRole": "EMPLOYER",
+      "position": "DEVELOPER",
+      "mentorEmail": "leandro.moreira@rocketcorp.com"
+    },
+    {
+      "email": "pietra.fernandes@rocketcorp.com",
+      "name": "Pietra Fernandes",
+      "track": "Design",
+      "primaryRole": "EMPLOYER",
+      "position": "DESIGNER",
+      "mentorEmail": "valentina.barbosa@rocketcorp.com"
+    },
+    {
+      "email": "valentina.barbosa@rocketcorp.com",
+      "name": "Valentina Barbosa",
+      "track": "Design",
+      "primaryRole": "EMPLOYER",
+      "position": "DESIGNER",
+      "mentorEmail": "lorenzo.cunha@rocketcorp.com"
+    },
+    {
+      "email": "nicolas.farias@rocketcorp.com",
+      "name": "Nicolas Farias",
+      "track": "Development",
+      "primaryRole": "EMPLOYER",
+      "position": "DEVELOPER",
+      "mentorEmail": "camila.silveira@rocketcorp.com"
+    },
+    {
+      "email": "leandro.moreira@rocketcorp.com",
+      "name": "Leandro Moreira",
+      "track": "Development",
+      "primaryRole": "LEADER",
+      "position": "DEVELOPER",
+      "mentorEmail": "kaique.rodrigues@rocketcorp.com"
+    },
+    {
+      "email": "lais.da@rocketcorp.com",
+      "name": "Laís Da",
+      "track": "Management",
+      "primaryRole": "MANAGER",
+      "position": "MANAGER",
+      "mentorEmail": "luiza.carvalho@rocketcorp.com"
+    },
+    {
+      "email": "joao.felipe@rocketcorp.com",
+      "name": "João Felipe",
+      "track": "Development",
+      "primaryRole": "EMPLOYER",
+      "position": "DEVELOPER",
+      "mentorEmail": "nathan.ferreira@rocketcorp.com"
+    },
+    {
+      "email": "ian.fernandes@rocketcorp.com",
+      "name": "Ian Fernandes",
+      "track": "Architecture",
+      "primaryRole": "EMPLOYER",
+      "position": "ARCHITECT",
+      "mentorEmail": "laura.barros@rocketcorp.com"
+    },
+    {
+      "email": "camila.silveira@rocketcorp.com",
+      "name": "Camila Silveira",
+      "track": "Development",
+      "primaryRole": "LEADER",
+      "position": "DEVELOPER",
+      "mentorEmail": "leandro.moreira@rocketcorp.com"
+    },
+    {
+      "email": "ana.da@rocketcorp.com",
+      "name": "Ana Da",
+      "track": "Development",
+      "primaryRole": "EMPLOYER",
+      "position": "DEVELOPER",
+      "mentorEmail": "lucas.gabriel@rocketcorp.com"
+    },
+    {
+      "email": "luiz.fernando@rocketcorp.com",
+      "name": "Luiz Fernando",
+      "track": "Leadership",
+      "primaryRole": "LEADER",
+      "position": "LEADER",
+      "mentorEmail": "kaique.rodrigues@rocketcorp.com"
+    },
+    {
+      "email": "vitoria.aragao@rocketcorp.com",
+      "name": "Vitória Aragão",
+      "track": "Management",
+      "primaryRole": "EMPLOYER",
+      "position": "MANAGER",
+      "mentorEmail": "lais.da@rocketcorp.com"
+    },
+    {
+      "email": "dr.rafael@rocketcorp.com",
+      "name": "Dr Rafael",
+      "track": "Business",
+      "primaryRole": "LEADER",
+      "position": "BUSINESSMAN",
+      "mentorEmail": "dra.joana@rocketcorp.com"
+    },
+    {
+      "email": "kaique.rodrigues@rocketcorp.com",
+      "name": "Kaique Rodrigues",
+      "track": "Leadership",
+      "primaryRole": "LEADER",
+      "position": "LEADER",
+      "mentorEmail": "luiz.fernando@rocketcorp.com"
+    },
+    {
+      "email": "nathan.ferreira@rocketcorp.com",
+      "name": "Nathan Ferreira",
+      "track": "Development",
+      "primaryRole": "EMPLOYER",
+      "position": "DEVELOPER",
+      "mentorEmail": "camila.silveira@rocketcorp.com"
+    },
+    {
+      "email": "dr.joaquim@rocketcorp.com",
+      "name": "Dr Joaquim",
+      "track": "Business",
+      "primaryRole": "EMPLOYER",
+      "position": "BUSINESSMAN",
+      "mentorEmail": "dr.rafael@rocketcorp.com"
+    },
+    {
+      "email": "rebeca.da@rocketcorp.com",
+      "name": "Rebeca da",
+      "track": "Business",
+      "primaryRole": "EMPLOYER",
+      "position": "BUSINESSMAN",
+      "mentorEmail": "dr.joaquim@rocketcorp.com"
+    },
+    {
+      "email": "marcos.vinicius@rocketcorp.com",
+      "name": "Marcos vinicius",
+      "track": "Business",
+      "primaryRole": "EMPLOYER",
+      "position": "BUSINESSMAN",
+      "mentorEmail": "dr.samuel@rocketcorp.com"
+    },
+    {
+      "email": "luiza.araújo@rocketcorp.com",
+      "name": "Luiza Araújo",
+      "track": "Business",
+      "primaryRole": "EMPLOYER",
+      "position": "BUSINESSMAN",
+      "mentorEmail": "rebeca.da@rocketcorp.com"
+    },
+    {
+      "email": "dr.samuel@rocketcorp.com",
+      "name": "Dr Samuel",
+      "track": "Business",
+      "primaryRole": "EMPLOYER",
+      "position": "BUSINESSMAN",
+      "mentorEmail": "dr.joaquim@rocketcorp.com"
+    },
+    {
+      "email": "lorenzo.vieira@rocketcorp.com",
+      "name": "lorenzo vieira",
+      "track": "Business",
+      "primaryRole": "EMPLOYER",
+      "position": "BUSINESSMAN",
+      "mentorEmail": "dr.samuel@rocketcorp.com"
+    },
+    {
+      "email": "dr.emanuelly@rocketcorp.com",
+      "name": "Dr emanuelly",
+      "track": "Business",
+      "primaryRole": "EMPLOYER",
+      "position": "BUSINESSMAN",
+      "mentorEmail": "dr.joaquim@rocketcorp.com"
+    },
+    {
+      "email": "ana.julia@rocketcorp.com",
+      "name": "ana julia",
+      "track": "Business",
+      "primaryRole": "EMPLOYER",
+      "position": "BUSINESSMAN",
+      "mentorEmail": "rebeca.da@rocketcorp.com"
     }
   ],
   "projects": [
@@ -38,27 +302,27 @@
       "name": "Projeto Alpha",
       "status": "ACTIVE",
       "manager": {
-        "email": "ana@rocket.com",
-        "startDate": "2025-06-01T08:00:00.000Z",
+        "email": "luiza.carvalho@rocketcorp.com",
+        "startDate": "2024-01-01T08:00:00.000Z",
         "endDate": null
       },
       "leaders": [
         {
-          "email": "joao@rocket.com",
-          "startDate": "2025-06-05T09:30:00.000Z",
+          "email": "maria.vitoria@rocketcorp.com",
+          "startDate": "2024-01-05T09:30:00.000Z",
           "endDate": null
         }
       ],
       "collaborators": [
         {
-          "email": "maria@rocket.com",
-          "startDate": "2025-06-10T10:15:00.000Z",
+          "email": "vitor.gabriel@rocketcorp.com",
+          "startDate": "2024-01-10T10:15:00.000Z",
           "endDate": null
         },
         {
-          "email": "carlos@rocket.com",
-          "startDate": "2025-06-12T11:00:00.000Z",
-          "endDate": "2025-07-01T17:00:00.000Z"
+          "email": "yuri.da@rocketcorp.com",
+          "startDate": "2024-01-12T11:00:00.000Z",
+          "endDate": "2024-02-01T17:00:00.000Z"
         }
       ]
     },
@@ -66,15 +330,529 @@
       "name": "Projeto Beta",
       "status": "INACTIVE",
       "manager": {
-        "email": "carlos@rocket.com",
-        "startDate": "2025-05-15T14:00:00.000Z",
-        "endDate": "2025-06-30T18:00:00.000Z"
+        "email": "lorenzo.cunha@rocketcorp.com",
+        "startDate": "2024-02-15T14:00:00.000Z",
+        "endDate": "2024-03-30T18:00:00.000Z"
       },
       "leaders": [],
       "collaborators": [
         {
-          "email": "ana@rocket.com",
-          "startDate": "2025-05-20T09:00:00.000Z",
+          "email": "valentina.martins@rocketcorp.com",
+          "startDate": "2024-02-20T09:00:00.000Z",
+          "endDate": "2024-03-30T18:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "name": "Projeto Gamma",
+      "status": "ACTIVE",
+      "manager": {
+        "email": "bryan.dias@rocketcorp.com",
+        "startDate": "2024-03-01T08:00:00.000Z",
+        "endDate": null
+      },
+      "leaders": [
+        {
+          "email": "leandro.moreira@rocketcorp.com",
+          "startDate": "2024-03-05T09:30:00.000Z",
+          "endDate": null
+        },
+        {
+          "email": "camila.silveira@rocketcorp.com",
+          "startDate": "2024-03-10T10:15:00.000Z",
+          "endDate": null
+        }
+      ],
+      "collaborators": [
+        {
+          "email": "lucas.gabriel@rocketcorp.com",
+          "startDate": "2024-03-15T11:00:00.000Z",
+          "endDate": null
+        },
+        {
+          "email": "nicolas.farias@rocketcorp.com",
+          "startDate": "2024-03-20T12:00:00.000Z",
+          "endDate": null
+        }
+      ]
+    },
+    {
+      "name": "Projeto Delta",
+      "status": "ACTIVE",
+      "manager": {
+        "email": "lais.da@rocketcorp.com",
+        "startDate": "2024-04-01T08:00:00.000Z",
+        "endDate": null
+      },
+      "leaders": [
+        {
+          "email": "luiz.fernando@rocketcorp.com",
+          "startDate": "2024-04-05T09:30:00.000Z",
+          "endDate": null
+        },
+        {
+          "email": "kaique.rodrigues@rocketcorp.com",
+          "startDate": "2024-04-10T10:15:00.000Z",
+          "endDate": null
+        }
+      ],
+      "collaborators": [
+        {
+          "email": "ana.da@rocketcorp.com",
+          "startDate": "2024-04-15T11:00:00.000Z",
+          "endDate": null
+        },
+        {
+          "email": "joao.felipe@rocketcorp.com",
+          "startDate": "2024-04-20T12:00:00.000Z",
+          "endDate": null
+        }
+      ]
+    },
+    {
+      "name": "Projeto Boreal",
+      "status": "ACTIVE",
+      "manager": {
+        "email": "luiza.carvalho@rocketcorp.com",
+        "startDate": "2024-01-01T08:00:00.000Z",
+        "endDate": "2024-06-30T18:00:00.000Z"
+      },
+      "leaders": [
+        {
+          "email": "maria.vitoria@rocketcorp.com",
+          "startDate": "2024-01-05T09:30:00.000Z",
+          "endDate": "2024-06-30T18:00:00.000Z"
+        }
+      ],
+      "collaborators": [
+        {
+          "email": "vitor.gabriel@rocketcorp.com",
+          "startDate": "2024-01-10T10:15:00.000Z",
+          "endDate": "2024-06-30T18:00:00.000Z"
+        },
+        {
+          "email": "yuri.da@rocketcorp.com",
+          "startDate": "2024-01-12T11:00:00.000Z",
+          "endDate": "2024-06-30T18:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "name": "Projeto Lince",
+      "status": "ACTIVE",
+      "manager": {
+        "email": "lorenzo.cunha@rocketcorp.com",
+        "startDate": "2024-01-15T08:00:00.000Z",
+        "endDate": "2024-06-30T18:00:00.000Z"
+      },
+      "leaders": [
+        {
+          "email": "leandro.moreira@rocketcorp.com",
+          "startDate": "2024-01-20T09:30:00.000Z",
+          "endDate": "2024-06-30T18:00:00.000Z"
+        }
+      ],
+      "collaborators": [
+        {
+          "email": "lucas.gabriel@rocketcorp.com",
+          "startDate": "2024-01-25T10:15:00.000Z",
+          "endDate": "2024-06-30T18:00:00.000Z"
+        },
+        {
+          "email": "nicolas.farias@rocketcorp.com",
+          "startDate": "2024-01-30T11:00:00.000Z",
+          "endDate": "2024-06-30T18:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "name": "Projeto Arara",
+      "status": "ACTIVE",
+      "manager": {
+        "email": "lais.da@rocketcorp.com",
+        "startDate": "2024-02-01T08:00:00.000Z",
+        "endDate": "2024-06-30T18:00:00.000Z"
+      },
+      "leaders": [
+        {
+          "email": "kaique.rodrigues@rocketcorp.com",
+          "startDate": "2024-02-05T09:30:00.000Z",
+          "endDate": "2024-06-30T18:00:00.000Z"
+        }
+      ],
+      "collaborators": [
+        {
+          "email": "ana.da@rocketcorp.com",
+          "startDate": "2024-02-10T10:15:00.000Z",
+          "endDate": "2024-06-30T18:00:00.000Z"
+        },
+        {
+          "email": "joao.felipe@rocketcorp.com",
+          "startDate": "2024-02-15T11:00:00.000Z",
+          "endDate": "2024-06-30T18:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "name": "Projeto Turing",
+      "status": "ACTIVE",
+      "manager": {
+        "email": "bryan.dias@rocketcorp.com",
+        "startDate": "2024-02-20T08:00:00.000Z",
+        "endDate": "2024-06-30T18:00:00.000Z"
+      },
+      "leaders": [
+        {
+          "email": "camila.silveira@rocketcorp.com",
+          "startDate": "2024-02-25T09:30:00.000Z",
+          "endDate": "2024-06-30T18:00:00.000Z"
+        }
+      ],
+      "collaborators": [
+        {
+          "email": "pietra.fernandes@rocketcorp.com",
+          "startDate": "2024-03-01T10:15:00.000Z",
+          "endDate": "2024-06-30T18:00:00.000Z"
+        },
+        {
+          "email": "valentina.barbosa@rocketcorp.com",
+          "startDate": "2024-03-05T11:00:00.000Z",
+          "endDate": "2024-06-30T18:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "name": "Projeto Antares",
+      "status": "ACTIVE",
+      "manager": {
+        "email": "dr.rafael@rocketcorp.com",
+        "startDate": "2024-07-01T08:00:00.000Z",
+        "endDate": "2024-12-31T18:00:00.000Z"
+      },
+      "leaders": [
+        {
+          "email": "kaique.rodrigues@rocketcorp.com",
+          "startDate": "2024-07-05T09:30:00.000Z",
+          "endDate": "2024-12-31T18:00:00.000Z"
+        }
+      ],
+      "collaborators": [
+        {
+          "email": "ana.da@rocketcorp.com",
+          "startDate": "2024-07-10T10:15:00.000Z",
+          "endDate": "2024-12-31T18:00:00.000Z"
+        },
+        {
+          "email": "joao.felipe@rocketcorp.com",
+          "startDate": "2024-07-15T11:00:00.000Z",
+          "endDate": "2024-12-31T18:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "name": "Projeto Galápagos",
+      "status": "ACTIVE",
+      "manager": {
+        "email": "luiza.carvalho@rocketcorp.com",
+        "startDate": "2025-01-01T08:00:00.000Z",
+        "endDate": "2025-06-30T18:00:00.000Z"
+      },
+      "leaders": [
+        {
+          "email": "maria.vitoria@rocketcorp.com",
+          "startDate": "2025-01-05T09:30:00.000Z",
+          "endDate": "2025-06-30T18:00:00.000Z"
+        }
+      ],
+      "collaborators": [
+        {
+          "email": "vitor.gabriel@rocketcorp.com",
+          "startDate": "2025-01-10T10:15:00.000Z",
+          "endDate": "2025-06-30T18:00:00.000Z"
+        },
+        {
+          "email": "yuri.da@rocketcorp.com",
+          "startDate": "2025-01-15T11:00:00.000Z",
+          "endDate": "2025-06-30T18:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "name": "Projeto Aurora",
+      "status": "ACTIVE",
+      "manager": {
+        "email": "lais.da@rocketcorp.com",
+        "startDate": "2025-01-20T08:00:00.000Z",
+        "endDate": "2025-06-30T18:00:00.000Z"
+      },
+      "leaders": [
+        {
+          "email": "kaique.rodrigues@rocketcorp.com",
+          "startDate": "2025-01-25T09:30:00.000Z",
+          "endDate": "2025-06-30T18:00:00.000Z"
+        }
+      ],
+      "collaborators": [
+        {
+          "email": "ana.da@rocketcorp.com",
+          "startDate": "2025-02-01T10:15:00.000Z",
+          "endDate": "2025-06-30T18:00:00.000Z"
+        },
+        {
+          "email": "joao.felipe@rocketcorp.com",
+          "startDate": "2025-02-05T11:00:00.000Z",
+          "endDate": "2025-06-30T18:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "name": "Projeto Fênix",
+      "status": "ACTIVE",
+      "manager": {
+        "email": "luiza.carvalho@rocketcorp.com",
+        "startDate": "2024-01-01T08:00:00.000Z",
+        "endDate": "2024-06-30T18:00:00.000Z"
+      },
+      "leaders": [
+        {
+          "email": "maria.vitoria@rocketcorp.com",
+          "startDate": "2024-01-05T09:30:00.000Z",
+          "endDate": "2024-06-30T18:00:00.000Z"
+        }
+      ],
+      "collaborators": [
+        {
+          "email": "vitor.gabriel@rocketcorp.com",
+          "startDate": "2024-01-10T10:15:00.000Z",
+          "endDate": "2024-06-30T18:00:00.000Z"
+        },
+        {
+          "email": "yuri.da@rocketcorp.com",
+          "startDate": "2024-01-12T11:00:00.000Z",
+          "endDate": "2024-06-30T18:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "name": "Projeto Essência",
+      "status": "ACTIVE",
+      "manager": {
+        "email": "lorenzo.cunha@rocketcorp.com",
+        "startDate": "2024-01-15T08:00:00.000Z",
+        "endDate": "2024-06-30T18:00:00.000Z"
+      },
+      "leaders": [
+        {
+          "email": "leandro.moreira@rocketcorp.com",
+          "startDate": "2024-01-20T09:30:00.000Z",
+          "endDate": "2024-06-30T18:00:00.000Z"
+        }
+      ],
+      "collaborators": [
+        {
+          "email": "lucas.gabriel@rocketcorp.com",
+          "startDate": "2024-01-25T10:15:00.000Z",
+          "endDate": "2024-06-30T18:00:00.000Z"
+        },
+        {
+          "email": "nicolas.farias@rocketcorp.com",
+          "startDate": "2024-01-30T11:00:00.000Z",
+          "endDate": "2024-06-30T18:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "name": "Projeto Orion",
+      "status": "ACTIVE",
+      "manager": {
+        "email": "lais.da@rocketcorp.com",
+        "startDate": "2024-02-01T08:00:00.000Z",
+        "endDate": "2024-06-30T18:00:00.000Z"
+      },
+      "leaders": [
+        {
+          "email": "kaique.rodrigues@rocketcorp.com",
+          "startDate": "2024-02-05T09:30:00.000Z",
+          "endDate": "2024-06-30T18:00:00.000Z"
+        }
+      ],
+      "collaborators": [
+        {
+          "email": "ana.da@rocketcorp.com",
+          "startDate": "2024-02-10T10:15:00.000Z",
+          "endDate": "2024-06-30T18:00:00.000Z"
+        },
+        {
+          "email": "joao.felipe@rocketcorp.com",
+          "startDate": "2024-02-15T11:00:00.000Z",
+          "endDate": "2024-06-30T18:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "name": "Projeto Agora",
+      "status": "ACTIVE",
+      "manager": {
+        "email": "bryan.dias@rocketcorp.com",
+        "startDate": "2024-02-20T08:00:00.000Z",
+        "endDate": "2024-06-30T18:00:00.000Z"
+      },
+      "leaders": [
+        {
+          "email": "camila.silveira@rocketcorp.com",
+          "startDate": "2024-02-25T09:30:00.000Z",
+          "endDate": "2024-06-30T18:00:00.000Z"
+        }
+      ],
+      "collaborators": [
+        {
+          "email": "pietra.fernandes@rocketcorp.com",
+          "startDate": "2024-03-01T10:15:00.000Z",
+          "endDate": "2024-06-30T18:00:00.000Z"
+        },
+        {
+          "email": "valentina.barbosa@rocketcorp.com",
+          "startDate": "2024-03-05T11:00:00.000Z",
+          "endDate": "2024-06-30T18:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "name": "Projeto Kaleido",
+      "status": "ACTIVE",
+      "manager": {
+        "email": "dr.rafael@rocketcorp.com",
+        "startDate": "2024-07-01T08:00:00.000Z",
+        "endDate": "2024-12-31T18:00:00.000Z"
+      },
+      "leaders": [
+        {
+          "email": "kaique.rodrigues@rocketcorp.com",
+          "startDate": "2024-07-05T09:30:00.000Z",
+          "endDate": "2024-12-31T18:00:00.000Z"
+        }
+      ],
+      "collaborators": [
+        {
+          "email": "ana.da@rocketcorp.com",
+          "startDate": "2024-07-10T10:15:00.000Z",
+          "endDate": "2024-12-31T18:00:00.000Z"
+        },
+        {
+          "email": "joao.felipe@rocketcorp.com",
+          "startDate": "2024-07-15T11:00:00.000Z",
+          "endDate": "2024-12-31T18:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "name": "Projeto Veredas",
+      "status": "ACTIVE",
+      "manager": {
+        "email": "luiza.carvalho@rocketcorp.com",
+        "startDate": "2024-07-20T08:00:00.000Z",
+        "endDate": "2024-12-31T18:00:00.000Z"
+      },
+      "leaders": [
+        {
+          "email": "maria.vitoria@rocketcorp.com",
+          "startDate": "2024-07-25T09:30:00.000Z",
+          "endDate": "2024-12-31T18:00:00.000Z"
+        }
+      ],
+      "collaborators": [
+        {
+          "email": "vitor.gabriel@rocketcorp.com",
+          "startDate": "2024-07-30T10:15:00.000Z",
+          "endDate": "2024-12-31T18:00:00.000Z"
+        },
+        {
+          "email": "yuri.da@rocketcorp.com",
+          "startDate": "2024-08-01T11:00:00.000Z",
+          "endDate": "2024-12-31T18:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "name": "Projeto Nexus",
+      "status": "ACTIVE",
+      "manager": {
+        "email": "lais.da@rocketcorp.com",
+        "startDate": "2024-08-10T08:00:00.000Z",
+        "endDate": "2024-12-31T18:00:00.000Z"
+      },
+      "leaders": [
+        {
+          "email": "kaique.rodrigues@rocketcorp.com",
+          "startDate": "2024-08-15T09:30:00.000Z",
+          "endDate": "2024-12-31T18:00:00.000Z"
+        }
+      ],
+      "collaborators": [
+        {
+          "email": "ana.da@rocketcorp.com",
+          "startDate": "2024-08-20T10:15:00.000Z",
+          "endDate": "2024-12-31T18:00:00.000Z"
+        },
+        {
+          "email": "joao.felipe@rocketcorp.com",
+          "startDate": "2024-08-25T11:00:00.000Z",
+          "endDate": "2024-12-31T18:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "name": "Projeto Mare",
+      "status": "ACTIVE",
+      "manager": {
+        "email": "bryan.dias@rocketcorp.com",
+        "startDate": "2025-01-01T08:00:00.000Z",
+        "endDate": "2025-06-30T18:00:00.000Z"
+      },
+      "leaders": [
+        {
+          "email": "camila.silveira@rocketcorp.com",
+          "startDate": "2025-01-05T09:30:00.000Z",
+          "endDate": "2025-06-30T18:00:00.000Z"
+        }
+      ],
+      "collaborators": [
+        {
+          "email": "pietra.fernandes@rocketcorp.com",
+          "startDate": "2025-01-10T10:15:00.000Z",
+          "endDate": "2025-06-30T18:00:00.000Z"
+        },
+        {
+          "email": "valentina.barbosa@rocketcorp.com",
+          "startDate": "2025-01-15T11:00:00.000Z",
+          "endDate": "2025-06-30T18:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "name": "Projeto Estação",
+      "status": "ACTIVE",
+      "manager": {
+        "email": "dr.rafael@rocketcorp.com",
+        "startDate": "2025-01-20T08:00:00.000Z",
+        "endDate": "2025-06-30T18:00:00.000Z"
+      },
+      "leaders": [
+        {
+          "email": "kaique.rodrigues@rocketcorp.com",
+          "startDate": "2025-01-25T09:30:00.000Z",
+          "endDate": "2025-06-30T18:00:00.000Z"
+        }
+      ],
+      "collaborators": [
+        {
+          "email": "ana.da@rocketcorp.com",
+          "startDate": "2025-02-01T10:15:00.000Z",
+          "endDate": "2025-06-30T18:00:00.000Z"
+        },
+        {
+          "email": "joao.felipe@rocketcorp.com",
+          "startDate": "2025-02-05T11:00:00.000Z",
           "endDate": "2025-06-30T18:00:00.000Z"
         }
       ]
