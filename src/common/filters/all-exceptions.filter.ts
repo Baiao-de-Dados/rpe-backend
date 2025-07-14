@@ -1,6 +1,7 @@
 import { ExceptionFilter, Catch, ArgumentsHost, HttpException, HttpStatus } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { PinoLogger } from 'nestjs-pino';
+import { getBrazilDate } from 'src/cycles/utils';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -29,7 +30,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
         res.status(status).json({
             statusCode: status,
-            timestamp: new Date().toISOString(),
+            timestamp: new Date(getBrazilDate()).toISOString(),
             path: req.url,
         });
     }

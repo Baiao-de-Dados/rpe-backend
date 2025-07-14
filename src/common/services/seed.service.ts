@@ -383,31 +383,31 @@ export class SeedService {
                 name: '2024.1',
                 startDate: new Date('2024-01-01'),
                 endDate: new Date('2024-06-30'),
-                done: false,
+                done: true,
             },
             {
                 name: '2024.2',
                 startDate: new Date('2024-07-01'),
                 endDate: new Date('2024-12-31'),
-                done: false,
+                done: true,
             },
             {
                 name: '2024.3',
                 startDate: new Date('2024-09-01'),
                 endDate: new Date('2024-11-30'),
-                done: false,
+                done: true,
             },
             {
                 name: '2024.4',
                 startDate: new Date('2024-10-01'),
                 endDate: new Date('2024-12-15'),
-                done: false,
+                done: true,
             },
             {
                 name: '2025.1',
                 startDate: new Date('2025-01-01'),
                 endDate: new Date('2025-06-30'),
-                done: false,
+                done: true,
             },
         ];
 

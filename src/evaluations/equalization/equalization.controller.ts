@@ -17,7 +17,9 @@ export class EqualizationController {
     @ApiSaveEqualization()
     async saveEqualization(@Body() dto: SaveEqualizationDto) {
         if (!dto.cycleId || !dto.collaboratorId || dto.rating === undefined || !dto.justification) {
-            throw new BadRequestException('cycleId, collaboratorId, rating, and justification are required.');
+            throw new BadRequestException(
+                'cycleId, collaboratorId, rating, and justification are required.',
+            );
         }
         return this.equalizationService.saveEqualization(dto);
     }
@@ -27,7 +29,9 @@ export class EqualizationController {
     @ApiEditEqualization()
     async editEqualization(@Body() dto: SaveEqualizationDto) {
         if (!dto.cycleId || !dto.collaboratorId || dto.rating === undefined || !dto.justification) {
-            throw new BadRequestException('cycleId, collaboratorId, rating, and justification are required.');
+            throw new BadRequestException(
+                'cycleId, collaboratorId, rating, and justification are required.',
+            );
         }
         return this.equalizationService.editEqualization(dto);
     }

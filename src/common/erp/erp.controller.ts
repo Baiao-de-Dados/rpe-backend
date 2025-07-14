@@ -4,10 +4,9 @@ import { ErpService } from './erp.service';
 import { OnlyAdmin, RequireAdmin } from '../../auth/decorators/roles.decorator';
 import { ApiAuth } from '../decorators/api-auth.decorator';
 
-
-@OnlyAdmin()
-@ApiAuth()
+@RequireAdmin()
 @Controller('erp')
+@ApiAuth()
 export class ErpController {
     constructor(private readonly erpService: ErpService) {}
 

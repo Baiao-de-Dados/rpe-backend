@@ -2,13 +2,24 @@ import { Controller, Post, Body, Get, Param, ParseIntPipe, Query } from '@nestjs
 import { EvaluationsService } from './evaluations.service';
 import { CreateEvaluationDto } from './dto/create-evaluation.dto';
 import { ActiveCriteriaUserResponseDto } from './dto/active-criteria-response.dto';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiOkResponse } from '@nestjs/swagger';
 import { ApiCreate, ApiGet } from '../common/decorators/api-crud.decorator';
 import { ApiAuth } from '../common/decorators/api-auth.decorator';
 import { RequireEmployer, RequireRH, RequireLeader } from '../auth/decorators/roles.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 import { CycleConfigService } from '../cycles/cycle-config.service';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { EvaluationDraftService } from './services/evaluation-draft.service';
+import {
+    EvaluationDraftRequestDto,
+    EvaluationDraftResponseDto,
+    evaluationDraftRequestExample,
+    evaluationDraftResponseExample,
+    EvaluationRequestDto,
+    evaluationRequestExample,
+    evaluationResponseExample,
+} from './swagger/evaluation-draft.swagger';
+import { EvaluationDraftDto } from './dto/evaluation-draft.dto';
 
 @ApiTags('Avaliações')
 @ApiAuth()
@@ -18,12 +29,20 @@ export class EvaluationsController {
         private readonly evaluationsService: EvaluationsService,
         private readonly prisma: PrismaService,
         private readonly cycleConfigService: CycleConfigService,
+        private readonly draftService: EvaluationDraftService,
     ) {}
 
     @RequireEmployer()
-    @RequireLeader()
     @Post()
     @ApiCreate('avaliação')
+    @ApiBody({
+        type: EvaluationRequestDto,
+        examples: { exemplo: evaluationRequestExample },
+    })
+    @ApiOkResponse({
+        description: 'Avaliação criada com sucesso.',
+        examples: { exemplo: evaluationResponseExample },
+    })
     create(@Body() createEvaluationDto: CreateEvaluationDto, @CurrentUser() user: any) {
         return this.evaluationsService.createEvaluation(createEvaluationDto, user);
     }
@@ -63,6 +82,37 @@ export class EvaluationsController {
         @CurrentUser() user: any,
     ): Promise<ActiveCriteriaUserResponseDto> {
         return this.evaluationsService.getActiveCriteriaForUser(user);
+    }
+
+    // --- Draft endpoints ---
+    @RequireEmployer()
+    @Post('draft')
+    @ApiBody({
+        type: EvaluationDraftRequestDto,
+        examples: { exemplo: evaluationDraftRequestExample },
+    })
+    @ApiOkResponse({
+        description: 'Draft salvo ou atualizado com sucesso.',
+        type: EvaluationDraftResponseDto,
+        examples: { exemplo: evaluationDraftResponseExample },
+    })
+    async upsertDraft(@CurrentUser('id') userId: number, @Body() body: EvaluationDraftDto) {
+        return this.draftService.saveDraft(userId, body.cycleId, body.draft);
+    }
+
+    @RequireEmployer()
+    @Get('draft')
+    @ApiOkResponse({
+        description: 'Draft do usuário para o ciclo informado.',
+        type: EvaluationDraftResponseDto,
+        isArray: false,
+        examples: { exemplo: evaluationDraftResponseExample },
+    })
+    async getDraft(
+        @CurrentUser('id') userId: number,
+        @Query('cycleId', ParseIntPipe) cycleId: number,
+    ) {
+        return this.draftService.getDraft(userId, cycleId);
     }
 
     @RequireRH()

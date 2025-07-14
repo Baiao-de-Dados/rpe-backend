@@ -177,7 +177,7 @@ export class AuthService {
                 const data: Prisma.UserRoleLinkCreateManyInput = {
                     userId: createUser.id,
                     role,
-                    createdAt: new Date(),
+                    createdAt: getBrazilDate(),
                 };
                 if (assignedBy !== undefined) {
                     data.assignedBy = assignedBy;
