@@ -338,6 +338,142 @@ export class EmployerService {
         };
     }
 
+    async getAllGradesForCycle(
+        userId: number,
+        cycleConfigId: number,
+    ): Promise<{
+        autoEvaluation: number | null;
+        evaluation360: number | null;
+        manager: number | null;
+        committee: number | null;
+    }> {
+        // Autoavaliação
+        const evaluation = await this.prisma.evaluation.findFirst({
+            where: { evaluatorId: userId, cycleConfigId },
+            include: {
+                autoEvaluation: { include: { assignments: true } },
+                evaluation360: true,
+                equalization: true,
+            },
+        });
+        // Nota da autoavaliação
+        let autoEvaluationGrade: number | null = null;
+        if (evaluation?.autoEvaluation?.assignments?.length) {
+            const assignments = evaluation.autoEvaluation.assignments;
+            autoEvaluationGrade =
+                Math.round(
+                    (assignments.reduce((sum, a) => sum + a.score, 0) / assignments.length) * 10,
+                ) / 10;
+        }
+        // Nota da avaliação 360 (média das notas recebidas)
+        let evaluation360Grade: number | null = null;
+        if (evaluation?.evaluation360?.length) {
+            const scores = evaluation.evaluation360.map((ev) => ev.score);
+            evaluation360Grade =
+                Math.round((scores.reduce((sum, s) => sum + s, 0) / scores.length) * 10) / 10;
+        }
+        // Nota do gestor
+        let managerGrade: number | null = null;
+        const managerEvaluation = await this.prisma.managerEvaluation.findFirst({
+            where: { collaboratorId: userId, cycleId: cycleConfigId },
+            include: { criterias: true },
+        });
+        if (managerEvaluation?.criterias?.length) {
+            const scores = managerEvaluation.criterias.map((c) => c.score);
+            managerGrade =
+                Math.round((scores.reduce((sum, s) => sum + s, 0) / scores.length) * 10) / 10;
+        }
+        // Nota do comitê (equalização)
+        let committeeGrade: number | null = null;
+        if (evaluation?.equalization?.length) {
+            // Pega a última equalização (caso haja mais de uma)
+            const lastEq = evaluation.equalization[evaluation.equalization.length - 1];
+            if (lastEq?.score !== undefined && lastEq?.score !== null) {
+                committeeGrade = Math.round(lastEq.score * 10) / 10;
+            }
+        }
+        return {
+            autoEvaluation: autoEvaluationGrade,
+            evaluation360: evaluation360Grade,
+            manager: managerGrade,
+            committee: committeeGrade,
+        };
+    }
+
+    async getAllEvaluationsForUser(userId: number) {
+        // Busca todas as avaliações do usuário
+        const evaluations = await this.prisma.evaluation.findMany({
+            where: { evaluatorId: userId },
+            include: {
+                cycleConfig: true,
+                autoEvaluation: { include: { assignments: true } },
+                evaluation360: true,
+                equalization: true,
+            },
+            orderBy: { cycleConfigId: 'asc' },
+        });
+        // Busca todas as avaliações de gestor para o usuário
+        const managerEvaluations = await this.prisma.managerEvaluation.findMany({
+            where: { collaboratorId: userId },
+            include: { criterias: true },
+        });
+        // Indexa avaliações de gestor por ciclo
+        const managerByCycle = new Map<number, number | null>();
+        for (const m of managerEvaluations) {
+            if (m.criterias?.length) {
+                const scores = m.criterias.map((c) => c.score);
+                managerByCycle.set(
+                    m.cycleId,
+                    Math.round((scores.reduce((sum, s) => sum + s, 0) / scores.length) * 10) / 10,
+                );
+            } else {
+                managerByCycle.set(m.cycleId, null);
+            }
+        }
+        // Monta resposta
+        return evaluations.map((ev) => {
+            // Autoavaliação
+            let autoEvaluationGrade: number | null = null;
+            if (ev.autoEvaluation?.assignments?.length) {
+                const assignments = ev.autoEvaluation.assignments;
+                autoEvaluationGrade =
+                    Math.round(
+                        (assignments.reduce((sum, a) => sum + a.score, 0) / assignments.length) *
+                            10,
+                    ) / 10;
+            }
+            // 360
+            let evaluation360Grade: number | null = null;
+            if (ev.evaluation360?.length) {
+                const scores = ev.evaluation360.map((e) => e.score);
+                evaluation360Grade =
+                    Math.round((scores.reduce((sum, s) => sum + s, 0) / scores.length) * 10) / 10;
+            }
+            // Comitê
+            let committeeGrade: number | null = null;
+            if (ev.equalization?.length) {
+                const lastEq = ev.equalization[ev.equalization.length - 1];
+                if (lastEq?.score !== undefined && lastEq?.score !== null) {
+                    committeeGrade = Math.round(lastEq.score * 10) / 10;
+                }
+            }
+            // Gestor
+            const managerGrade = managerByCycle.get(ev.cycleConfigId) ?? null;
+            return {
+                cycle: {
+                    id: ev.cycleConfig.id,
+                    name: ev.cycleConfig.name,
+                    startDate: ev.cycleConfig.startDate,
+                    endDate: ev.cycleConfig.endDate,
+                },
+                autoEvaluation: autoEvaluationGrade,
+                evaluation360: evaluation360Grade,
+                manager: managerGrade,
+                committee: committeeGrade,
+            };
+        });
+    }
+
     private formatAutoEvaluationPilares(assignments: any[]) {
         const pilaresMap = new Map();
         for (const a of assignments) {

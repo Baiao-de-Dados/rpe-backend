@@ -4,7 +4,7 @@ import { RequireEmployer } from 'src/auth/decorators/roles.decorator';
 import { ApiAuth } from 'src/common/decorators/api-auth.decorator';
 import { EmployerService } from '../services/employer.service';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
-import { FiltersDto } from '../dto/filters.dto';
+//import { FiltersDto } from '../dto/filters.dto';
 
 @ApiTags('Colaborador')
 @ApiAuth()
@@ -12,7 +12,7 @@ import { FiltersDto } from '../dto/filters.dto';
 @Controller('employer')
 export class EmployerController {
     constructor(private readonly service: EmployerService) {}
-
+    /*
     @Get('dashboard')
     getDashboard(@CurrentUser('id') userId: number) {
         return this.service.getDashboard(userId);
@@ -30,7 +30,7 @@ export class EmployerController {
     ) {
         return this.service.findPendingEvaluations(userId, CycleConfigId);
     }
-    /*
+    
     @Get('evaluations/:cycleId')
     getEvaluationData(
         @Param('cycleId', ParseIntPipe) cycleId: number,
@@ -91,5 +91,18 @@ export class EmployerController {
         @CurrentUser('id') userId: number,
     ) {
         return this.service.getEvaluationResultForCycle(userId, cycleConfigId);
+    }
+
+    @Get('all-grades')
+    async getAllGradesForCycle(
+        @Query('cycleConfigId', ParseIntPipe) cycleConfigId: number,
+        @CurrentUser('id') userId: number,
+    ) {
+        return this.service.getAllGradesForCycle(userId, cycleConfigId);
+    }
+
+    @Get('all-evaluations')
+    async getAllEvaluationsForUser(@CurrentUser('id') userId: number) {
+        return this.service.getAllEvaluationsForUser(userId);
     }
 }

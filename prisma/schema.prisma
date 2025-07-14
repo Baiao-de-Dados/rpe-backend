@@ -208,7 +208,7 @@ model Reference {
   collaboratorId Int
   collaborator   User     @relation("UserToReference", fields: [collaboratorId], references: [id], onDelete: Cascade)
 
-  justification String
+  justification String?
   createdAt     DateTime @default(now())
 
   @@unique([evaluationId, collaboratorId])
