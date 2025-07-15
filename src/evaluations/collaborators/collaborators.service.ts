@@ -16,7 +16,7 @@ export class CollaboratorsService {
                         },
                         evaluation360: true,
                         mentoring: true,
-                        equalization: true,
+                        equalization: true, // Inclui a relação com o modelo Equalization
                     },
                 },
             },
@@ -46,12 +46,17 @@ export class CollaboratorsService {
                           ) / evaluation.evaluation360.length
                         : 0;
 
+                const finalEqualizationScore =
+                    evaluation.equalization?.length > 0
+                        ? evaluation.equalization.reduce((sum, eq) => sum + eq.score, 0) / evaluation.equalization.length
+                        : 0; // Obtém a nota média do comitê de equalização
+
                 return {
                     cycleId: evaluation.cycleConfigId,
                     autoEvaluationScore,
                     evaluation360Score,
                     mentoringScore: evaluation.mentoring?.score || 0,
-                    finalEqualizationScore: evaluation.equalization?.[0]?.score || 0,
+                    finalEqualizationScore,
                 };
             }),
         }));
@@ -68,7 +73,7 @@ export class CollaboratorsService {
                 },
                 evaluation360: true,
                 mentoring: true,
-                equalization: true,
+                equalization: true, // Inclui a relação com o modelo Equalization
                 cycleConfig: true,
             },
         });
@@ -93,12 +98,17 @@ export class CollaboratorsService {
                       evaluation.evaluation360.length
                     : 0;
 
+            const finalEqualizationScore =
+                evaluation.equalization?.length > 0
+                    ? evaluation.equalization.reduce((sum, eq) => sum + eq.score, 0) / evaluation.equalization.length
+                    : 0; // Obtém a nota média do comitê de equalização
+
             return {
                 cycleName: evaluation.cycleConfig.name,
                 autoEvaluationScore,
                 evaluation360Score,
                 mentoringScore: evaluation.mentoring?.score || 0,
-                finalEqualizationScore: evaluation.equalization?.[0]?.score || 0,
+                finalEqualizationScore,
             };
         });
     }
@@ -115,7 +125,7 @@ export class CollaboratorsService {
                 evaluation360: true,
                 mentoring: true,
                 reference: true,
-                equalization: true,
+                equalization: true, // Inclui a relação com o modelo Equalization
                 cycleConfig: true,
             },
         });
@@ -136,13 +146,18 @@ export class CollaboratorsService {
                       evaluation.evaluation360.length
                     : 0;
 
+            const finalEqualizationScore =
+                evaluation.equalization?.length > 0
+                    ? evaluation.equalization.reduce((sum, eq) => sum + eq.score, 0) / evaluation.equalization.length
+                    : 0; // Obtém a nota média do comitê de equalização
+
             return {
                 id: evaluation.id,
                 cycleName: evaluation.cycleConfig.name,
                 autoEvaluationScore,
                 evaluation360Score,
                 mentoringScore: evaluation.mentoring?.score || 0,
-                finalEqualizationScore: evaluation.equalization?.[0]?.score || 0,
+                finalEqualizationScore,
                 reference: evaluation.reference?.map((ref) => ({
                     justification: ref.justification,
                 })),
