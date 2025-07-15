@@ -16,7 +16,9 @@ import {
 } from '@nestjs/swagger';
 import { ExactRoles } from 'src/auth/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
+import { ApiAuth } from 'src/common/decorators/api-auth.decorator';
 
+@ApiAuth()
 @ApiTags('Notes')
 @ApiBearerAuth()
 @Controller('notes')
