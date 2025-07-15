@@ -41,13 +41,19 @@ export class AiService {
         });
 
         const collaborators = projectMembers.flatMap((member) =>
-            member.project.members.map((m) => ({
-                id: m.user.id,
-                name: m.user.name,
-                email: m.user.email,
-                position: m.user.position,
-            })),
+            member.project.members
+                .filter((m) => !['MANAGER', 'LEADER', 'ADMIN', 'MENTOR', 'RH', 'COMMITTEE'].includes(m.user.position)) // Filtra cargos superiores
+                .map((m) => ({
+                    id: m.user.id,
+                    name: m.user.name,
+                    email: m.user.email,
+                    position: m.user.position,
+                })),
         );
+
+        if (collaborators.length === 0) {
+            throw new Error('Não há colaboradores elegíveis associados ao usuário para gerar o resumo.');
+        }
 
         // Busca o mentor do colaborador
         const mentor = await this.prisma.user.findUnique({
