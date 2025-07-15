@@ -17,13 +17,16 @@ import {
 export class EvaluationValidationService {
     constructor(private prisma: PrismaService) {}
 
-    async validateEvaluationData(data: CreateEvaluationDto): Promise<void> {
+    async validateEvaluationData(
+        data: CreateEvaluationDto,
+        skipProjectValidation = false,
+    ): Promise<void> {
         const { colaboradorId, autoavaliacao, avaliacao360, mentoring, referencias } = data;
         const colaboradorIdNum = colaboradorId;
 
         await this.validateColaborador(colaboradorIdNum);
         await this.validateCriterios(autoavaliacao);
-        await this.validateAvaliacao360(avaliacao360, colaboradorIdNum);
+        await this.validateAvaliacao360(avaliacao360, colaboradorIdNum, skipProjectValidation);
         await this.validateMentoring(mentoring, colaboradorIdNum);
         await this.validateReferencias(referencias);
         this.validateDuplicates(avaliacao360, referencias);
@@ -63,7 +66,12 @@ export class EvaluationValidationService {
         }
     }
 
-    async validateAvaliacao360(avaliacao360: Avaliacao360Dto[], colaboradorId: number) {
+    async validateAvaliacao360(
+        avaliacao360: Avaliacao360Dto[],
+        colaboradorId: number,
+        skipProjectValidation = false,
+    ) {
+        if (skipProjectValidation) return;
         if (!avaliacao360 || avaliacao360.length === 0) return;
         // Buscar todos os projetos do colaborador
         const projetosColaborador = await this.prisma.projectMember.findMany({

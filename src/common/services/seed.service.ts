@@ -441,6 +441,53 @@ export class SeedService {
             }
         }
 
+        // Adicionar usuários para teste de AV360/referência
+        await this.prisma.user.createMany({
+            data: [
+                {
+                    email: 'isabel.oliveira@teste.com',
+                    password: hashedPassword,
+                    name: 'isabel.oliveira',
+                    position: 'Tester',
+                    mentorId: mentor.id,
+                    trackId: trackBackend.id,
+                },
+                {
+                    email: 'dr..raul@teste.com',
+                    password: hashedPassword,
+                    name: 'dr..raul',
+                    position: 'Tester',
+                    mentorId: mentor.id,
+                    trackId: trackBackend.id,
+                },
+                {
+                    email: 'isaac.oliveira@teste.com',
+                    password: hashedPassword,
+                    name: 'isaac.oliveira',
+                    position: 'Tester',
+                    mentorId: mentor.id,
+                    trackId: trackBackend.id,
+                },
+                {
+                    email: 'sra..esther@teste.com',
+                    password: hashedPassword,
+                    name: 'sra..esther',
+                    position: 'Tester',
+                    mentorId: mentor.id,
+                    trackId: trackBackend.id,
+                },
+                {
+                    email: 'alicia.ramos@teste.com',
+                    password: hashedPassword,
+                    name: 'alícia.ramos',
+                    position: 'Tester',
+                    mentorId: mentor.id,
+                    trackId: trackBackend.id,
+                },
+            ],
+            skipDuplicates: true,
+        });
+
         return { message: 'Seed executada com sucesso!' };
     }
 }

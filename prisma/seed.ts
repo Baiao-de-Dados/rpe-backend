@@ -176,6 +176,28 @@ async function main() {
         },
     });
 
+    // Usuários extras para testes de importação de avaliações 360 e referência
+    const extraUsers = [
+        { name: 'isaac oliveira', email: 'isaac.oliveira@rocketcorp.com' },
+        { name: 'dr  raul', email: 'dr.raul@rocketcorp.com' },
+        { name: 'isabel oliveira', email: 'isabel.oliveira@rocketcorp.com' },
+        { name: 'alícia ramos', email: 'alicia.ramos@rocketcorp.com' },
+        { name: 'sra  esther', email: 'sra.esther@rocketcorp.com' },
+    ];
+    for (const user of extraUsers) {
+        await prisma.user.create({
+            data: {
+                email: user.email,
+                password: hashedPassword,
+                name: user.name,
+                position: 'EMPLOYER',
+                mentorId: mentorLuiza.id,
+                trackId: trackBackend.id,
+                userRoles: { create: [{ role: 'EMPLOYER' }] },
+            },
+        });
+    }
+
     console.log('👨‍💼 Criando gestor...');
 
     // Usuário Gestor
@@ -252,6 +274,23 @@ async function main() {
             { projectId: project.id, userId: userFrontend.id }, // Dev Frontend
         ],
     });
+
+    // Adicionar os novos usuários extras ao projeto de Luiza Carvalho
+    const extraUserEmails = [
+        'isaac.oliveira@rocketcorp.com',
+        'dr.raul@rocketcorp.com',
+        'isabel.oliveira@rocketcorp.com',
+        'alicia.ramos@rocketcorp.com',
+        'sra.esther@rocketcorp.com',
+    ];
+    for (const email of extraUserEmails) {
+        const user = await prisma.user.findUnique({ where: { email } });
+        if (user) {
+            await prisma.projectMember.create({
+                data: { projectId: project.id, userId: user.id },
+            });
+        }
+    }
 
     console.log('🔗 Criando assignments de líderes...');
 
