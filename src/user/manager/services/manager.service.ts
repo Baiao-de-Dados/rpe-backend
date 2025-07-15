@@ -475,7 +475,7 @@ export class ManagerService {
     }
 
     async evaluateCollaborator(dto: ManagerEvaluationDto, managerId: number) {
-        const { cycleId, collaboratorId, criterias } = dto;
+        const { cycleConfigId, colaboradorId, autoavaliacao } = dto;
 
         //Validar se o managerId do DTO é o mesmo do usuário autenticado
         if (dto.managerId !== managerId) {
@@ -485,7 +485,7 @@ export class ManagerService {
         //Verificar se o colaborador existe e é membro de um projeto do gestor
         const collaboratorProject = await this.prisma.projectMember.findFirst({
             where: {
-                userId: collaboratorId,
+                userId: colaboradorId,
                 project: {
                     managerId: managerId,
                 },
@@ -504,6 +504,9 @@ export class ManagerService {
             );
         }
 
+        // Extrair todos os critérios dos pilares para validação
+        const allCriterias = autoavaliacao.pilares.flatMap(pilar => pilar.criterios);
+
         // Validar se os critérios pertencem à trilha do colaborador
         const trackId = collaboratorProject.user.trackId;
         const validCriteria = await this.prisma.criterionTrackConfig.findMany({
@@ -511,11 +514,11 @@ export class ManagerService {
             select: { criterionId: true },
         });
         const validCriteriaIds = validCriteria.map((c) => c.criterionId);
-        const invalidCriteria = criterias.filter((c) => !validCriteriaIds.includes(c.criteriaId));
+        const invalidCriteria = allCriterias.filter((c) => !validCriteriaIds.includes(c.criterioId));
         if (invalidCriteria.length > 0) {
             throw new BadRequestException(
                 `Os seguintes critérios não pertencem à trilha do colaborador: ${invalidCriteria
-                    .map((c) => c.criteriaId)
+                    .map((c) => c.criterioId)
                     .join(', ')}`,
             );
         }
@@ -523,9 +526,9 @@ export class ManagerService {
         //Verificar se já existe avaliação para este ciclo/colaborador/gestor
         const existingEvaluation = await this.prisma.managerEvaluation.findFirst({
             where: {
-                cycleId,
+                cycleId: cycleConfigId,
                 managerId,
-                collaboratorId,
+                collaboratorId: colaboradorId,
             },
         });
 
@@ -537,11 +540,11 @@ export class ManagerService {
             });
 
             // Criar novos critérios
-            const criteriaData = criterias.map((criteria) => ({
+            const criteriaData = allCriterias.map((criteria) => ({
                 managerEvaluationId: existingEvaluation.id,
-                criteriaId: criteria.criteriaId,
-                score: criteria.score,
-                justification: criteria.justification,
+                criteriaId: criteria.criterioId,
+                score: criteria.nota,
+                justification: criteria.justificativa,
             }));
 
             await this.prisma.managerEvaluationCriteria.createMany({
@@ -561,14 +564,14 @@ export class ManagerService {
         } else {
             return this.prisma.managerEvaluation.create({
                 data: {
-                    cycleId,
+                    cycleId: cycleConfigId,
                     managerId,
-                    collaboratorId,
+                    collaboratorId: colaboradorId,
                     criterias: {
-                        create: criterias.map((criteria) => ({
-                            criteriaId: criteria.criteriaId,
-                            score: criteria.score,
-                            justification: criteria.justification,
+                        create: allCriterias.map((criteria) => ({
+                            criteriaId: criteria.criterioId,
+                            score: criteria.nota,
+                            justification: criteria.justificativa,
                         })),
                     },
                 },
@@ -1256,13 +1259,26 @@ export class ManagerService {
                 const scores = managerEvaluation.criterias.map((c) => c.score);
                 average = Math.round((scores.reduce((sum, s) => sum + s, 0) / scores.length) * 10) / 10;
             }
+            
+            // Agrupar critérios por pilar
+            const pilaresMap = new Map();
+            for (const criteria of managerEvaluation.criterias) {
+                const pilarId = criteria.criteria.pillarId;
+                if (!pilaresMap.has(pilarId)) {
+                    pilaresMap.set(pilarId, {
+                        pilarId: pilarId,
+                        criterios: [],
+                    });
+                }
+                pilaresMap.get(pilarId).criterios.push({
+                    criterioId: criteria.criteriaId,
+                    nota: criteria.score,
+                    justificativa: criteria.justification,
+                });
+            }
+            
             managerBlock = {
-                criterias: managerEvaluation.criterias.map((c) => ({
-                    criteriaId: c.criteriaId,
-                    score: c.score,
-                    justification: c.justification,
-                    criteriaName: c.criteria.name,
-                })),
+                pilares: Array.from(pilaresMap.values()),
                 average,
             };
         }
@@ -1307,6 +1323,85 @@ export class ManagerService {
                       score: evaluation.equalization[evaluation.equalization.length - 1].score,
                   }
                 : null,
+        };
+    }
+
+    /**
+     * Retorna a avaliação do manager para um colaborador específico em um ciclo
+     */
+    async getManagerEvaluation(managerId: number, collaboratorId: number, cycleConfigId: number) {
+        // Verifica se o colaborador está sob gestão do manager
+        const isMember = await this.prisma.projectMember.findFirst({
+            where: {
+                userId: collaboratorId,
+                project: { managerId },
+            },
+        });
+        if (!isMember) {
+            throw new NotFoundException('Colaborador não pertence a nenhum projeto sob sua gestão.');
+        }
+
+        // Busca a avaliação do manager
+        const managerEvaluation = await this.prisma.managerEvaluation.findFirst({
+            where: { 
+                collaboratorId, 
+                cycleId: cycleConfigId, 
+                managerId 
+            },
+            include: { 
+                criterias: { 
+                    include: { 
+                        criteria: {
+                            include: {
+                                pillar: true
+                            }
+                        } 
+                    } 
+                } 
+            },
+        });
+
+        if (!managerEvaluation) {
+            return {
+                id: null,
+                cycleConfigId,
+                managerId,
+                collaboratorId,
+                autoavaliacao: {
+                    pilares: []
+                },
+                createdAt: null,
+                updatedAt: null
+            };
+        }
+
+        // Agrupar critérios por pilar
+        const pilaresMap = new Map();
+        for (const criteria of managerEvaluation.criterias) {
+            const pilarId = criteria.criteria.pillarId;
+            if (!pilaresMap.has(pilarId)) {
+                pilaresMap.set(pilarId, {
+                    pilarId: pilarId,
+                    criterios: [],
+                });
+            }
+            pilaresMap.get(pilarId).criterios.push({
+                criterioId: criteria.criteriaId,
+                nota: criteria.score,
+                justificativa: criteria.justification,
+            });
+        }
+
+        return {
+            id: managerEvaluation.id,
+            cycleConfigId: managerEvaluation.cycleId,
+            managerId: managerEvaluation.managerId,
+            collaboratorId: managerEvaluation.collaboratorId,
+            autoavaliacao: {
+                pilares: Array.from(pilaresMap.values())
+            },
+            createdAt: managerEvaluation.createdAt,
+            updatedAt: managerEvaluation.updatedAt
         };
     }
 

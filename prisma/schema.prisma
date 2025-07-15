@@ -255,7 +255,7 @@ model ManagerEvaluationCriteria {
   score               Int
   justification       String
 
-  managerEvaluation   ManagerEvaluation @relation(fields: [managerEvaluationId], references: [id])
+  managerEvaluation   ManagerEvaluation @relation(fields: [managerEvaluationId], references: [id], onDelete: Cascade)
   criteria            Criterion         @relation(fields: [criteriaId], references: [id])
 }
 
