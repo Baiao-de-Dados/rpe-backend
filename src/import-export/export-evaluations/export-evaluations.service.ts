@@ -6,7 +6,7 @@ import { CollaboratorsService } from '../../evaluations/collaborators/collaborat
 export class ExportEvaluationsService {
     constructor(private readonly collaboratorsService: CollaboratorsService) {}
 
-    async generateExport(): Promise<Buffer> {
+    async generateExport(cycleId: number): Promise<Buffer> {
         const collaborators = await this.collaboratorsService.getCollaborators();
 
         const workbook = new ExcelJS.Workbook();
@@ -26,18 +26,20 @@ export class ExportEvaluationsService {
 
         // Adiciona dados
         collaborators.forEach((collaborator) => {
-            collaborator.evaluations?.forEach((evaluation) => {
-                worksheet.addRow({
-                    name: collaborator.name,
-                    track: collaborator.track,
-                    position: collaborator.position,
-                    cycle: evaluation.cycleId,
-                    autoEvaluationScore: evaluation.autoEvaluationScore || 0,
-                    evaluation360Score: evaluation.evaluation360Score || 0,
-                    mentoringScore: evaluation.mentoringScore || 0,
-                    finalEqualizationScore: evaluation.finalEqualizationScore || 0,
+            collaborator.evaluations
+                ?.filter((evaluation) => evaluation.cycleId === cycleId)
+                .forEach((evaluation) => {
+                    worksheet.addRow({
+                        name: collaborator.name,
+                        track: collaborator.track,
+                        position: collaborator.position,
+                        cycle: evaluation.cycleId,
+                        autoEvaluationScore: evaluation.autoEvaluationScore || 0,
+                        evaluation360Score: evaluation.evaluation360Score || 0,
+                        mentoringScore: evaluation.mentoringScore || 0,
+                        finalEqualizationScore: evaluation.finalEqualizationScore || 0,
+                    });
                 });
-            });
         });
 
         const buffer = await workbook.xlsx.writeBuffer();
