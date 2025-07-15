@@ -27,24 +27,15 @@ export class ExportEvaluationsService {
         // Adiciona dados
         collaborators.forEach((collaborator) => {
             collaborator.evaluations?.forEach((evaluation) => {
-                const autoEvaluationScore =
-                    evaluation.autoEvaluation && evaluation.autoEvaluation.assignments
-                        ? evaluation.autoEvaluation.assignments.reduce(
-                              (sum, a) => sum + a.score,
-                              0,
-                          ) / evaluation.autoEvaluation.assignments.length
-                        : 0;
-
                 worksheet.addRow({
                     name: collaborator.name,
-                    email: collaborator.email,
-                    position: collaborator.position,
                     track: collaborator.track,
-                    cycleId: evaluation.cycleConfigId,
-                    autoEvaluationScore: autoEvaluationScore,
-                    evaluation360Score: evaluation.evaluation360?.[0]?.score || 0,
-                    mentoringScore: evaluation.mentoring?.score || 0,
-                    finalEqualizationScore: 0, // Não há mais equalização neste contexto
+                    position: collaborator.position,
+                    cycle: evaluation.cycleId,
+                    autoEvaluationScore: evaluation.autoEvaluationScore || 0,
+                    evaluation360Score: evaluation.evaluation360Score || 0,
+                    mentoringScore: evaluation.mentoringScore || 0,
+                    finalEqualizationScore: evaluation.finalEqualizationScore || 0,
                 });
             });
         });
