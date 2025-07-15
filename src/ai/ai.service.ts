@@ -26,33 +26,39 @@ export class AiService {
         userId: number,
         cycleId: number,
     ): Promise<string> {
-        // Busca os colaboradores do projeto atual do colaborador
+        // Busca os projetos do usuário
+        const projectMemberships = await this.prisma.projectMember.findMany({
+            where: { userId },
+            select: { projectId: true },
+        });
+        const projectIds = projectMemberships.map((pm) => pm.projectId);
+        // Busca apenas membros EMPLOYER dos projetos
         const projectMembers = await this.prisma.projectMember.findMany({
-            where: { userId: userId },
-            include: {
-                project: {
-                    include: {
-                        members: {
-                            include: { user: true },
-                        },
+            where: {
+                projectId: { in: projectIds },
+                user: {
+                    userRoles: {
+                        some: { role: 'EMPLOYER', isActive: true },
                     },
                 },
             },
+            include: {
+                user: true,
+            },
         });
-
-        const collaborators = projectMembers.flatMap((member) =>
-            member.project.members
-                .filter((m) => !['MANAGER', 'LEADER', 'ADMIN', 'MENTOR', 'RH', 'COMMITTEE'].includes(m.user.position)) // Filtra cargos superiores
-                .map((m) => ({
-                    id: m.user.id,
-                    name: m.user.name,
-                    email: m.user.email,
-                    position: m.user.position,
-                })),
-        );
+        const collaborators = projectMembers
+            .filter((pm) => pm.user.id !== userId)
+            .map((pm) => ({
+                id: pm.user.id,
+                name: pm.user.name,
+                email: pm.user.email,
+                position: pm.user.position,
+            }));
 
         if (collaborators.length === 0) {
-            throw new Error('Não há colaboradores elegíveis associados ao usuário para gerar o resumo.');
+            throw new Error(
+                'Não há colaboradores elegíveis associados ao usuário para gerar o resumo.',
+            );
         }
 
         // Busca o mentor do colaborador
