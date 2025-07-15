@@ -7,13 +7,46 @@ export class EvaluationDraftService {
     constructor(private readonly prisma: PrismaService) {}
 
     async saveDraft(userId: number, cycleId: number, draft: any) {
-        // Validação manual dos tipos dos IDs
-        if (!Array.isArray(draft)) {
-            throw new BadRequestException('Draft deve ser um array');
+        // Validação manual da estrutura do draft
+        if (!draft || typeof draft !== 'object') {
+            throw new BadRequestException('Draft deve ser um objeto');
         }
-        for (const item of draft) {
-            if (typeof item.pillarId !== 'number' || typeof item.criteriaId !== 'number') {
-                throw new BadRequestException('pillarId e criteriaId devem ser números');
+
+        // Validar selfAssessment
+        if (draft.selfAssessment && Array.isArray(draft.selfAssessment)) {
+            for (const item of draft.selfAssessment) {
+                if (typeof item.pillarId !== 'number' || typeof item.criteriaId !== 'number') {
+                    throw new BadRequestException(
+                        'selfAssessment: pillarId e criteriaId devem ser números',
+                    );
+                }
+            }
+        }
+
+        // Validar evaluation360
+        if (draft.evaluation360 && Array.isArray(draft.evaluation360)) {
+            for (const item of draft.evaluation360) {
+                if (typeof item.evaluateeId !== 'number') {
+                    throw new BadRequestException('evaluation360: evaluateeId deve ser número');
+                }
+            }
+        }
+
+        // Validar mentoring
+        if (draft.mentoring && Array.isArray(draft.mentoring)) {
+            for (const item of draft.mentoring) {
+                if (typeof item.rating !== 'number') {
+                    throw new BadRequestException('mentoring: rating deve ser número');
+                }
+            }
+        }
+
+        // Validar references
+        if (draft.references && Array.isArray(draft.references)) {
+            for (const item of draft.references) {
+                if (typeof item.collaboratorId !== 'number') {
+                    throw new BadRequestException('references: collaboratorId deve ser número');
+                }
             }
         }
 

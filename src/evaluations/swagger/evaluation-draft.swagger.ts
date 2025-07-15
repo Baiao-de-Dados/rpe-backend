@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 
-export class SelfSelfAssessmentItemDto {
+export class SelfAssessmentItemDto {
     @ApiProperty({ example: 1 })
     pillarId: number;
     @ApiProperty({ example: 1 })
@@ -11,11 +11,47 @@ export class SelfSelfAssessmentItemDto {
     justification: string;
 }
 
+export class Evaluation360ItemDto {
+    @ApiProperty({ example: 2 })
+    evaluateeId: number;
+    @ApiProperty({ example: 'Ótimo trabalho em equipe' })
+    strengths: string;
+    @ApiProperty({ example: 'Precisa melhorar organização' })
+    improvements: string;
+    @ApiProperty({ example: 4 })
+    rating: number;
+}
+
+export class MentoringItemDto {
+    @ApiProperty({ example: 'Justifique sua avaliação do mentor' })
+    justification: string;
+    @ApiProperty({ example: 4 })
+    rating: number;
+}
+
+export class ReferenceItemDto {
+    @ApiProperty({ example: 5 })
+    collaboratorId: number;
+    @ApiProperty({ example: 'Justifique sua escolha' })
+    justification: string;
+}
+
+export class DraftDto {
+    @ApiProperty({ type: [SelfAssessmentItemDto] })
+    selfAssessment: SelfAssessmentItemDto[];
+    @ApiProperty({ type: [Evaluation360ItemDto] })
+    evaluation360: Evaluation360ItemDto[];
+    @ApiProperty({ type: [MentoringItemDto] })
+    mentoring: MentoringItemDto[];
+    @ApiProperty({ type: [ReferenceItemDto] })
+    references: ReferenceItemDto[];
+}
+
 export class EvaluationDraftRequestDto {
     @ApiProperty({ example: 1 })
     cycleId: number;
-    @ApiProperty({ type: [SelfSelfAssessmentItemDto] })
-    draft: SelfSelfAssessmentItemDto[];
+    @ApiProperty({ type: DraftDto })
+    draft: DraftDto;
 }
 
 export class EvaluationDraftResponseDto {
@@ -25,8 +61,8 @@ export class EvaluationDraftResponseDto {
     userId: number;
     @ApiProperty({ example: 1 })
     cycleId: number;
-    @ApiProperty({ type: [SelfSelfAssessmentItemDto] })
-    draft: SelfSelfAssessmentItemDto[];
+    @ApiProperty({ type: DraftDto })
+    draft: DraftDto;
     @ApiProperty({ example: '2025-07-14T18:57:20.000Z' })
     createdAt: string;
     @ApiProperty({ example: '2025-07-14T18:57:20.000Z' })
@@ -37,20 +73,42 @@ export const evaluationDraftRequestExample = {
     summary: 'Exemplo de envio de rascunho de avaliação',
     value: {
         cycleId: 1,
-        draft: [
-            {
-                pillarId: 1,
-                criteriaId: 1,
-                rating: 4,
-                justification: 'Ótimo desempenho neste critério.',
-            },
-            {
-                pillarId: 2,
-                criteriaId: 2,
-                rating: 3,
-                justification: 'Precisa melhorar comunicação.',
-            },
-        ],
+        draft: {
+            selfAssessment: [
+                {
+                    pillarId: 1,
+                    criteriaId: 1,
+                    rating: 4,
+                    justification: 'Ótimo desempenho neste critério.',
+                },
+                {
+                    pillarId: 2,
+                    criteriaId: 2,
+                    rating: 3,
+                    justification: 'Precisa melhorar comunicação.',
+                },
+            ],
+            evaluation360: [
+                {
+                    evaluateeId: 2,
+                    strengths: 'Ótimo trabalho em equipe',
+                    improvements: 'Precisa melhorar organização',
+                    rating: 4,
+                },
+            ],
+            mentoring: [
+                {
+                    justification: 'Justifique sua avaliação do mentor',
+                    rating: 4,
+                },
+            ],
+            references: [
+                {
+                    collaboratorId: 5,
+                    justification: 'Justifique sua escolha',
+                },
+            ],
+        },
     },
 };
 
@@ -60,20 +118,42 @@ export const evaluationDraftResponseExample = {
         id: 1,
         userId: 1,
         cycleId: 1,
-        draft: [
-            {
-                pillarId: 1,
-                criteriaId: 1,
-                rating: 4,
-                justification: 'Ótimo desempenho neste critério.',
-            },
-            {
-                pillarId: 2,
-                criteriaId: 2,
-                rating: 3,
-                justification: 'Precisa melhorar comunicação.',
-            },
-        ],
+        draft: {
+            selfAssessment: [
+                {
+                    pillarId: 1,
+                    criteriaId: 1,
+                    rating: 4,
+                    justification: 'Ótimo desempenho neste critério.',
+                },
+                {
+                    pillarId: 2,
+                    criteriaId: 2,
+                    rating: 3,
+                    justification: 'Precisa melhorar comunicação.',
+                },
+            ],
+            evaluation360: [
+                {
+                    evaluateeId: 2,
+                    strengths: 'Ótimo trabalho em equipe',
+                    improvements: 'Precisa melhorar organização',
+                    rating: 4,
+                },
+            ],
+            mentoring: [
+                {
+                    justification: 'Justifique sua avaliação do mentor',
+                    rating: 4,
+                },
+            ],
+            references: [
+                {
+                    collaboratorId: 5,
+                    justification: 'Justifique sua escolha',
+                },
+            ],
+        },
         createdAt: '2025-07-14T18:57:20.000Z',
         updatedAt: '2025-07-14T18:57:20.000Z',
     },
@@ -146,48 +226,43 @@ export class EvaluationRequestDto {
 export const evaluationRequestExample = {
     summary: 'Exemplo de envio de avaliação completa',
     value: {
-        ciclo: '2025.1',
-        colaboradorId: 1,
-        autoavaliacao: [
-            {
-                pilarId: 10,
-                criterios: [
-                    {
-                        criterioId: 1,
-                        nota: 3,
-                        justificativa: 'Justifique sua nota',
-                    },
-                    {
-                        criterioId: 2,
-                        nota: 4,
-                        justificativa: 'Me mostrei resiliente em situações complicadas',
-                    },
-                ],
-            },
-        ],
-        avaliacao360: [
-            {
-                avaliadoId: 2,
-                pontosFortes: 'Ótimo trabalho em equipe',
-                pontosMelhoria: 'Precisa melhorar organização',
-                justificativa: 'Justifique sua nota',
-            },
-        ],
-        mentoring: [
-            {
-                mentorId: 3,
-                justificativa: 'Justifique sua avaliação do mentor',
-                leaderId: 4,
-                leaderJustificativa: 'Justifique sua avaliação do líder',
-            },
-        ],
-        referencias: [
-            {
-                colaboradorId: 5,
-                tagIds: [1, 2, 5],
-                justificativa: 'Justifique sua escolha',
-            },
-        ],
+        cycleId: 1,
+        draft: {
+            selfAssessment: [
+                {
+                    pillarId: 10,
+                    criteriaId: 1,
+                    rating: 3,
+                    justification: 'Justifique sua nota',
+                },
+                {
+                    pillarId: 10,
+                    criteriaId: 2,
+                    rating: 4,
+                    justification: 'Me mostrei resiliente em situações complicadas',
+                },
+            ],
+            evaluation360: [
+                {
+                    evaluateeId: 2,
+                    strengths: 'Ótimo trabalho em equipe',
+                    improvements: 'Precisa melhorar organização',
+                    rating: 4,
+                },
+            ],
+            mentoring: [
+                {
+                    justification: 'Justifique sua avaliação do mentor',
+                    rating: 4,
+                },
+            ],
+            references: [
+                {
+                    collaboratorId: 5,
+                    justification: 'Justifique sua escolha',
+                },
+            ],
+        },
     },
 };
 
@@ -195,47 +270,44 @@ export const evaluationResponseExample = {
     summary: 'Exemplo de resposta de avaliação criada',
     value: {
         id: 123,
-        ciclo: '2025.1',
-        colaboradorId: 1,
-        autoavaliacao: [
-            {
-                pilarId: 10,
-                criterios: [
-                    {
-                        criterioId: 1,
-                        nota: 3,
-                        justificativa: 'Justifique sua nota',
-                    },
-                    {
-                        criterioId: 2,
-                        nota: 4,
-                        justificativa: 'Me mostrei resiliente em situações complicadas',
-                    },
-                ],
-            },
-        ],
-        avaliacao360: [
-            {
-                avaliadoId: 2,
-                pontosFortes: 'Ótimo trabalho em equipe',
-                pontosMelhoria: 'Precisa melhorar organização',
-                justificativa: 'Justifique sua nota',
-            },
-        ],
-        mentoring: [
-            {
-                mentorId: 3,
-                justificativa: 'Justifique sua avaliação do mentor',
-                leaderId: 4,
-                leaderJustificativa: 'Justifique sua avaliação do líder',
-            },
-        ],
-        referencias: [
-            {
-                colaboradorId: 5,
-                tagIds: [1, 2, 5],
-                justificativa: 'Justifique sua escolha',
-            },
-        ],
+        cycleId: 1,
+        draft: {
+            autoEvaluation: [
+                {
+                    pillarId: 10,
+                    criteriaId: 1,
+                    rating: 3,
+                    justification: 'Justifique sua nota',
+                },
+                {
+                    pillarId: 10,
+                    criteriaId: 2,
+                    rating: 4,
+                    justification: 'Me mostrei resiliente em situações complicadas',
+                },
+            ],
+            evaluation360: [
+                {
+                    evaluateeId: 2,
+                    strengths: 'Ótimo trabalho em equipe',
+                    improvements: 'Precisa melhorar organização',
+                    rating: 4,
+                },
+            ],
+            mentoring: [
+                {
+                    justification: 'Justifique sua avaliação do mentor',
+                    rating: 4,
+                },
+            ],
+            references: [
+                {
+                    collaboratorId: 5,
+                    justification: 'Justifique sua escolha',
+                },
+            ],
+        },
+        createdAt: '2025-07-14T18:57:20.000Z',
+        updatedAt: '2025-07-14T18:57:20.000Z',
     },
 };
