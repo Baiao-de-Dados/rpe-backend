@@ -6,6 +6,7 @@ import { UpdateCriterionTrackConfigDto } from './dto/update-criterion-track-conf
 import { BatchUpdateCriteriaDto } from './dto/batch-update-criteria.dto';
 import { TrackConfigDto } from './dto/track-config.dto';
 import { CycleConfigService } from '../../../cycles/cycle-config.service';
+import { getBrazilDate } from 'src/cycles/utils';
 
 @Injectable()
 export class CriteriaService {
@@ -290,8 +291,8 @@ export class CriteriaService {
             (cycle) =>
                 cycle.startDate !== null &&
                 cycle.endDate !== null &&
-                cycle.startDate <= new Date() &&
-                cycle.endDate >= new Date(),
+                cycle.startDate <= new Date(getBrazilDate()) &&
+                cycle.endDate >= new Date(getBrazilDate()),
         );
 
         if (!activeCycle) {
@@ -674,7 +675,7 @@ export class CriteriaService {
         // });
 
         // Usar a data atual como data de início do ciclo
-        const startDate = new Date(); // Data de criação
+        const startDate = new Date(getBrazilDate()); // Data de criação
 
         const year = startDate.getFullYear();
         const semester = startDate.getMonth() < 6 ? 1 : 2;

@@ -126,7 +126,7 @@ export class RHController {
     @Get('criteria/track-config/filter/:trackId')
     @ApiGet('Filtro de Critérios por trilha')
     async findCriteriaTrackConfigsByFilter(
-        @Query('track', ParseIntPipe) trackId: number,
+        @Param('trackId', ParseIntPipe) trackId: number,
     ): Promise<TrackConfigResponseDto> {
         return this.rh.findCriteriaTracksConfigsByTrack(trackId);
     }

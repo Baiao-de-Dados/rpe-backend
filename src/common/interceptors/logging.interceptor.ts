@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { Request, Response } from 'express';
 import { LogService } from '../../log/log.service';
+import { getBrazilDate } from 'src/cycles/utils';
 
 @Injectable()
 export class LoggingInterceptor implements NestInterceptor {
@@ -16,7 +17,7 @@ export class LoggingInterceptor implements NestInterceptor {
         const req = context.switchToHttp().getRequest<Request>();
         const user = req.user as { id?: number; email?: string } | undefined;
         const { method, url } = req;
-        const now = Date.now();
+        const now = getBrazilDate().getDate();
         const ip = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress;
         const userAgent = req.headers['user-agent'] || '';
 
@@ -25,7 +26,7 @@ export class LoggingInterceptor implements NestInterceptor {
                 next: () => {
                     const res = context.switchToHttp().getResponse<Response>();
                     const { statusCode } = res;
-                    const duration = `${Date.now() - now}ms`;
+                    const duration = `${getBrazilDate().getDate() - now}ms`;
                     this.logger.info(`[${method}] ${url} - ${statusCode} (${duration})`);
                     // Salva log de acesso (não await, para não bloquear fluxo)
                     void this.logService.createLog({

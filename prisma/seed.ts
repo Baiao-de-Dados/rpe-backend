@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
+import { getBrazilDate } from '../src/cycles/utils';
 
 const prisma = new PrismaClient();
 
@@ -346,8 +347,8 @@ async function main() {
         data: {
             name: 'Ciclo Customizado',
             description: 'Ciclo ativo para testes customizados',
-            startDate: new Date(Date.now() - 1000 * 60 * 60 * 24), // ontem
-            endDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30), // +30 dias
+            startDate: new Date(getBrazilDate().getTime() - 1000 * 60 * 60 * 24), // ontem
+            endDate: new Date(getBrazilDate().getTime() + 1000 * 60 * 60 * 24 * 30), // +30 dias
             done: false,
         },
     });

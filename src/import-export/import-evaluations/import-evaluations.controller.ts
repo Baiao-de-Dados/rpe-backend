@@ -13,7 +13,9 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import { RequireRH } from '../../auth/decorators/roles.decorator';
 import { ApiImportEvaluations } from './swagger/import-evaluations.swagger';
+import { ApiAuth } from 'src/common/decorators/api-auth.decorator';
 
+@ApiAuth()
 @ApiTags('Importação')
 @Controller('import/evaluations')
 export class ImportEvaluationsController {

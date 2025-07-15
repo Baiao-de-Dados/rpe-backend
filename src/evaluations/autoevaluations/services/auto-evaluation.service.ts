@@ -1,6 +1,7 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { CycleValidationService } from '../../services/cycle-validation.service';
 import type { PrismaClient } from '@prisma/client';
+import { getBrazilDate } from 'src/cycles/utils';
 
 @Injectable()
 export class AutoEvaluationService {
@@ -56,8 +57,8 @@ export class AutoEvaluationService {
                     !cycle.done &&
                     cycle.startDate !== null &&
                     cycle.endDate !== null &&
-                    new Date() >= cycle.startDate &&
-                    new Date() <= cycle.endDate,
+                    new Date(getBrazilDate()) >= cycle.startDate &&
+                    new Date(getBrazilDate()) <= cycle.endDate,
             );
 
             if (currentActiveCycle && cycleConfigId !== currentActiveCycle.id) {
@@ -124,8 +125,8 @@ export class AutoEvaluationService {
                 !cycle.done &&
                 cycle.startDate !== null &&
                 cycle.endDate !== null &&
-                new Date() >= cycle.startDate &&
-                new Date() <= cycle.endDate,
+                new Date(getBrazilDate()) >= cycle.startDate &&
+                new Date(getBrazilDate()) <= cycle.endDate,
         );
 
         if (!activeCycle) {
@@ -211,8 +212,8 @@ export class AutoEvaluationService {
                 !cycle.done &&
                 cycle.startDate !== null &&
                 cycle.endDate !== null &&
-                new Date() >= cycle.startDate &&
-                new Date() <= cycle.endDate,
+                new Date(getBrazilDate()) >= cycle.startDate &&
+                new Date(getBrazilDate()) <= cycle.endDate,
         );
 
         if (!activeCycle) {
@@ -220,7 +221,7 @@ export class AutoEvaluationService {
         }
 
         // 2. Verificar se o ciclo está dentro do prazo
-        const now = new Date();
+        const now = new Date(getBrazilDate());
         if (!activeCycle.endDate || now > activeCycle.endDate) {
             throw new BadRequestException(
                 `O ciclo ${activeCycle.name} expirou em ${activeCycle.endDate ? activeCycle.endDate.toLocaleDateString() : 'data indefinida'}`,

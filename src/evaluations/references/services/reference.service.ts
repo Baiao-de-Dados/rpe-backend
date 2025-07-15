@@ -5,15 +5,17 @@ import { PrismaClient, Evaluation } from '@prisma/client';
 export class ReferenceService {
     async createReferences(
         prisma: PrismaClient,
-        referencias: Array<{
-            justificativa: string;
-            colaboradorId: number | string;
-        }>,
+        referencias:
+            | Array<{
+                  justificativa: string;
+                  colaboradorId: number | string;
+              }>
+            | undefined,
         colaboradorId: number,
         cycleConfigId: number,
     ): Promise<Evaluation[]> {
         if (!referencias || referencias.length === 0) {
-            throw new BadRequestException('Referências são obrigatórias');
+            return [];
         }
 
         const evaluations: Evaluation[] = [];
@@ -25,16 +27,12 @@ export class ReferenceService {
             if (!referencia.colaboradorId) {
                 throw new BadRequestException('ID do colaborador de referência é obrigatório');
             }
-
-            // Buscar se já existe uma Evaluation para esse colaborador/ciclo
             let evaluation = await prisma.evaluation.findFirst({
                 where: {
                     evaluatorId: colaboradorId,
                     cycleConfigId: cycleConfigId,
                 },
             });
-
-            // Se não existir, cria
             if (!evaluation) {
                 evaluation = await prisma.evaluation.create({
                     data: {

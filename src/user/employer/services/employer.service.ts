@@ -4,6 +4,7 @@ import { AutoEvaluationDto } from '../dto/auto-evaluation.dto';
 import { Evaluation360Dto } from '../dto/evaluation-360.dto';
 import { MentoringDto } from '../dto/mentoring.dto';
 import { ReferenceDto } from '../dto/references.dto';
+import { getBrazilDate } from 'src/cycles/utils';
 
 @Injectable()
 export class EmployerService {
@@ -15,13 +16,15 @@ export class EmployerService {
                 !cycle.done &&
                 cycle.startDate !== null &&
                 cycle.endDate !== null &&
-                new Date() >= cycle.startDate &&
-                new Date() <= cycle.endDate,
+                new Date(getBrazilDate()) >= cycle.startDate &&
+                new Date(getBrazilDate()) <= cycle.endDate,
         );
         if (!active) throw new NotFoundException('Nenhum ciclo ativo');
 
         const daysRemaining = active.endDate
-            ? Math.ceil((active.endDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+            ? Math.ceil(
+                  (active.endDate.getTime() - getBrazilDate().getTime()) / (1000 * 60 * 60 * 24),
+              )
             : null;
 
         const pendingCount = await this.prisma.evaluation.count({
@@ -61,6 +64,7 @@ export class EmployerService {
             activeCycle: active,
             pendingCount,
             lastEvaluation,
+            daysRemaining,
         };
     }
 
@@ -98,8 +102,8 @@ export class EmployerService {
                       !cycle.done &&
                       cycle.startDate !== null &&
                       cycle.endDate !== null &&
-                      new Date() >= cycle.startDate &&
-                      new Date() <= cycle.endDate,
+                      new Date(getBrazilDate()) >= cycle.startDate &&
+                      new Date(getBrazilDate()) <= cycle.endDate,
               );
 
         if (!active) throw new NotFoundException('Ciclo não encontrado');
@@ -309,6 +313,7 @@ export class EmployerService {
             id: evaluation.id,
             cycleConfigId: evaluation.cycleConfigId,
             userId: evaluation.evaluatorId,
+            sentDate: evaluation.createdAt,
             user: evaluation.evaluator
                 ? {
                       id: evaluation.evaluator.id,
@@ -477,6 +482,46 @@ export class EmployerService {
                 committee: committeeGrade,
             };
         });
+    }
+
+    async getUserNetwork(userId: number) {
+        // 1. Buscar todos os usuários do mesmo projeto
+        const projectMemberships = await this.prisma.projectMember.findMany({
+            where: { userId },
+            select: { projectId: true },
+        });
+        const projectIds = projectMemberships.map((pm) => pm.projectId);
+        const projectMembers = await this.prisma.projectMember.findMany({
+            where: { projectId: { in: projectIds } },
+            select: { userId: true },
+        });
+        const sameProjectUserIds = Array.from(
+            new Set(projectMembers.map((pm) => pm.userId)),
+        ).filter((id) => id !== userId);
+        const sameProjectUsers = await this.prisma.user.findMany({
+            where: {
+                id: { in: sameProjectUserIds },
+                userRoles: {
+                    some: { role: 'EMPLOYER' },
+                },
+            },
+            select: { id: true, name: true, email: true, position: true },
+        });
+
+        // 2. Buscar mentor do usuário
+        const user = await this.prisma.user.findUnique({ where: { id: userId } });
+        let mentor: any = null;
+        if (user?.mentorId) {
+            mentor = await this.prisma.user.findUnique({
+                where: { id: user.mentorId },
+                select: { id: true, name: true, email: true, position: true },
+            });
+        }
+
+        return {
+            sameProjectUsers,
+            mentor,
+        };
     }
 
     private formatAutoEvaluationPilares(assignments: any[]) {

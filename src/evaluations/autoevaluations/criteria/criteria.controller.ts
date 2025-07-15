@@ -87,7 +87,6 @@ export class CriteriaController {
     }
 
     @Get('track-config/filter')
-    @ExactRoles(UserRole.RH)
     @ApiGet('configurações de critérios por trilha filtradas')
     async findTrackConfigsByFilter(
         @Query('track', ParseIntPipe) trackId: number,

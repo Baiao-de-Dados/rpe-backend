@@ -6,6 +6,7 @@ import { ErpProjectDto } from './dto/erp-project.dto';
 import { ProjectStatus, UserRole } from '@prisma/client';
 import { ErpProjectMemberDto } from './dto/erp-project-member.dto';
 import { AuthService } from '../../auth/auth.service';
+import { getBrazilDate } from 'src/cycles/utils';
 
 @Injectable()
 export class ErpService {
@@ -46,12 +47,12 @@ export class ErpService {
             status: p.status,
             manager: {
                 email: p.manager.email,
-                startDate: new Date().toISOString(),
+                startDate: new Date(getBrazilDate()).toISOString(),
                 endDate: null,
             },
             leaders: p.leaderAssignments.map((la) => ({
                 email: la.leader.email,
-                startDate: new Date().toISOString(),
+                startDate: new Date(getBrazilDate()).toISOString(),
                 endDate: null,
             })),
             collaborators: p.members.map((m) => ({

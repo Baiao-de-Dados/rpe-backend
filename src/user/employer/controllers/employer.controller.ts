@@ -105,4 +105,9 @@ export class EmployerController {
     async getAllEvaluationsForUser(@CurrentUser('id') userId: number) {
         return this.service.getAllEvaluationsForUser(userId);
     }
+
+    @Get('network')
+    async getUserNetwork(@CurrentUser('id') userId: number) {
+        return this.service.getUserNetwork(userId);
+    }
 }

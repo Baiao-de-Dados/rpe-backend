@@ -1,5 +1,6 @@
 import { Injectable, NestMiddleware, Logger } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
+import { getBrazilDate } from 'src/cycles/utils';
 
 @Injectable()
 export class AuditMiddleware implements NestMiddleware {
@@ -8,7 +9,7 @@ export class AuditMiddleware implements NestMiddleware {
     use(req: Request, res: Response, next: NextFunction) {
         const user = (req as any).user?.id || 'anonymous';
         const { method, originalUrl } = req;
-        const timestamp = new Date().toISOString();
+        const timestamp = new Date(getBrazilDate()).toISOString();
 
         this.logger.log(`[${timestamp}] user=${user} ${method} ${originalUrl}`);
         // Aqui você pode também salvar no DB via Prisma

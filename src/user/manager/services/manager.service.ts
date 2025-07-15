@@ -3,7 +3,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { AssignLeaderDto } from '../dto/assign-leader.dto';
 import { AssignLeaderEvaluationDto } from '../dto/assign-leader-evaluation.dto';
 import { ManagerEvaluationDto } from '../dto/manager-evaluation.dto';
-import { isCycleActiveUtil } from 'src/cycles/utils';
+import { getBrazilDate, isCycleActiveUtil } from 'src/cycles/utils';
 
 @Injectable()
 export class ManagerService {
@@ -1007,8 +1007,8 @@ export class ManagerService {
                 !cycle.done &&
                 cycle.startDate !== null &&
                 cycle.endDate !== null &&
-                new Date() >= cycle.startDate &&
-                new Date() <= cycle.endDate,
+                new Date(getBrazilDate()) >= cycle.startDate &&
+                new Date(getBrazilDate()) <= cycle.endDate,
         );
         if (cycles.length === 0) {
             return [];
