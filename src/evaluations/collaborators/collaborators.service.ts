@@ -8,14 +8,15 @@ export class CollaboratorsService {
     async getCollaborators() {
         const collaborators = await this.prisma.user.findMany({
             include: {
-                evaluations: {
+                track: true,
+                evaluator: {
                     include: {
                         autoEvaluation: {
                             include: { assignments: true },
                         },
                         evaluation360: true,
                         mentoring: true,
-                        equalization: true, // Inclui a nota do comitê
+                        equalization: true,
                     },
                 },
             },
@@ -27,23 +28,30 @@ export class CollaboratorsService {
             email: collaborator.email,
             position: collaborator.position,
             track: collaborator.track?.name || 'Não informado',
-            evaluations: collaborator.evaluations.map((evaluation) => {
+            evaluations: collaborator.evaluator.map((evaluation) => {
                 const autoEvaluationScore =
-                    evaluation.autoEvaluation?.assignments.reduce(
-                        (sum, assignment) => sum + assignment.score,
-                        0,
-                    ) / (evaluation.autoEvaluation?.assignments.length || 1);
+                    evaluation.autoEvaluation?.assignments &&
+                    evaluation.autoEvaluation.assignments.length > 0
+                        ? evaluation.autoEvaluation.assignments.reduce(
+                              (sum, assignment) => sum + assignment.score,
+                              0,
+                          ) / evaluation.autoEvaluation.assignments.length
+                        : 0;
 
                 const evaluation360Score =
-                    evaluation.evaluation360.reduce((sum, eval360) => sum + eval360.score, 0) /
-                    (evaluation.evaluation360.length || 1);
+                    evaluation.evaluation360?.length > 0
+                        ? evaluation.evaluation360.reduce(
+                              (sum, eval360) => sum + eval360.score,
+                              0,
+                          ) / evaluation.evaluation360.length
+                        : 0;
 
                 return {
                     cycleId: evaluation.cycleConfigId,
-                    autoEvaluationScore: autoEvaluationScore || 0,
-                    evaluation360Score: evaluation360Score || 0,
+                    autoEvaluationScore,
+                    evaluation360Score,
                     mentoringScore: evaluation.mentoring?.score || 0,
-                    finalEqualizationScore: evaluation.equalization?.score || 0, // Nota do comitê
+                    finalEqualizationScore: evaluation.equalization?.[0]?.score || 0,
                 };
             }),
         }));
@@ -60,7 +68,7 @@ export class CollaboratorsService {
                 },
                 evaluation360: true,
                 mentoring: true,
-                equalization: true, // Inclui a nota do comitê
+                equalization: true,
                 cycleConfig: true,
             },
         });
@@ -71,21 +79,28 @@ export class CollaboratorsService {
 
         return evaluations.map((evaluation) => {
             const autoEvaluationScore =
-                evaluation.autoEvaluation?.assignments.reduce(
-                    (sum, assignment) => sum + assignment.score,
-                    0,
-                ) / (evaluation.autoEvaluation?.assignments.length || 1);
+                evaluation.autoEvaluation?.assignments &&
+                evaluation.autoEvaluation.assignments.length > 0
+                    ? evaluation.autoEvaluation.assignments.reduce(
+                          (sum, assignment) => sum + assignment.score,
+                          0,
+                      ) / evaluation.autoEvaluation.assignments.length
+                    : 0;
 
             const evaluation360Score =
-                evaluation.evaluation360.reduce((sum, eval360) => sum + eval360.score, 0) /
-                (evaluation.evaluation360.length || 1);
+                evaluation.evaluation360?.length > 0
+                    ? evaluation.evaluation360.reduce(
+                          (sum, eval360) => sum + eval360.score,
+                          0,
+                      ) / evaluation.evaluation360.length
+                    : 0;
 
             return {
                 cycleName: evaluation.cycleConfig.name,
-                autoEvaluationScore: autoEvaluationScore || 0,
-                evaluation360Score: evaluation360Score || 0,
+                autoEvaluationScore,
+                evaluation360Score,
                 mentoringScore: evaluation.mentoring?.score || 0,
-                finalEqualizationScore: evaluation.equalization?.score || 0, // Nota do comitê
+                finalEqualizationScore: evaluation.equalization?.[0]?.score || 0,
             };
         });
     }
@@ -102,29 +117,36 @@ export class CollaboratorsService {
                 evaluation360: true,
                 mentoring: true,
                 reference: true,
-                equalization: true, // Inclui a nota do comitê
+                equalization: true,
                 cycleConfig: true,
             },
         });
 
         return evaluations.map((evaluation) => {
             const autoEvaluationScore =
-                evaluation.autoEvaluation?.assignments.reduce(
-                    (sum, assignment) => sum + assignment.score,
-                    0,
-                ) / (evaluation.autoEvaluation?.assignments.length || 1);
+                evaluation.autoEvaluation?.assignments &&
+                evaluation.autoEvaluation.assignments.length > 0
+                    ? evaluation.autoEvaluation.assignments.reduce(
+                          (sum, assignment) => sum + assignment.score,
+                          0,
+                      ) / evaluation.autoEvaluation.assignments.length
+                    : 0;
 
             const evaluation360Score =
-                evaluation.evaluation360.reduce((sum, eval360) => sum + eval360.score, 0) /
-                (evaluation.evaluation360.length || 1);
+                evaluation.evaluation360?.length > 0
+                    ? evaluation.evaluation360.reduce(
+                          (sum, eval360) => sum + eval360.score,
+                          0,
+                      ) / evaluation.evaluation360.length
+                    : 0;
 
             return {
                 id: evaluation.id,
                 cycleName: evaluation.cycleConfig.name,
-                autoEvaluationScore: autoEvaluationScore || 0,
-                evaluation360Score: evaluation360Score || 0,
+                autoEvaluationScore,
+                evaluation360Score,
                 mentoringScore: evaluation.mentoring?.score || 0,
-                finalEqualizationScore: evaluation.equalization?.score || 0, // Nota do comitê
+                finalEqualizationScore: evaluation.equalization?.[0]?.score || 0,
                 reference: evaluation.reference?.map((ref) => ({
                     justification: ref.justification,
                 })),
