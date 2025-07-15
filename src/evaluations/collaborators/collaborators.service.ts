@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
@@ -9,159 +9,299 @@ export class CollaboratorsService {
         const collaborators = await this.prisma.user.findMany({
             include: {
                 track: true,
-                evaluator: {
-                    include: {
-                        autoEvaluation: {
-                            include: { assignments: true },
-                        },
-                        evaluation360: true,
-                        mentoring: true,
-                        equalization: true, // Inclui a relação com o modelo Equalization
-                    },
-                },
+                userRoles: true,
             },
         });
 
-        return collaborators.map((collaborator) => ({
-            id: collaborator.id,
-            name: collaborator.name,
-            email: collaborator.email,
-            position: collaborator.position,
-            track: collaborator.track?.name || 'Não informado',
-            evaluations: collaborator.evaluator.map((evaluation) => {
-                const autoEvaluationScore =
-                    evaluation.autoEvaluation?.assignments &&
-                    evaluation.autoEvaluation.assignments.length > 0
-                        ? evaluation.autoEvaluation.assignments.reduce(
-                              (sum, assignment) => sum + assignment.score,
-                              0,
-                          ) / evaluation.autoEvaluation.assignments.length
-                        : 0;
+        // Filtrar apenas EMPLOYER
+        const onlyEmployers = collaborators.filter((user) =>
+            user.userRoles.some((role) => role.role === 'EMPLOYER' && role.isActive),
+        );
 
-                const evaluation360Score =
-                    evaluation.evaluation360?.length > 0
-                        ? evaluation.evaluation360.reduce(
-                              (sum, eval360) => sum + eval360.score,
-                              0,
-                          ) / evaluation.evaluation360.length
-                        : 0;
+        const cycles = await this.prisma.cycleConfig.findMany({ orderBy: { startDate: 'asc' } });
 
-                const finalEqualizationScore =
-                    evaluation.equalization?.length > 0
-                        ? evaluation.equalization.reduce((sum, eq) => sum + eq.score, 0) / evaluation.equalization.length
-                        : 0; // Obtém a nota média do comitê de equalização
+        const results = await Promise.all(
+            onlyEmployers.map(async (collaborator) => {
+                const scores: Array<{
+                    cycleId: number;
+                    cycleName: string;
+                    av360Score: number | null;
+                    autoEvaluationScore: number | null;
+                    managerScore: number | null;
+                    equalizationScore: number | null;
+                }> = [];
+                for (const cycle of cycles) {
+                    const av360 = await this.prisma.evaluation360.findMany({
+                        where: {
+                            evaluatedId: collaborator.id,
+                            evaluation: { cycleConfigId: cycle.id },
+                        },
+                    });
+                    const av360Score =
+                        av360.length > 0
+                            ? av360.reduce((sum, e) => sum + e.score, 0) / av360.length
+                            : null;
 
+                    const autoEval = await this.prisma.evaluation.findFirst({
+                        where: {
+                            evaluatorId: collaborator.id,
+                            cycleConfigId: cycle.id,
+                            autoEvaluation: { isNot: null },
+                        },
+                        include: { autoEvaluation: true },
+                    });
+                    const autoEvaluationScore = autoEval?.autoEvaluation?.rating ?? null;
+
+                    const managerEval = await this.prisma.managerEvaluation.findFirst({
+                        where: {
+                            collaboratorId: collaborator.id,
+                            cycleId: cycle.id,
+                        },
+                        include: { criterias: true },
+                    });
+                    let managerScore: number | null = null;
+                    if (managerEval && managerEval.criterias.length > 0) {
+                        managerScore =
+                            managerEval.criterias.reduce((sum, c) => sum + c.score, 0) /
+                            managerEval.criterias.length;
+                    }
+
+                    let equalizationScore: number | null = null;
+                    if (autoEval) {
+                        const equalization = await this.prisma.equalization.findFirst({
+                            where: { evaluationId: autoEval.id },
+                        });
+                        if (equalization) {
+                            equalizationScore = equalization.score;
+                        }
+                    }
+
+                    scores.push({
+                        cycleId: cycle.id,
+                        cycleName: cycle.name,
+                        av360Score,
+                        autoEvaluationScore,
+                        managerScore,
+                        equalizationScore,
+                    });
+                }
                 return {
-                    cycleId: evaluation.cycleConfigId,
-                    autoEvaluationScore,
-                    evaluation360Score,
-                    mentoringScore: evaluation.mentoring?.score || 0,
-                    finalEqualizationScore,
+                    id: collaborator.id,
+                    name: collaborator.name,
+                    email: collaborator.email,
+                    position: collaborator.position,
+                    track: collaborator.track?.name || 'Não informado',
+                    scores,
                 };
             }),
-        }));
+        );
+        return results;
     }
 
     async getCollaboratorEvaluations(collaboratorId: number) {
-        const evaluations = await this.prisma.evaluation.findMany({
-            where: {
-                evaluatorId: collaboratorId,
-            },
-            include: {
-                autoEvaluation: {
-                    include: { assignments: true },
+        const cycles = await this.prisma.cycleConfig.findMany({ orderBy: { startDate: 'asc' } });
+        const result: Array<{
+            cycleId: number;
+            cycleName: string;
+            av360Score: number | null;
+            autoEvaluationScore: number | null;
+            managerScore: number | null;
+            equalizationScore: number | null;
+        }> = [];
+        for (const cycle of cycles) {
+            const av360 = await this.prisma.evaluation360.findMany({
+                where: {
+                    evaluatedId: collaboratorId,
+                    evaluation: { cycleConfigId: cycle.id },
                 },
-                evaluation360: true,
-                mentoring: true,
-                equalization: true, // Inclui a relação com o modelo Equalization
-                cycleConfig: true,
-            },
-        });
+            });
+            const av360Score =
+                av360.length > 0 ? av360.reduce((sum, e) => sum + e.score, 0) / av360.length : null;
 
-        if (evaluations.length === 0) {
-            throw new NotFoundException('Nenhuma avaliação encontrada para este colaborador');
-        }
+            const autoEval = await this.prisma.evaluation.findFirst({
+                where: {
+                    evaluatorId: collaboratorId,
+                    cycleConfigId: cycle.id,
+                    autoEvaluation: { isNot: null },
+                },
+                include: { autoEvaluation: true },
+            });
+            const autoEvaluationScore = autoEval?.autoEvaluation?.rating ?? null;
 
-        return evaluations.map((evaluation) => {
-            const autoEvaluationScore =
-                evaluation.autoEvaluation?.assignments &&
-                evaluation.autoEvaluation.assignments.length > 0
-                    ? evaluation.autoEvaluation.assignments.reduce(
-                          (sum, assignment) => sum + assignment.score,
-                          0,
-                      ) / evaluation.autoEvaluation.assignments.length
-                    : 0;
+            const managerEval = await this.prisma.managerEvaluation.findFirst({
+                where: {
+                    collaboratorId: collaboratorId,
+                    cycleId: cycle.id,
+                },
+                include: { criterias: true },
+            });
+            let managerScore: number | null = null;
+            if (managerEval && managerEval.criterias.length > 0) {
+                managerScore =
+                    managerEval.criterias.reduce((sum, c) => sum + c.score, 0) /
+                    managerEval.criterias.length;
+            }
 
-            const evaluation360Score =
-                evaluation.evaluation360?.length > 0
-                    ? evaluation.evaluation360.reduce((sum, eval360) => sum + eval360.score, 0) /
-                      evaluation.evaluation360.length
-                    : 0;
-
-            const finalEqualizationScore =
-                evaluation.equalization?.length > 0
-                    ? evaluation.equalization.reduce((sum, eq) => sum + eq.score, 0) / evaluation.equalization.length
-                    : 0; // Obtém a nota média do comitê de equalização
-
-            return {
-                cycleName: evaluation.cycleConfig.name,
+            let equalizationScore: number | null = null;
+            if (autoEval) {
+                const equalization = await this.prisma.equalization.findFirst({
+                    where: { evaluationId: autoEval.id },
+                });
+                if (equalization) {
+                    equalizationScore = equalization.score;
+                }
+            }
+            result.push({
+                cycleId: cycle.id,
+                cycleName: cycle.name,
+                av360Score,
                 autoEvaluationScore,
-                evaluation360Score,
-                mentoringScore: evaluation.mentoring?.score || 0,
-                finalEqualizationScore,
-            };
-        });
+                managerScore,
+                equalizationScore,
+            });
+        }
+        return result;
     }
 
     async getCollaboratorEvaluationHistory(collaboratorId: number) {
-        const evaluations = await this.prisma.evaluation.findMany({
-            where: {
-                evaluatorId: collaboratorId,
-            },
-            include: {
-                autoEvaluation: {
-                    include: { assignments: true },
+        const cycles = await this.prisma.cycleConfig.findMany({ orderBy: { startDate: 'asc' } });
+        const result: Array<{
+            cycleId: number;
+            cycleName: string;
+            av360Score: number | null;
+            autoEvaluationScore: number | null;
+            managerScore: number | null;
+            equalizationScore: number | null;
+        }> = [];
+        for (const cycle of cycles) {
+            const av360 = await this.prisma.evaluation360.findMany({
+                where: {
+                    evaluatedId: collaboratorId,
+                    evaluation: { cycleConfigId: cycle.id },
                 },
-                evaluation360: true,
-                mentoring: true,
-                reference: true,
-                equalization: true, // Inclui a relação com o modelo Equalization
-                cycleConfig: true,
-            },
-        });
+            });
+            const av360Score =
+                av360.length > 0 ? av360.reduce((sum, e) => sum + e.score, 0) / av360.length : null;
 
-        return evaluations.map((evaluation) => {
-            const autoEvaluationScore =
-                evaluation.autoEvaluation?.assignments &&
-                evaluation.autoEvaluation.assignments.length > 0
-                    ? evaluation.autoEvaluation.assignments.reduce(
-                          (sum, assignment) => sum + assignment.score,
-                          0,
-                      ) / evaluation.autoEvaluation.assignments.length
-                    : 0;
+            const autoEval = await this.prisma.evaluation.findFirst({
+                where: {
+                    evaluatorId: collaboratorId,
+                    cycleConfigId: cycle.id,
+                    autoEvaluation: { isNot: null },
+                },
+                include: { autoEvaluation: true },
+            });
+            const autoEvaluationScore = autoEval?.autoEvaluation?.rating ?? null;
 
-            const evaluation360Score =
-                evaluation.evaluation360?.length > 0
-                    ? evaluation.evaluation360.reduce((sum, eval360) => sum + eval360.score, 0) /
-                      evaluation.evaluation360.length
-                    : 0;
+            const managerEval = await this.prisma.managerEvaluation.findFirst({
+                where: {
+                    collaboratorId: collaboratorId,
+                    cycleId: cycle.id,
+                },
+                include: { criterias: true },
+            });
+            let managerScore: number | null = null;
+            if (managerEval && managerEval.criterias.length > 0) {
+                managerScore =
+                    managerEval.criterias.reduce((sum, c) => sum + c.score, 0) /
+                    managerEval.criterias.length;
+            }
 
-            const finalEqualizationScore =
-                evaluation.equalization?.length > 0
-                    ? evaluation.equalization.reduce((sum, eq) => sum + eq.score, 0) / evaluation.equalization.length
-                    : 0; // Obtém a nota média do comitê de equalização
+            let equalizationScore: number | null = null;
+            if (autoEval) {
+                const equalization = await this.prisma.equalization.findFirst({
+                    where: { evaluationId: autoEval.id },
+                });
+                if (equalization) {
+                    equalizationScore = equalization.score;
+                }
+            }
 
-            return {
-                id: evaluation.id,
-                cycleName: evaluation.cycleConfig.name,
+            result.push({
+                cycleId: cycle.id,
+                cycleName: cycle.name,
+                av360Score,
                 autoEvaluationScore,
-                evaluation360Score,
-                mentoringScore: evaluation.mentoring?.score || 0,
-                finalEqualizationScore,
-                reference: evaluation.reference?.map((ref) => ({
-                    justification: ref.justification,
-                })),
-            };
+                managerScore,
+                equalizationScore,
+            });
+        }
+        return result;
+    }
+
+    /**
+     * Retorna as principais notas recebidas pelo colaborador agrupadas por ciclo
+     */
+    async getCollaboratorScores(collaboratorId: number) {
+        // Buscar todos os ciclos em que o colaborador participou
+        const cycles = await this.prisma.cycleConfig.findMany({
+            orderBy: { startDate: 'asc' },
         });
+        const result: Array<{
+            cycleId: number;
+            cycleName: string;
+            av360Score: number | null;
+            autoEvaluationScore: number | null;
+            managerScore: number | null;
+            equalizationScore: number | null;
+        }> = [];
+        for (const cycle of cycles) {
+            // AV360 recebida
+            const av360 = await this.prisma.evaluation360.findMany({
+                where: {
+                    evaluatedId: collaboratorId,
+                    evaluation: { cycleConfigId: cycle.id },
+                },
+            });
+            const av360Score =
+                av360.length > 0 ? av360.reduce((sum, e) => sum + e.score, 0) / av360.length : null;
+
+            // Autoavaliação
+            const autoEval = await this.prisma.evaluation.findFirst({
+                where: {
+                    evaluatorId: collaboratorId,
+                    cycleConfigId: cycle.id,
+                    autoEvaluation: { isNot: null },
+                },
+                include: { autoEvaluation: true },
+            });
+            const autoEvaluationScore = autoEval?.autoEvaluation?.rating ?? null;
+
+            // Nota do gestor
+            const managerEval = await this.prisma.managerEvaluation.findFirst({
+                where: {
+                    collaboratorId: collaboratorId,
+                    cycleId: cycle.id,
+                },
+                include: { criterias: true },
+            });
+            let managerScore: number | null = null;
+            if (managerEval && managerEval.criterias.length > 0) {
+                managerScore =
+                    managerEval.criterias.reduce((sum, c) => sum + c.score, 0) /
+                    managerEval.criterias.length;
+            }
+
+            // Nota da equalização (única)
+            let equalizationScore: number | null = null;
+            if (autoEval) {
+                const equalization = await this.prisma.equalization.findFirst({
+                    where: { evaluationId: autoEval.id },
+                });
+                if (equalization) {
+                    equalizationScore = equalization.score;
+                }
+            }
+
+            result.push({
+                cycleId: cycle.id,
+                cycleName: cycle.name,
+                av360Score,
+                autoEvaluationScore,
+                managerScore,
+                equalizationScore,
+            });
+        }
+        return result;
     }
 }
