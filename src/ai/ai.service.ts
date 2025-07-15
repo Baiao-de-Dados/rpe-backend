@@ -167,10 +167,8 @@ export class AiService {
         // Busca a nota final e justificativa do comitê de equalização
         const equalization = await this.prisma.equalization.findFirst({
             where: {
-                evaluation: {
-                    evaluatorId: userId,
-                    cycleConfigId: cycleId,
-                },
+                collaboratorId: userId,
+                cycleId: cycleId,
             },
         });
 
@@ -378,17 +376,15 @@ export class AiService {
         // Busca as avaliações do comitê de equalização
         const equalizations = await this.prisma.equalization.findMany({
             where: {
-                evaluation: {
-                    evaluatorId: {
-                        in: leaderEvaluations.map((evaluation) => evaluation.collaboratorId),
-                    },
-                    cycleConfigId: cycleId,
+                collaboratorId: {
+                    in: leaderEvaluations.map((evaluation) => evaluation.collaboratorId),
                 },
+                cycleId: cycleId,
             },
         });
 
         const equalizationData = equalizations.map((equalization) => ({
-            collaboratorId: equalization.evaluationId,
+            collaboratorId: equalization.collaboratorId,
             score: equalization.score,
             justification: equalization.justification,
         }));

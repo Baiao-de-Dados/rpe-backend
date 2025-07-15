@@ -16,7 +16,6 @@ export class CollaboratorsService {
                         },
                         evaluation360: true,
                         mentoring: true,
-                        equalization: true,
                     },
                 },
             },
@@ -51,7 +50,7 @@ export class CollaboratorsService {
                     autoEvaluationScore,
                     evaluation360Score,
                     mentoringScore: evaluation.mentoring?.score || 0,
-                    finalEqualizationScore: evaluation.equalization?.[0]?.score || 0,
+                    finalEqualizationScore: 0, // Will be fetched separately
                 };
             }),
         }));
@@ -68,7 +67,6 @@ export class CollaboratorsService {
                 },
                 evaluation360: true,
                 mentoring: true,
-                equalization: true,
                 cycleConfig: true,
             },
         });
@@ -98,7 +96,7 @@ export class CollaboratorsService {
                 autoEvaluationScore,
                 evaluation360Score,
                 mentoringScore: evaluation.mentoring?.score || 0,
-                finalEqualizationScore: evaluation.equalization?.[0]?.score || 0,
+                finalEqualizationScore: 0, // Will be fetched separately
             };
         });
     }
@@ -115,7 +113,6 @@ export class CollaboratorsService {
                 evaluation360: true,
                 mentoring: true,
                 reference: true,
-                equalization: true,
                 cycleConfig: true,
             },
         });
@@ -142,7 +139,7 @@ export class CollaboratorsService {
                 autoEvaluationScore,
                 evaluation360Score,
                 mentoringScore: evaluation.mentoring?.score || 0,
-                finalEqualizationScore: evaluation.equalization?.[0]?.score || 0,
+                finalEqualizationScore: 0, // Will be fetched separately
                 reference: evaluation.reference?.map((ref) => ({
                     justification: ref.justification,
                 })),

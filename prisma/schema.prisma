@@ -39,6 +39,7 @@ model User {
   mentoringsReceived     Mentoring[]     @relation("UserToMentoring")
   referencesReceived     Reference[]     @relation("UserToReference")
   evaluationDrafts       EvaluationDraft[]
+  equalizations         Equalization[]  @relation("UserToEqualization")
 }
 
 model UserRoleLink {
@@ -91,6 +92,7 @@ model CycleConfig {
   leaderEvaluationAssignments LeaderEvaluationAssignment[]
   managerEvaluations ManagerEvaluation[]
   leaderEvaluations LeaderEvaluation[]
+  equalizations     Equalization[]
 
   @@unique([name])
 }
@@ -151,7 +153,6 @@ model Evaluation {
   evaluation360  Evaluation360[]
   mentoring      Mentoring?
   reference      Reference[]
-  equalization Equalization[]
 
   @@unique([evaluatorId, cycleConfigId])
 }
@@ -261,13 +262,17 @@ model ManagerEvaluationCriteria {
 
 model Equalization {
   id            Int      @id @default(autoincrement())
-  evaluationId  Int
+  collaboratorId Int
+  cycleId       Int
   justification String
   score         Float?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  evaluation Evaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  collaborator User     @relation("UserToEqualization", fields: [collaboratorId], references: [id], onDelete: Cascade)
+  cycle        CycleConfig @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+
+  @@unique([collaboratorId, cycleId])
 }
 
 model Project {

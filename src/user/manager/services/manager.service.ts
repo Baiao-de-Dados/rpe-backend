@@ -859,7 +859,6 @@ export class ManagerService {
                 autoEvaluation: {
                     include: { assignments: true },
                 },
-                equalization: true, // Adicionado para buscar equalizações
             },
         });
         // Mapear autoavaliações por colaborador e ciclo
@@ -925,12 +924,14 @@ export class ManagerService {
                 }
                 // Substituir leaderEvaluationScore por equalizationScore
                 let equalizationScore: number | null = null;
-                if (autoEval && autoEval.equalization && autoEval.equalization.length > 0) {
-                    // Se houver mais de uma, pega a mais recente
-                    const latestEq = autoEval.equalization.reduce((latest, eq) =>
-                        !latest || eq.createdAt > latest.createdAt ? eq : latest,
-                    );
-                    equalizationScore = latestEq.score;
+                const equalization = await this.prisma.equalization.findFirst({
+                    where: {
+                        collaboratorId: collaborator.id,
+                        cycleId: cycle.id,
+                    },
+                });
+                if (equalization) {
+                    equalizationScore = equalization.score;
                 }
                 const leaderEval = leaderEvalMap.get(`${collaborator.id}-${cycle.id}`);
                 const leaderEvalScore: number | null = leaderEval ? leaderEval.score : null;
@@ -1132,8 +1133,15 @@ export class ManagerService {
             },
             include: {
                 autoEvaluation: { include: { assignments: true } },
-                equalization: true,
                 evaluation360: true,
+            },
+        });
+
+        // Buscar equalizações separadamente
+        const equalizations = await this.prisma.equalization.findMany({
+            where: {
+                collaboratorId: { in: collaboratorIds },
+                cycleId: activeCycle.id,
             },
         });
 
@@ -1190,11 +1198,9 @@ export class ManagerService {
             }
             // Equalização
             let equalizationGrade: number | null = null;
-            if (evaluation?.equalization?.length) {
-                const lastEq = evaluation.equalization[evaluation.equalization.length - 1];
-                if (lastEq?.score !== undefined && lastEq?.score !== null) {
-                    equalizationGrade = Math.round(lastEq.score * 10) / 10;
-                }
+            const equalization = equalizations.find((eq) => eq.collaboratorId === c.id);
+            if (equalization?.score !== undefined && equalization?.score !== null) {
+                equalizationGrade = Math.round(equalization.score * 10) / 10;
             }
             // Gestor
             const managerGrade = managerByCollaborator.get(c.id) ?? null;
@@ -1241,12 +1247,20 @@ export class ManagerService {
                 evaluation360: true,
                 mentoring: true,
                 reference: true,
-                equalization: true,
             },
         });
         if (!evaluation) {
             throw new NotFoundException('Nenhuma avaliação encontrada para este ciclo.');
         }
+
+        // Buscar equalização separadamente
+        const equalization = await this.prisma.equalization.findFirst({
+            where: {
+                collaboratorId,
+                cycleId: cycleConfigId,
+            },
+        });
+
         // Busca a avaliação do gestor
         const managerEvaluation = await this.prisma.managerEvaluation.findFirst({
             where: { collaboratorId, cycleId: cycleConfigId, managerId },
@@ -1259,26 +1273,13 @@ export class ManagerService {
                 const scores = managerEvaluation.criterias.map((c) => c.score);
                 average = Math.round((scores.reduce((sum, s) => sum + s, 0) / scores.length) * 10) / 10;
             }
-            
-            // Agrupar critérios por pilar
-            const pilaresMap = new Map();
-            for (const criteria of managerEvaluation.criterias) {
-                const pilarId = criteria.criteria.pillarId;
-                if (!pilaresMap.has(pilarId)) {
-                    pilaresMap.set(pilarId, {
-                        pilarId: pilarId,
-                        criterios: [],
-                    });
-                }
-                pilaresMap.get(pilarId).criterios.push({
-                    criterioId: criteria.criteriaId,
-                    nota: criteria.score,
-                    justificativa: criteria.justification,
-                });
-            }
-            
             managerBlock = {
-                pilares: Array.from(pilaresMap.values()),
+                criterias: managerEvaluation.criterias.map((c) => ({
+                    criteriaId: c.criteriaId,
+                    score: c.score,
+                    justification: c.justification,
+                    criteriaName: c.criteria.name,
+                })),
                 average,
             };
         }
@@ -1318,9 +1319,9 @@ export class ManagerService {
                 justificativa: ref.justification,
             })),
             managerEvaluation: managerBlock,
-            equalization: evaluation.equalization?.length
+            equalization: equalization
                 ? {
-                      score: evaluation.equalization[evaluation.equalization.length - 1].score,
+                      score: equalization.score,
                   }
                 : null,
         };
