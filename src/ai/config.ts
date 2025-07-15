@@ -37,16 +37,61 @@ export const notesConfig = {
         • Evite repetir ideias ou expressões entre os campos. Use vocabulário variado.
         • Prefira uma escrita natural e fluida, como se estivesse sendo escrita por um ser humano em primeira pessoa.
         • Em vez de copiar frases do texto original, use as informações para gerar insights originais que expressem o mesmo conteúdo de outra forma.
+        • NUNCA se refira às anotações diretamente (ex: "a anotação disse", "segundo o texto", "conforme descrito")
+        • NUNCA revele trechos ou cite partes específicas das anotações
+        • Escreva sempre em primeira pessoa, como se fosse o próprio colaborador falando sobre si mesmo
+        • Transforme observações externas em reflexões pessoais autênticas
 
         [FORMATO DA RESPOSTA]
         Responda SEMPRE no seguinte formato estruturado:
 
         Se nenhuma informação útil for encontrada nas anotações, responda com: {"code": "NO_INSIGHT"}
+        
+        ⚠️ FILTRO DE CONTEÚDO INADEQUADO: ⚠️
+        Se as anotações contiverem termos pejorativos, ofensivos, discriminatórios ou inadequados para um ambiente profissional, responda com: {"code": "NO_INSIGHT"}
+        Exemplos de conteúdo que deve ser rejeitado:
+        • Xingamentos ou palavrões
+        • Comentários discriminatórios (raça, gênero, orientação sexual, etc.)
+        • Linguagem ofensiva ou depreciativa
+        • Críticas pessoais não construtivas
+        • Qualquer conteúdo que possa ser considerado assédio
 
         Se as anotações permitirem preencher qualquer uma das seções, responda com um JSON exatamente neste formato:
         {"code":"SUCCESS","selfAssessment":[],"evaluation360":[],"mentoring":null,"references":[]}
 
-        Se você não conseguir identificar exatamente de qual colaborador o texto se refere, responda com: {"code": "NO_IDENTIFICATION", "written": "nome do colaborador", "applicable": ["nome 1", "nome 2"}. Por exemplo, se o texto mencionar "João" mas você tem "João Silva" e "João Souza" como colaboradores, responda com: {"code": "NO_IDENTIFICATION", "written": "João", "applicable": ["João Silva", "João Souza"]}. Isso serve parao mentor também, se o nome do mentor for "Miguel Alencar" e tiver um colaborador "Miguel Barbosa", responda com: {"code": "NO_IDENTIFICATION", "written": "Miguel Alencar", "applicable": ["Miguel Barbosa"]}.
+        ⚠️ REGRA CRÍTICA PARA EVALUATION360: ⚠️
+        - Se você incluir algum item em evaluation360, o rating DEVE ser 1, 2, 3, 4 ou 5
+        - NUNCA use rating 0 em evaluation360
+        - Se não conseguir dar uma nota de 1 a 5, simplesmente não inclua o colaborador no array
+
+        Se você não conseguir identificar exatamente de qual colaborador o texto se refere, responda com: {"code": "NO_IDENTIFICATION", "written": "nome do colaborador", "applicable": ["nome 1", "nome 2"]}. 
+        
+        ⚠️ REGRAS ESPECÍFICAS PARA IDENTIFICAÇÃO DE NOMES: ⚠️
+        • IGNORE diferenças de maiúsculas/minúsculas e acentos (ex: "icaro" = "Ícaro", "lorenzo" = "Lorenzo")
+        • Se o texto mencionar apenas "João" e você tem múltiplos colaboradores com esse nome (ex: "João Silva", "João Souza"), use NO_IDENTIFICATION
+        • Se o texto mencionar "João Silva" completo e você tem exatamente esse nome na lista, pode usar normalmente
+        • Se o texto mencionar "Silva" e você tem "João Silva" e "Maria Silva", use NO_IDENTIFICATION
+        • Se o texto mencionar apelidos (ex: "Joca") e não conseguir determinar qual colaborador é, use NO_IDENTIFICATION
+        • Para mentores: se o mentor é "Miguel Alencar" mas há um colaborador "Miguel Barbosa", e o texto só menciona "Miguel", use NO_IDENTIFICATION
+        • SEMPRE compare o nome mencionado no texto com TODOS os nomes na lista de colaboradores e mentor
+        • Se houver QUALQUER ambiguidade ou possibilidade de confusão, prefira NO_IDENTIFICATION
+        
+        ⚠️ REGRAS DE FLEXIBILIDADE DE NOMES: ⚠️
+        • SEJA INTELIGENTE: Ignore acentos, maiúsculas e variações simples
+        • "icaro" deve encontrar "Ícaro Fernandes" se houver apenas um Ícaro
+        • "lorenzo" deve encontrar "Lorenzo Chaves" se houver apenas um Lorenzo
+        • "ana paula" deve encontrar "Ana Paula Silva" se houver apenas uma Ana Paula
+        • Se "Lorenzo" aparecer no texto e há apenas "Lorenzo Chaves" na lista, pode usar normalmente
+        • Se "Lorenzo" aparecer no texto e há "Lorenzo Chaves" e "Lorenzo Santos", use NO_IDENTIFICATION
+        • Use seu conhecimento de nomes brasileiros para fazer correspondências inteligentes
+        • Priorize sempre a clareza: se há dúvida, use NO_IDENTIFICATION
+        
+        Exemplos práticos:
+        - Texto: "joão me ajudou" + Lista: ["João Silva", "João Souza"] → {"code": "NO_IDENTIFICATION", "written": "joão", "applicable": ["João Silva", "João Souza"]}
+        - Texto: "icaro é ótimo" + Lista: ["Ícaro Fernandes", "Maria Silva"] → Pode usar Ícaro Fernandes normalmente
+        - Texto: "lorenzo" + Lista: ["Lorenzo Chaves", "Lorenzo Santos"] → {"code": "NO_IDENTIFICATION", "written": "lorenzo", "applicable": ["Lorenzo Chaves", "Lorenzo Santos"]}
+        - Texto: "ANA PAULA" + Lista: ["Ana Paula Silva", "João Silva"] → Pode usar Ana Paula Silva normalmente
+        - Texto: "Miguel orientou bem" + Mentor: "Miguel Alencar" + Lista: ["Miguel Barbosa"] → {"code": "NO_IDENTIFICATION", "written": "Miguel", "applicable": ["Miguel Alencar", "Miguel Barbosa"]}
 
         Preencha cada seção SOMENTE se houver informação suficiente. Caso não seja possível extrair dados de uma seção, envie:
         - Um array vazio para selfAssessment, evaluation360 ou references
@@ -59,9 +104,35 @@ export const notesConfig = {
         • O único local permitido para null é o campo mentoring, quando não houver nada para avaliar sobre o mentor.
         • IMPORTANTE: O campo rating em todos os lugares deve ser sempre um número inteiro (sem aspas), nunca string.
         • Em selfAssessment, se um critério não puder ser avaliado com as informações dadas, você vai coloca-lo com rating 0 e justification ''.
+        • MUITO IMPORTANTE: Todos os campos com ID devem ser do tipo Number.
+        • CRÍTICO: Em evaluation360, o campo rating DEVE ser de 1 a 5, NUNCA 0. Se não conseguir avaliar adequadamente um colaborador, simplesmente omita-o completamente do array evaluation360. Não inclua o colaborador se não tiver informações suficientes para dar uma nota de 1 a 5.
+        • REGRA ABSOLUTA: evaluation360 só aceita ratings de 1 a 5. Rating 0 é PROIBIDO em evaluation360.
+        • Em evaluation360, se não conseguir avaliar um colaborador adequadamente, omita-o do array ao invés de usar rating 0. O único campo de rating que pode ser 0 é o de autoavaliação.
+
 
         Exemplo de resposta completa:
-        {"code":"SUCCESS","selfAssessment":[{"pillarId":"12","criteriaId":"gente","rating":4,"justification":"Tenho conseguido apoiar e guiar os colegas nas atividades do time, principalmente em momentos mais desafiadores."}],"evaluation360":[{"collaboratorId":"colab-001","rating":4,"strengths":"Ele tem um olhar criativo que contribui muito no início dos projetos","improvements":"Às vezes poderia ser mais ágil nas entregas"}],"mentoring":{"rating":5,"justification":"Miguel sempre me ajuda a enxergar o cenário com mais clareza quando estou diante de uma decisão difícil."},"references":[{"collaboratorId":"colab-001","justification":"Ele tem um perfil técnico muito forte e sempre traz soluções práticas e bem embasadas."}]}
+        {"code":"SUCCESS","selfAssessment":[{"pillarId": 12,"criteriaId": 1,"rating":4,"justification":"Tenho conseguido apoiar e guiar os colegas nas atividades do time, principalmente em momentos mais desafiadores."}],"evaluation360":[{"collaboratorId": 1,"rating":4,"strengths":"Ele tem um olhar criativo que contribui muito no início dos projetos","improvements":"Às vezes poderia ser mais ágil nas entregas"}],"mentoring":{"rating":5,"justification":"Meu mentor sempre me ajuda a enxergar o cenário com mais clareza quando estou diante de uma decisão difícil."},"references":[{"collaboratorId": 5,"justification":"Ele tem um perfil técnico muito forte e sempre traz soluções práticas e bem embasadas."}]}
+
+        ⚠️ REGRAS DE ESCRITA EM PRIMEIRA PESSOA: ⚠️
+        • Todas as justificativas devem ser escritas como se o próprio colaborador estivesse falando
+        • Use "eu", "meu", "minha", "tenho", "consegui", "sinto", "percebo", etc.
+        • NUNCA mencione "as anotações", "o texto", "segundo foi relatado", "conforme descrito"
+        • NUNCA cite trechos literais das anotações
+        • Transforme observações externas em reflexões pessoais autênticas
+        • Exemplo CORRETO: "Tenho me esforçado para ser mais organizado nas minhas tarefas"
+        • Exemplo INCORRETO: "As anotações mostram que ele se esforçou para ser mais organizado"
+
+        LEMBRE-SE: No evaluation360, rating SEMPRE deve ser 1, 2, 3, 4 ou 5. NUNCA use 0!
+
+        ⚠️ PROCESSO DE VERIFICAÇÃO DE NOMES: ⚠️
+        Antes de incluir qualquer colaborador em evaluation360 ou references:
+        1. Normalize o nome (ignore acentos, maiúsculas e espaços extras)
+        2. Procure correspondências inteligentes na lista (ex: "icaro" → "Ícaro Fernandes")
+        3. Se encontrar APENAS UMA correspondência possível, use-a
+        4. Se encontrar MÚLTIPLAS correspondências possíveis, use NO_IDENTIFICATION
+        5. Se o nome for muito genérico ou ambíguo, use NO_IDENTIFICATION
+        6. Se não encontrar nenhuma correspondência razoável, ignore o nome
+        7. SEJA INTELIGENTE: use conhecimento de nomes brasileiros para fazer boas correspondências
 
         [DIRETRIZES IMPORTANTES]
         • Seja imparcial e baseie-se apenas nas evidências fornecidas
@@ -72,6 +143,13 @@ export const notesConfig = {
         • Se não houver conteúdo suficiente para avaliar um critério ou seção, simplesmente ignore
         • Avalie apenas o que pode ser inferido com clareza ou evidência forte
         • Dê prioridade a comportamentos observáveis, atitudes, contribuições e relacionamentos evidentes no texto
+        • REJEITE qualquer conteúdo com linguagem inadequada, ofensiva ou discriminatória
+        • Escreva sempre em primeira pessoa, como se fosse o colaborador se autoavaliando
+        • NUNCA revele que está baseando-se em anotações ou textos externos
+        • Transforme observações em reflexões pessoais autênticas e profissionais
+        • SEJA INTELIGENTE na identificação de nomes: ignore acentos, case e variações simples
+        • Use correspondência inteligente: "lorenzo" pode ser "Lorenzo Chaves" se só houver um Lorenzo
+        • Quando em dúvida sobre identidade de nomes, sempre prefira NO_IDENTIFICATION
     `.trim(),
     temperature: 0.5,
     topP: 0.9,
