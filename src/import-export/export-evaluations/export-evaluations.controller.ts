@@ -1,10 +1,4 @@
-import {
-    Controller,
-    Get,
-    UseGuards,
-    Res,
-    Query,
-} from '@nestjs/common';
+import { Controller, Get, UseGuards, Res, Query } from '@nestjs/common';
 import { Response } from 'express';
 import { ApiTags } from '@nestjs/swagger';
 import { ExportEvaluationsService } from './export-evaluations.service';
@@ -30,11 +24,12 @@ export class ExportEvaluationsController {
         @Query(new QueryValidationPipe()) query: ValidateExportEvaluationsDto,
         @Res() res: Response,
     ): Promise<void> {
-        const { cycleId } = query;
+        const buffer = await this.exportEvaluationsService.generateExport(query.cycleId);
 
-        const buffer = await this.exportEvaluationsService.generateExport();
-
-        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader(
+            'Content-Type',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        );
         res.setHeader('Content-Disposition', 'attachment; filename=evaluations.xlsx');
         res.send(buffer);
     }

@@ -6,6 +6,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 export class ExportEvaluationsService {
     constructor(private readonly prisma: PrismaService) {}
 
+<<<<<<< HEAD
     async generateExport(): Promise<Buffer> {
         const collaborators = await this.prisma.user.findMany({
             include: {
@@ -22,6 +23,10 @@ export class ExportEvaluationsService {
                 },
             },
         });
+=======
+    async generateExport(cycleId: number): Promise<Buffer> {
+        const collaborators = await this.collaboratorsService.getCollaborators();
+>>>>>>> origin/test-import-evaluation
 
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('Equalização');
@@ -40,6 +45,7 @@ export class ExportEvaluationsService {
 
         // Adiciona dados
         collaborators.forEach((collaborator) => {
+<<<<<<< HEAD
             collaborator.evaluator?.forEach((evaluation) => {
                 const autoEvaluationScore =
                     evaluation.autoEvaluation?.assignments &&
@@ -73,8 +79,22 @@ export class ExportEvaluationsService {
                     evaluation360Score,
                     mentoringScore: evaluation.mentoring?.score || 0,
                     equalizationScore,
+=======
+            collaborator.evaluations
+                ?.filter((evaluation) => evaluation.cycleId === cycleId)
+                .forEach((evaluation) => {
+                    worksheet.addRow({
+                        name: collaborator.name,
+                        track: collaborator.track,
+                        position: collaborator.position,
+                        cycle: evaluation.cycleId,
+                        autoEvaluationScore: evaluation.autoEvaluationScore || 0,
+                        evaluation360Score: evaluation.evaluation360Score || 0,
+                        mentoringScore: evaluation.mentoringScore || 0,
+                        finalEqualizationScore: evaluation.finalEqualizationScore || 0,
+                    });
+>>>>>>> origin/test-import-evaluation
                 });
-            });
         });
 
         const buffer = await workbook.xlsx.writeBuffer();
