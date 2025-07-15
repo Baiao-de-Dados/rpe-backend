@@ -21,6 +21,9 @@ export class EncryptionService {
     }
 
     decrypt(data: string): string {
+        if (!data.includes(':')) {
+            return data;
+        }
         const [ivHex, encrypted] = data.split(':');
         const iv = Buffer.from(ivHex, 'hex');
         const decipher = crypto.createDecipheriv(ALGORITHM, KEY, iv);

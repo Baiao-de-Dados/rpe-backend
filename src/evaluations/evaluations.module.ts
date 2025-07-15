@@ -33,6 +33,12 @@ import { EvaluationDraftService } from './services/evaluation-draft.service';
         CollaboratorsService,
         EvaluationDraftService,
     ],
-    exports: [forwardRef(() => AutoEvaluationModule), CycleValidationService, CollaboratorsService],
+    exports: [
+        forwardRef(() => AutoEvaluationModule),
+        CycleValidationService,
+        CollaboratorsService,
+        EvaluationDraftService,
+        EvaluationsService, // Exporta o service principal
+    ],
 })
 export class EvaluationsModule {}

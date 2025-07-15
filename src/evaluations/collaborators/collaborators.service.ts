@@ -89,10 +89,8 @@ export class CollaboratorsService {
 
             const evaluation360Score =
                 evaluation.evaluation360?.length > 0
-                    ? evaluation.evaluation360.reduce(
-                          (sum, eval360) => sum + eval360.score,
-                          0,
-                      ) / evaluation.evaluation360.length
+                    ? evaluation.evaluation360.reduce((sum, eval360) => sum + eval360.score, 0) /
+                      evaluation.evaluation360.length
                     : 0;
 
             return {
@@ -134,10 +132,8 @@ export class CollaboratorsService {
 
             const evaluation360Score =
                 evaluation.evaluation360?.length > 0
-                    ? evaluation.evaluation360.reduce(
-                          (sum, eval360) => sum + eval360.score,
-                          0,
-                      ) / evaluation.evaluation360.length
+                    ? evaluation.evaluation360.reduce((sum, eval360) => sum + eval360.score, 0) /
+                      evaluation.evaluation360.length
                     : 0;
 
             return {
