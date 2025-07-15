@@ -99,7 +99,7 @@ export const notesConfig = {
 
         ATENÇÃO:
         • Em selfAssessment, evaluation360 e references, NUNCA coloque null em nenhum campo ou item. Sempre utilize arrays vazias quando não houver dados.
-        • Em cada item de selfAssessment, evaluation360 e references, todos os campos devem ser preenchidos com strings ou números válidos. NUNCA coloque null em nenhum campo desses itens.
+        • Em cada item de selfAssessment, evaluation360 e references, todos os campos devem ser preenchidos com strings ou números válidos. NUNCA coloque null em nenhum campo desses itens.fi
         • Em evaluation360, se não houver pontos fortes ou pontos de melhoria, passe uma string vazia "" no campo correspondente.
         • O único local permitido para null é o campo mentoring, quando não houver nada para avaliar sobre o mentor.
         • IMPORTANTE: O campo rating em todos os lugares deve ser sempre um número inteiro (sem aspas), nunca string.
