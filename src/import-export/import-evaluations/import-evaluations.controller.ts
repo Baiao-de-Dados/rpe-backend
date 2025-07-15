@@ -21,17 +21,16 @@ import { ApiAuth } from 'src/common/decorators/api-auth.decorator';
 export class ImportEvaluationsController {
     constructor(private readonly importEvaluationsService: ImportEvaluationsService) {}
 
-    @RequireRH() // Apenas usuários com o papel RH ou superior podem acessar
-    @UseGuards(JwtAuthGuard, RolesGuard) // Protege o endpoint com autenticação e verificação de roles
+    @RequireRH()
+    @UseGuards(JwtAuthGuard, RolesGuard)
     @Post()
     @UseInterceptors(FileInterceptor('file'))
-    @ApiImportEvaluations() // Aplica a documentação do Swagger
+    @ApiImportEvaluations()
     async importEvaluations(@UploadedFile() file: Express.Multer.File): Promise<string> {
         if (!file) {
             throw new BadRequestException('Nenhum arquivo foi enviado.');
         }
 
-        // Verifica se o arquivo é do tipo xlsx
         if (file.mimetype !== 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
             throw new BadRequestException('O arquivo enviado deve ser do tipo .xlsx');
         }
