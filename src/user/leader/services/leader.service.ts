@@ -261,6 +261,16 @@ export class LeaderService {
                 managerEvalScore = sum / managerEval.criterias.length;
             }
 
+            // Buscar avaliação do líder para esse colaborador/ciclo
+            const leaderEvaluation = await this.prisma.leaderEvaluation.findFirst({
+                where: {
+                    collaboratorId: assignment.collaboratorId,
+                    cycleId: assignment.cycleId,
+                    leaderId: leaderId,
+                },
+            });
+            const leaderEvaluationScore: number | null = leaderEvaluation?.score ?? null;
+
             // TODO: Implementar avaliação final (comitê)
             const finalEvaluationScore: number | null = null;
 
@@ -285,6 +295,7 @@ export class LeaderService {
                 autoEvaluationScore: autoEvalScore,
                 evaluation360Score: eval360Score,
                 managerEvaluationScore: managerEvalScore,
+                leaderEvaluationScore: leaderEvaluationScore,
                 finalEvaluationScore: finalEvaluationScore,
                 status,
             });
