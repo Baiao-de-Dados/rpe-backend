@@ -9,38 +9,26 @@ export class EqualizationService {
     async saveEqualization(dto: SaveEqualizationDto) {
         const { cycleId, collaboratorId, rating, justification } = dto;
 
+        // Verifica se o ciclo existe
         const cycle = await this.prisma.cycleConfig.findUnique({ where: { id: cycleId } });
         if (!cycle) {
             throw new NotFoundException(`Ciclo com ID ${cycleId} não encontrado.`);
         }
 
+        // Verifica se o colaborador existe
         const collaborator = await this.prisma.user.findUnique({ where: { id: collaboratorId } });
         if (!collaborator) {
             throw new NotFoundException(`Colaborador com ID ${collaboratorId} não encontrado.`);
         }
 
-        const evaluation = await this.prisma.evaluation.findFirst({
-            where: {
-                evaluatorId: collaboratorId,
-                cycleConfigId: cycleId,
-            },
-            include: {
-                autoEvaluation: {
-                    include: { assignments: true },
-                },
-                evaluation360: true,
-                mentoring: true,
-                reference: true,
-            },
-        });
-
-        if (!evaluation) {
-            throw new NotFoundException('Avaliação não encontrada');
-        }
-
-        // Verifica se já existe uma equalização para esta avaliação
+        // Verifica se já existe uma equalização para este colaborador no ciclo
         const existingEqualization = await this.prisma.equalization.findFirst({
-            where: { evaluationId: evaluation.id },
+            where: {
+                collaboratorId,
+                evaluation: {
+                    cycleConfigId: cycleId,
+                },
+            },
         });
 
         if (existingEqualization) {
@@ -49,21 +37,7 @@ export class EqualizationService {
             );
         }
 
-        // Criar equalização
-        const equalization = await this.prisma.equalization.create({
-            data: {
-                evaluationId: evaluation.id,
-                justification: justification,
-                score: rating,
-            },
-        });
-
-        return equalization;
-    }
-
-    async editEqualization(dto: SaveEqualizationDto) {
-        const { cycleId, collaboratorId, rating, justification } = dto;
-
+        // Busca a avaliação associada ao colaborador e ciclo
         const evaluation = await this.prisma.evaluation.findFirst({
             where: {
                 evaluatorId: collaboratorId,
@@ -77,8 +51,40 @@ export class EqualizationService {
             );
         }
 
+        // Cria a equalização
+        return this.prisma.equalization.create({
+            data: {
+                evaluationId: evaluation.id,
+                collaboratorId,
+                justification,
+                score: rating,
+            },
+        });
+    }
+
+    async editEqualization(dto: SaveEqualizationDto) {
+        const { cycleId, collaboratorId, rating, justification } = dto;
+
+        // Busca a avaliação associada ao colaborador e ciclo
+        const evaluation = await this.prisma.evaluation.findFirst({
+            where: {
+                evaluatorId: collaboratorId,
+                cycleConfigId: cycleId,
+            },
+        });
+
+        if (!evaluation) {
+            throw new NotFoundException(
+                `Avaliação não encontrada para o ciclo ${cycleId} e colaborador ${collaboratorId}.`,
+            );
+        }
+
+        // Busca a equalização existente
         const equalization = await this.prisma.equalization.findFirst({
-            where: { evaluationId: evaluation.id },
+            where: {
+                evaluationId: evaluation.id,
+                collaboratorId,
+            },
         });
 
         if (!equalization) {
@@ -87,6 +93,7 @@ export class EqualizationService {
             );
         }
 
+        // Atualiza a equalização
         return this.prisma.equalization.update({
             where: { id: equalization.id },
             data: {
@@ -97,6 +104,7 @@ export class EqualizationService {
     }
 
     async getEqualization(collaboratorId: number, cycleId: number) {
+        // Busca a avaliação associada ao colaborador e ciclo
         const evaluation = await this.prisma.evaluation.findFirst({
             where: {
                 evaluatorId: collaboratorId,
@@ -107,8 +115,10 @@ export class EqualizationService {
             },
         });
 
-        if (!evaluation) {
-            throw new NotFoundException('Avaliação não encontrada');
+        if (!evaluation || !evaluation.equalization) {
+            throw new NotFoundException(
+                `Equalização não encontrada para o ciclo ${cycleId} e colaborador ${collaboratorId}.`,
+            );
         }
 
         return evaluation.equalization;
