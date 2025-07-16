@@ -1,4 +1,14 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Req, Query } from '@nestjs/common';
+import {
+    Body,
+    Controller,
+    Delete,
+    Get,
+    Param,
+    ParseIntPipe,
+    Post,
+    Req,
+    Query,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { OnlyManager } from 'src/auth/decorators/roles.decorator';
 import { ApiAuth } from 'src/common/decorators/api-auth.decorator';
@@ -118,13 +128,18 @@ export class ManagerController {
         @Query('collaboratorId', ParseIntPipe) collaboratorId: number,
         @Query('cycleConfigId', ParseIntPipe) cycleConfigId: number,
     ) {
-        return this.managerService.getCollaboratorEvaluationResult(managerId, collaboratorId, cycleConfigId);
+        return this.managerService.getCollaboratorEvaluationResult(
+            managerId,
+            collaboratorId,
+            cycleConfigId,
+        );
     }
 
     @Get('evaluation/:collaboratorId')
     @ApiOperation({
         summary: 'Buscar avaliação do manager para um colaborador específico',
-        description: 'Retorna a avaliação do manager para um colaborador em um ciclo específico. Se não existir avaliação, retorna estrutura vazia.',
+        description:
+            'Retorna a avaliação do manager para um colaborador em um ciclo específico. Se não existir avaliação, retorna estrutura vazia.',
     })
     @ApiResponse({
         status: 200,
@@ -143,16 +158,16 @@ export class ManagerController {
                                 {
                                     criterioId: 1,
                                     nota: 5,
-                                    justificativa: 'Excelente desempenho em liderança.'
-                                }
-                            ]
-                        }
-                    ]
+                                    justificativa: 'Excelente desempenho em liderança.',
+                                },
+                            ],
+                        },
+                    ],
                 },
                 createdAt: '2024-01-01T00:00:00.000Z',
-                updatedAt: '2024-01-01T00:00:00.000Z'
-            }
-        }
+                updatedAt: '2024-01-01T00:00:00.000Z',
+            },
+        },
     })
     @ApiResponse({
         status: 404,

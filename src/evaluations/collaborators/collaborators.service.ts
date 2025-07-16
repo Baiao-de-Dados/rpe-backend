@@ -1,5 +1,14 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+
+type CollaboratorScore = {
+    cycleId: number;
+    cycleName: string;
+    av360Score: number | null;
+    autoEvaluationScore: number | null;
+    managerScore: number | null;
+    equalizationScore: number | null;
+};
 
 @Injectable()
 export class CollaboratorsService {
@@ -9,48 +18,89 @@ export class CollaboratorsService {
         const collaborators = await this.prisma.user.findMany({
             include: {
                 track: true,
-                evaluator: {
-                    include: {
-                        autoEvaluation: {
-                            include: { assignments: true },
-                        },
-                        evaluation360: true,
-                        mentoring: true,
-                    },
-                },
+                userRoles: true,
             },
         });
 
-        return collaborators.map((collaborator) => ({
-            id: collaborator.id,
-            name: collaborator.name,
-            email: collaborator.email,
-            position: collaborator.position,
-            track: collaborator.track?.name || 'Não informado',
-            evaluations: collaborator.evaluator.map((evaluation) => {
-                const autoEvaluationScore =
-                    evaluation.autoEvaluation?.assignments &&
-                    evaluation.autoEvaluation.assignments.length > 0
-                        ? evaluation.autoEvaluation.assignments.reduce(
-                              (sum, assignment) => sum + assignment.score,
-                              0,
-                          ) / evaluation.autoEvaluation.assignments.length
-                        : 0;
+        // Filtrar apenas EMPLOYER
+        const onlyEmployers = collaborators.filter((user) =>
+            user.userRoles.some((role) => role.role === 'EMPLOYER' && role.isActive),
+        );
 
-                const evaluation360Score =
-                    evaluation.evaluation360?.length > 0
-                        ? evaluation.evaluation360.reduce(
-                              (sum, eval360) => sum + eval360.score,
-                              0,
-                          ) / evaluation.evaluation360.length
-                        : 0;
+        const cycles = await this.prisma.cycleConfig.findMany({ orderBy: { startDate: 'asc' } });
 
+        const results = await Promise.all(
+            onlyEmployers.map(async (collaborator) => {
+                const scores: CollaboratorScore[] = [];
+                for (const cycle of cycles) {
+                    // Buscar todos os Evaluation do ciclo
+                    const evaluations = await this.prisma.evaluation.findMany({
+                        where: {
+                            cycleConfigId: cycle.id,
+                        },
+                        select: { id: true },
+                    });
+                    const evaluationIds = evaluations.map((e) => e.id);
+
+                    // AV360 recebida
+                    const av360 = await this.prisma.evaluation360.findMany({
+                        where: {
+                            evaluatedId: collaborator.id,
+                            evaluationId: { in: evaluationIds },
+                        },
+                    });
+                    const av360Score = av360.length
+                        ? av360.reduce((sum, a) => sum + (a.score ?? 0), 0) / av360.length
+                        : null;
+
+                    // Autoavaliação
+                    const autoEval = await this.prisma.evaluation.findFirst({
+                        where: {
+                            evaluatorId: collaborator.id,
+                            cycleConfigId: cycle.id,
+                        },
+                        include: { autoEvaluation: true },
+                    });
+                    const autoEvaluationScore = autoEval?.autoEvaluation?.rating ?? null;
+
+                    // Manager
+                    const managerEval = await this.prisma.managerEvaluation.findFirst({
+                        where: {
+                            collaboratorId: collaborator.id,
+                            cycleId: cycle.id,
+                        },
+                        include: { criterias: true },
+                    });
+                    const managerScore = managerEval?.criterias?.length
+                        ? managerEval.criterias.reduce((sum, a) => sum + (a.score ?? 0), 0) /
+                          managerEval.criterias.length
+                        : null;
+
+                    // Equalização
+                    const equalization = await this.prisma.equalization.findFirst({
+                        where: {
+                            collaboratorId: collaborator.id,
+                            cycleId: cycle.id,
+                        },
+                    });
+                    const equalizationScore = equalization?.score ?? null;
+
+                    scores.push({
+                        cycleId: cycle.id,
+                        cycleName: cycle.name,
+                        av360Score,
+                        autoEvaluationScore,
+                        managerScore,
+                        equalizationScore,
+                    });
+                }
                 return {
-                    cycleId: evaluation.cycleConfigId,
-                    autoEvaluationScore,
-                    evaluation360Score,
-                    mentoringScore: evaluation.mentoring?.score || 0,
-                    finalEqualizationScore: 0, // Will be fetched separately
+                    id: collaborator.id,
+                    name: collaborator.name,
+                    email: collaborator.email,
+                    position: collaborator.position,
+                    track: collaborator.track?.name || null,
+                    scores,
                 };
             }),
         );
@@ -95,11 +145,9 @@ export class CollaboratorsService {
             return {
                 cycleName: evaluation.cycleConfig.name,
                 autoEvaluationScore,
-                managerScore,
-                equalizationScore,
-            });
-        }
-        return result;
+                evaluation360Score,
+            };
+        });
     }
 
     async getCollaboratorEvaluationHistory(collaboratorId: number) {
@@ -140,7 +188,7 @@ export class CollaboratorsService {
                 autoEvaluationScore,
                 evaluation360Score,
                 mentoringScore: evaluation.mentoring?.score || 0,
-                finalEqualizationScore: 0, // Will be fetched separately
+                // Remover finalEqualizationScore pois evaluation.equalization não existe nesse contexto
                 reference: evaluation.reference?.map((ref) => ({
                     justification: ref.justification,
                 })),

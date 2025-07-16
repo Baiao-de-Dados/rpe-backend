@@ -2,10 +2,12 @@ import { Controller, Get, Param, ParseIntPipe } from '@nestjs/common';
 import { ApiTags, ApiQuery, ApiParam } from '@nestjs/swagger';
 import { CollaboratorsService } from './collaborators.service';
 import { ApiAuth } from 'src/common/decorators/api-auth.decorator';
+//import { OnlyCommittee } from 'src/auth/decorators/roles.decorator';
 
 @ApiAuth()
 @ApiTags('Colaboradores')
 @Controller('collaborators')
+//@OnlyCommittee()
 export class CollaboratorsController {
     constructor(private readonly collaboratorsService: CollaboratorsService) {}
 
@@ -21,11 +23,13 @@ export class CollaboratorsController {
         return this.collaboratorsService.getCollaboratorEvaluations(collaboratorId);
     }
 
+    /*
     @Get(':collaboratorId/history')
     @ApiParam({ name: 'collaboratorId', type: Number })
     async getCollaboratorEvaluationHistory(
         @Param('collaboratorId', ParseIntPipe) collaboratorId: number,
     ) {
-        return this.collaboratorsService.getCollaboratorEvaluationHistory(collaboratorId);
+        return await this.collaboratorsService.getCollaboratorEvaluationHistory(collaboratorId);
     }
+        */
 }

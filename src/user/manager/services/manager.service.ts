@@ -505,7 +505,7 @@ export class ManagerService {
         }
 
         // Extrair todos os critérios dos pilares para validação
-        const allCriterias = autoavaliacao.pilares.flatMap(pilar => pilar.criterios);
+        const allCriterias = autoavaliacao.pilares.flatMap((pilar) => pilar.criterios);
 
         // Validar se os critérios pertencem à trilha do colaborador
         const trackId = collaboratorProject.user.trackId;
@@ -514,7 +514,9 @@ export class ManagerService {
             select: { criterionId: true },
         });
         const validCriteriaIds = validCriteria.map((c) => c.criterionId);
-        const invalidCriteria = allCriterias.filter((c) => !validCriteriaIds.includes(c.criterioId));
+        const invalidCriteria = allCriterias.filter(
+            (c) => !validCriteriaIds.includes(c.criterioId),
+        );
         if (invalidCriteria.length > 0) {
             throw new BadRequestException(
                 `Os seguintes critérios não pertencem à trilha do colaborador: ${invalidCriteria
@@ -933,8 +935,8 @@ export class ManagerService {
                 if (equalization) {
                     equalizationScore = equalization.score;
                 }
-                const leaderEval = leaderEvalMap.get(`${collaborator.id}-${cycle.id}`);
-                const leaderEvalScore: number | null = leaderEval ? leaderEval.score : null;
+                //const leaderEval = leaderEvalMap.get(`${collaborator.id}-${cycle.id}`);
+                //const leaderEvalScore: number | null = leaderEval ? leaderEval.score : null;
                 const managerEval = managerEvalMap.get(`${collaborator.id}-${cycle.id}`);
                 let managerEvalScore: number | null = null;
                 if (managerEval && managerEval.criterias.length > 0) {
@@ -1151,9 +1153,17 @@ export class ManagerService {
             try {
                 const autoEval = await this.getUserAutoEvaluation(c.id, managerId);
                 // Se houver autoEvaluation, calcula a média das notas dos assignments
-                if (autoEval && autoEval.autoEvaluation && autoEval.autoEvaluation.assignments.length > 0) {
-                    const sum = autoEval.autoEvaluation.assignments.reduce((acc, a) => acc + a.score, 0);
-                    autoEvaluationScores[c.id] = Math.round((sum / autoEval.autoEvaluation.assignments.length) * 10) / 10;
+                if (
+                    autoEval &&
+                    autoEval.autoEvaluation &&
+                    autoEval.autoEvaluation.assignments.length > 0
+                ) {
+                    const sum = autoEval.autoEvaluation.assignments.reduce(
+                        (acc, a) => acc + a.score,
+                        0,
+                    );
+                    autoEvaluationScores[c.id] =
+                        Math.round((sum / autoEval.autoEvaluation.assignments.length) * 10) / 10;
                 } else {
                     autoEvaluationScores[c.id] = null;
                 }
@@ -1227,7 +1237,11 @@ export class ManagerService {
     /**
      * Retorna o conteúdo completo da avaliação de um colaborador em um ciclo específico
      */
-    async getCollaboratorEvaluationResult(managerId: number, collaboratorId: number, cycleConfigId: number) {
+    async getCollaboratorEvaluationResult(
+        managerId: number,
+        collaboratorId: number,
+        cycleConfigId: number,
+    ) {
         // Verifica se o colaborador está sob gestão do manager
         const isMember = await this.prisma.projectMember.findFirst({
             where: {
@@ -1236,7 +1250,9 @@ export class ManagerService {
             },
         });
         if (!isMember) {
-            throw new NotFoundException('Colaborador não pertence a nenhum projeto sob sua gestão.');
+            throw new NotFoundException(
+                'Colaborador não pertence a nenhum projeto sob sua gestão.',
+            );
         }
         // Busca a evaluation do colaborador naquele ciclo
         const evaluation = await this.prisma.evaluation.findFirst({
@@ -1271,7 +1287,8 @@ export class ManagerService {
         if (managerEvaluation) {
             if (managerEvaluation.criterias?.length) {
                 const scores = managerEvaluation.criterias.map((c) => c.score);
-                average = Math.round((scores.reduce((sum, s) => sum + s, 0) / scores.length) * 10) / 10;
+                average =
+                    Math.round((scores.reduce((sum, s) => sum + s, 0) / scores.length) * 10) / 10;
             }
             managerBlock = {
                 criterias: managerEvaluation.criterias.map((c) => ({
@@ -1339,26 +1356,28 @@ export class ManagerService {
             },
         });
         if (!isMember) {
-            throw new NotFoundException('Colaborador não pertence a nenhum projeto sob sua gestão.');
+            throw new NotFoundException(
+                'Colaborador não pertence a nenhum projeto sob sua gestão.',
+            );
         }
 
         // Busca a avaliação do manager
         const managerEvaluation = await this.prisma.managerEvaluation.findFirst({
-            where: { 
-                collaboratorId, 
-                cycleId: cycleConfigId, 
-                managerId 
+            where: {
+                collaboratorId,
+                cycleId: cycleConfigId,
+                managerId,
             },
-            include: { 
-                criterias: { 
-                    include: { 
+            include: {
+                criterias: {
+                    include: {
                         criteria: {
                             include: {
-                                pillar: true
-                            }
-                        } 
-                    } 
-                } 
+                                pillar: true,
+                            },
+                        },
+                    },
+                },
             },
         });
 
@@ -1369,10 +1388,10 @@ export class ManagerService {
                 managerId,
                 collaboratorId,
                 autoavaliacao: {
-                    pilares: []
+                    pilares: [],
                 },
                 createdAt: null,
-                updatedAt: null
+                updatedAt: null,
             };
         }
 
@@ -1399,10 +1418,10 @@ export class ManagerService {
             managerId: managerEvaluation.managerId,
             collaboratorId: managerEvaluation.collaboratorId,
             autoavaliacao: {
-                pilares: Array.from(pilaresMap.values())
+                pilares: Array.from(pilaresMap.values()),
             },
             createdAt: managerEvaluation.createdAt,
-            updatedAt: managerEvaluation.updatedAt
+            updatedAt: managerEvaluation.updatedAt,
         };
     }
 
