@@ -3,10 +3,14 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { SaveEqualizationDto } from './dto/save-equalization.dto';
 import { getBrazilDate } from 'src/cycles/utils';
 import { UserRole } from '@prisma/client';
+import { AiService } from '../../ai/ai.service';
 
 @Injectable()
 export class CommitteeService {
-    constructor(private readonly prisma: PrismaService) {}
+    constructor(
+        private readonly prisma: PrismaService,
+        private readonly aiService: AiService,
+    ) {}
 
     async getDashboardMetrics(committeeId: number) {
         // Buscar ciclo ativo
@@ -350,6 +354,7 @@ export class CommitteeService {
             committeeEqualization: equalization ? {
                 finalScore: equalization.score,
                 comments: equalization.justification,
+                aiSummary: equalization.aiSummary,
                 committee: equalization.committee ? {
                     id: equalization.committee.id,
                     name: equalization.committee.name,
@@ -393,6 +398,8 @@ export class CommitteeService {
             throw new BadRequestException('Colaborador não possui avaliação neste ciclo');
         }
 
+
+
         // Buscar equalização existente
         const existingEqualization = await this.prisma.equalization.findFirst({
             where: {
@@ -408,6 +415,7 @@ export class CommitteeService {
                 data: {
                     score: equalization.score,
                     justification: equalization.justification,
+                    aiSummary: equalization.aiSummary,
                     committeeId,
                 },
                 include: {
@@ -441,6 +449,7 @@ export class CommitteeService {
                     committeeId,
                     score: equalization.score,
                     justification: equalization.justification,
+                    aiSummary: equalization.aiSummary,
                 },
                 include: {
                     committee: {
@@ -554,5 +563,149 @@ export class CommitteeService {
         });
 
         return history;
+    }
+
+    async generateAiSummary(committeeId: number, collaboratorId: number, cycleConfigId: number) {
+        // Verificar se o colaborador existe
+        const collaborator = await this.prisma.user.findUnique({
+            where: { id: collaboratorId },
+        });
+
+        if (!collaborator) {
+            throw new NotFoundException('Colaborador não encontrado');
+        }
+
+        // Verificar se o ciclo existe
+        const cycle = await this.prisma.cycleConfig.findUnique({
+            where: { id: cycleConfigId },
+        });
+
+        if (!cycle) {
+            throw new NotFoundException('Ciclo não encontrado');
+        }
+
+        // Verificar se existe avaliação do colaborador
+        const evaluation = await this.prisma.evaluation.findFirst({
+            where: {
+                evaluatorId: collaboratorId,
+                cycleConfigId,
+            },
+        });
+
+        if (!evaluation) {
+            throw new BadRequestException('Colaborador não possui avaliação neste ciclo');
+        }
+
+        // Gerar resumo da IA
+        try {
+            const aiResponse = await this.aiService.gerarEqualization(collaboratorId, cycleConfigId);
+            
+            // Se a IA gerou um resumo com sucesso, salvar no banco
+            if (aiResponse.code === 'SUCCESS') {
+                // Salvar toda a resposta da IA como JSON
+                const aiSummaryData = {
+                    code: aiResponse.code,
+                    rating: aiResponse.rating,
+                    detailedAnalysis: aiResponse.detailedAnalysis,
+                    summary: aiResponse.summary,
+                    discrepancies: aiResponse.discrepancies,
+                };
+                
+                // Buscar equalização existente
+                const existingEqualization = await this.prisma.equalization.findFirst({
+                    where: {
+                        collaboratorId,
+                        cycleId: cycleConfigId,
+                    },
+                });
+
+                if (existingEqualization) {
+                    // Atualizar equalização existente com o resumo da IA
+                    await this.prisma.equalization.update({
+                        where: { id: existingEqualization.id },
+                        data: {
+                            aiSummary: aiSummaryData,
+                            committeeId,
+                        },
+                    });
+                } else {
+                    // Criar nova equalização apenas com o resumo da IA
+                    await this.prisma.equalization.create({
+                        data: {
+                            collaboratorId,
+                            cycleId: cycleConfigId,
+                            committeeId,
+                            aiSummary: aiSummaryData,
+                            score: null, // Será preenchido depois
+                            justification: '', // Será preenchido depois
+                        },
+                    });
+                }
+            }
+            
+            return aiResponse;
+        } catch (error) {
+            console.error('Erro ao gerar resumo da IA:', error);
+            return {
+                code: 'ERROR',
+                error: 'Erro interno ao gerar resumo da IA',
+            };
+        }
+    }
+
+    async getAiSummary(committeeId: number, collaboratorId: number, cycleConfigId: number) {
+        // Verificar se o colaborador existe
+        const collaborator = await this.prisma.user.findUnique({
+            where: { id: collaboratorId },
+        });
+
+        if (!collaborator) {
+            throw new NotFoundException('Colaborador não encontrado');
+        }
+
+        // Verificar se o ciclo existe
+        const cycle = await this.prisma.cycleConfig.findUnique({
+            where: { id: cycleConfigId },
+        });
+
+        if (!cycle) {
+            throw new NotFoundException('Ciclo não encontrado');
+        }
+
+        // Buscar equalização com resumo da IA
+        const equalization = await this.prisma.equalization.findFirst({
+            where: {
+                collaboratorId,
+                cycleId: cycleConfigId,
+            },
+            include: {
+                committee: {
+                    select: {
+                        id: true,
+                        name: true,
+                        position: true,
+                    },
+                },
+            },
+        });
+
+        if (!equalization || !equalization.aiSummary) {
+            throw new NotFoundException('Resumo da IA não encontrado para este colaborador e ciclo');
+        }
+
+        // Retornar dados específicos da IA
+        return {
+            collaborator: {
+                id: collaborator.id,
+                name: collaborator.name,
+            },
+            cycle: {
+                id: cycle.id,
+                name: cycle.name,
+            },
+            aiSummary: equalization.aiSummary,
+            committee: equalization.committee,
+            generatedAt: equalization.updatedAt,
+        };
     }
 } 

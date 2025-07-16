@@ -142,7 +142,7 @@ export class CommitteeController {
     @Post('equalization')
     @ApiOperation({
         summary: 'Salvar equalização de um colaborador',
-        description: 'Cria ou atualiza a equalização de um colaborador em um ciclo específico',
+        description: 'Cria ou atualiza a equalização de um colaborador em um ciclo específico. O aiSummary deve ser gerado previamente usando o endpoint de IA.',
     })
     @ApiResponse({
         status: 201,
@@ -157,6 +157,7 @@ export class CommitteeController {
                     committeeId: 5,
                     score: 4.5,
                     justification: 'Nota final após análise de todas as avaliações do colaborador',
+                    aiSummary: 'Análise detalhada gerada pela IA sobre o desempenho do colaborador...',
                     createdAt: '2024-01-01T00:00:00.000Z',
                     updatedAt: '2024-01-01T00:00:00.000Z',
                     committee: {
@@ -180,7 +181,8 @@ export class CommitteeController {
                 equalization: {
                     score: 4.5,
                     justification: 'Nota final após análise de todas as avaliações do colaborador',
-                    changeReason: 'Revisão após feedback do manager' // opcional
+                    changeReason: 'Revisão após feedback do manager', // opcional
+                    aiSummary: 'Resumo da IA (opcional, gerado pelo endpoint de IA)' // opcional
                 }
             }
         }
@@ -190,5 +192,84 @@ export class CommitteeController {
         @CurrentUser('id') committeeId: number,
     ) {
         return this.committeeService.saveEqualization(dto, committeeId);
+    }
+
+    @Post('equalization/:collaboratorId/generate-ai-summary')
+    @ApiOperation({
+        summary: 'Gerar resumo da IA para equalização',
+        description: 'Gera um resumo detalhado da IA baseado nas avaliações do colaborador para auxiliar na equalização. O resumo é salvo automaticamente no banco.',
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Resumo da IA gerado e salvo com sucesso',
+        schema: {
+            example: {
+                code: 'SUCCESS',
+                rating: 4,
+                detailedAnalysis: 'O colaborador apresentou desempenho consistente, com destaque para a colaboração técnica e entrega de resultados. Houve divergência entre autoavaliação e feedback do líder, justificada pela diferença de percepção sobre prazos.',
+                summary: 'Colaborador demonstra bom desempenho geral, com pequenas divergências entre avaliações.',
+                discrepancies: 'A autoavaliação foi superior ao feedback dos pares, indicando possível viés de autopercepção.',
+            }
+        }
+    })
+    @ApiResponse({
+        status: 400,
+        description: 'Erro na geração do resumo da IA',
+        schema: {
+            example: {
+                code: 'ERROR',
+                error: 'Mensagem de erro detalhada'
+            }
+        }
+    })
+    @ApiResponse({
+        status: 404,
+        description: 'Colaborador ou ciclo não encontrado',
+    })
+    async generateAiSummary(
+        @Param('collaboratorId', ParseIntPipe) collaboratorId: number,
+        @CurrentUser('id') committeeId: number,
+        @Query('cycleConfigId', ParseIntPipe) cycleConfigId: number,
+    ) {
+        return this.committeeService.generateAiSummary(committeeId, collaboratorId, cycleConfigId);
+    }
+
+    @Get('equalization/:collaboratorId/ai-summary')
+    @ApiOperation({
+        summary: 'Buscar resumo da IA salvo',
+        description: 'Retorna o resumo da IA que foi gerado e salvo anteriormente para um colaborador',
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Resumo da IA encontrado',
+        schema: {
+            example: {
+                id: 123,
+                collaboratorId: 3,
+                cycleId: 6,
+                committeeId: 5,
+                aiSummary: 'Análise detalhada gerada pela IA sobre o desempenho do colaborador...',
+                score: null,
+                justification: '',
+                createdAt: '2024-01-01T00:00:00.000Z',
+                updatedAt: '2024-01-01T00:00:00.000Z',
+                committee: {
+                    id: 5,
+                    name: 'João Silva',
+                    position: 'Membro do Comitê'
+                }
+            }
+        }
+    })
+    @ApiResponse({
+        status: 404,
+        description: 'Resumo da IA não encontrado',
+    })
+    async getAiSummary(
+        @Param('collaboratorId', ParseIntPipe) collaboratorId: number,
+        @CurrentUser('id') committeeId: number,
+        @Query('cycleConfigId', ParseIntPipe) cycleConfigId: number,
+    ) {
+        return this.committeeService.getAiSummary(committeeId, collaboratorId, cycleConfigId);
     }
 } 

@@ -13,6 +13,10 @@ export class EqualizationDto {
     @IsString()
     @IsOptional()
     changeReason?: string;
+
+    @IsString()
+    @IsOptional()
+    aiSummary?: string;
 }
 
 export class SaveEqualizationDto {

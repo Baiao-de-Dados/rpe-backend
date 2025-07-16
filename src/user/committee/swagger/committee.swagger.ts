@@ -154,6 +154,7 @@ export class CommitteeCollaboratorDetails {
         example: {
             finalScore: 4.3,
             comments: 'Nota final após análise do comitê',
+            aiSummary: 'Análise detalhada gerada pela IA sobre o desempenho do colaborador...',
             committee: {
                 id: 5,
                 name: 'João Silva',
@@ -166,6 +167,7 @@ export class CommitteeCollaboratorDetails {
     committeeEqualization: {
         finalScore: number;
         comments: string;
+        aiSummary?: string;
         committee: {
             id: number;
             name: string;

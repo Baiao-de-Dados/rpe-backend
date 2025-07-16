@@ -269,6 +269,7 @@ model Equalization {
   committeeId   Int
   justification String
   score         Float?
+  aiSummary     Json?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
