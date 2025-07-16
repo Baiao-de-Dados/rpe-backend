@@ -582,6 +582,40 @@ export class AiService {
                 return { code: 'NO_INSIGHT' };
             }
             if (obj.code === 'SUCCESS') {
+                // Salvar a avaliação no banco de dados
+                const leaderEvaluations = obj.evaluations || [];
+                for (const evaluation of leaderEvaluations) {
+                    await this.prisma.leaderEvaluation.upsert({
+                        where: {
+                            leaderId_collaboratorId_cycleId: {
+                                leaderId: userId,
+                                collaboratorId: evaluation.collaboratorId,
+                                cycleId: cycleId,
+                            },
+                        },
+                        update: {
+                            justification: evaluation.justification,
+                            score: evaluation.score,
+                            strengths: evaluation.strengths,
+                            improvements: evaluation.improvements,
+                            aiGenerated: true, // Indica que a avaliação foi gerada por IA
+                            aiSummary: obj.summary, // Salva o resumo gerado pela IA
+                            updatedAt: new Date(),
+                        },
+                        create: {
+                            leaderId: userId,
+                            collaboratorId: evaluation.collaboratorId,
+                            cycleId: cycleId,
+                            justification: evaluation.justification,
+                            score: evaluation.score,
+                            strengths: evaluation.strengths,
+                            improvements: evaluation.improvements,
+                            aiGenerated: true, // Indica que a avaliação foi gerada por IA
+                            aiSummary: obj.summary, // Salva o resumo gerado pela IA
+                        },
+                    });
+                }
+
                 return {
                     code: 'SUCCESS',
                     summary: obj.summary,

@@ -30,16 +30,16 @@ model User {
   managedProjects                   Project[]                    @relation("UserToManagedProjects")
   leaderEvaluationAssignments       LeaderEvaluationAssignment[] @relation("LeaderEvaluationAssignment")
   collaboratorEvaluationAssignments LeaderEvaluationAssignment[] @relation("CollaboratorEvaluationAssignment")
-  managerEvaluations ManagerEvaluation[] @relation("ManagerEvaluations")
-  collaboratorEvaluations ManagerEvaluation[] @relation("CollaboratorEvaluations")
-  notes      Notes[]
-  leaderEvaluations LeaderEvaluation[] @relation("LeaderEvaluations")
-  collaboratorLeaderEvaluations LeaderEvaluation[] @relation("CollaboratorLeaderEvaluations")
-  evaluations360Received Evaluation360[] @relation("UserToEvaluation360")
-  mentoringsReceived     Mentoring[]     @relation("UserToMentoring")
-  referencesReceived     Reference[]     @relation("UserToReference")
-  evaluationDrafts       EvaluationDraft[]
-  equalizations         Equalization[]  @relation("UserToEqualization")
+  managerEvaluations                ManagerEvaluation[]          @relation("ManagerEvaluations")
+  collaboratorEvaluations           ManagerEvaluation[]          @relation("CollaboratorEvaluations")
+  notes                             Notes[]
+  leaderEvaluations                 LeaderEvaluation[]           @relation("LeaderEvaluations")
+  collaboratorLeaderEvaluations     LeaderEvaluation[]           @relation("CollaboratorLeaderEvaluations")
+  evaluations360Received            Evaluation360[]              @relation("UserToEvaluation360")
+  mentoringsReceived                Mentoring[]                  @relation("UserToMentoring")
+  referencesReceived                Reference[]                  @relation("UserToReference")
+  evaluationDrafts                  EvaluationDraft[]
+  equalizations                     Equalization[]               @relation("UserToEqualization")
 }
 
 model UserRoleLink {
@@ -90,9 +90,9 @@ model CycleConfig {
   Evaluation                  Evaluation[]
   criterionTrackCycleConfigs  CriterionTrackCycleConfig[]
   leaderEvaluationAssignments LeaderEvaluationAssignment[]
-  managerEvaluations ManagerEvaluation[]
-  leaderEvaluations LeaderEvaluation[]
-  equalizations     Equalization[]
+  managerEvaluations          ManagerEvaluation[]
+  leaderEvaluations           LeaderEvaluation[]
+  equalizations               Equalization[]
 
   @@unique([name])
 }
@@ -226,12 +226,16 @@ model LeaderEvaluation {
   score          Float
   strengths      String?
   improvements   String?
+  aiGenerated    Boolean  @default(false) // Indica se a avaliação foi gerada por IA
+  aiSummary      String? // Resumo gerado pela IA
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
   cycle        CycleConfig @relation(fields: [cycleId], references: [id], onDelete: Cascade)
   leader       User        @relation("LeaderEvaluations", fields: [leaderId], references: [id], onDelete: Cascade)
   collaborator User        @relation("CollaboratorLeaderEvaluations", fields: [collaboratorId], references: [id], onDelete: Cascade)
+
+  @@unique([leaderId, collaboratorId, cycleId]) // Adiciona uma constraint única
 }
 
 // avaliacao de gestor
@@ -258,20 +262,20 @@ model ManagerEvaluationCriteria {
   score               Int
   justification       String
 
-  managerEvaluation   ManagerEvaluation @relation(fields: [managerEvaluationId], references: [id], onDelete: Cascade)
-  criteria            Criterion         @relation(fields: [criteriaId], references: [id])
+  managerEvaluation ManagerEvaluation @relation(fields: [managerEvaluationId], references: [id], onDelete: Cascade)
+  criteria          Criterion         @relation(fields: [criteriaId], references: [id])
 }
 
 model Equalization {
-  id            Int      @id @default(autoincrement())
+  id             Int      @id @default(autoincrement())
   collaboratorId Int
-  cycleId       Int
-  justification String
-  score         Float?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  cycleId        Int
+  justification  String
+  score          Float?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  collaborator User     @relation("UserToEqualization", fields: [collaboratorId], references: [id], onDelete: Cascade)
+  collaborator User        @relation("UserToEqualization", fields: [collaboratorId], references: [id], onDelete: Cascade)
   cycle        CycleConfig @relation(fields: [cycleId], references: [id], onDelete: Cascade)
 
   @@unique([collaboratorId, cycleId])
