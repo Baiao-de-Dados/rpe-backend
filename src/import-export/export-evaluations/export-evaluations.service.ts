@@ -22,25 +22,45 @@ export class ExportEvaluationsService {
             { header: 'Nota de Avaliação 360', key: 'evaluation360Score', width: 20 },
             { header: 'Nota do Gestor', key: 'mentoringScore', width: 20 },
             { header: 'Nota Final da Equalização', key: 'finalEqualizationScore', width: 20 },
+            {
+                header: 'Justificativa Final da Nota de Equalização',
+                key: 'justificativaFinalEqualizacao',
+                width: 50,
+            },
         ];
 
         // Adiciona dados
-        collaborators.forEach((collaborator) => {
-            collaborator.scores
-                ?.filter((score) => score.cycleId === cycleId)
-                .forEach((score) => {
-                    worksheet.addRow({
-                        name: collaborator.name,
-                        track: collaborator.track,
-                        position: collaborator.position,
-                        cycle: score.cycleId,
-                        autoEvaluationScore: score.autoEvaluationScore || 0,
-                        evaluation360Score: score.av360Score || 0,
-                        mentoringScore: score.managerScore || 0,
-                        finalEqualizationScore: score.equalizationScore || 0,
-                    });
+        for (const collaborator of collaborators) {
+            const filteredScores =
+                collaborator.scores?.filter((score) => score.cycleId === cycleId) || [];
+            for (const score of filteredScores) {
+                // Buscar justificativa da equalização diretamente
+                let justificativaFinalEqualizacao = '';
+                const equalization = await this.collaboratorsService[
+                    'prisma'
+                ].equalization.findFirst({
+                    where: {
+                        collaboratorId: collaborator.id,
+                        cycleId: score.cycleId,
+                    },
+                    select: { justification: true },
                 });
-        });
+                if (equalization && equalization.justification) {
+                    justificativaFinalEqualizacao = equalization.justification;
+                }
+                worksheet.addRow({
+                    name: collaborator.name,
+                    track: collaborator.track,
+                    position: collaborator.position,
+                    cycle: score.cycleId,
+                    autoEvaluationScore: score.autoEvaluationScore || 0,
+                    evaluation360Score: score.av360Score || 0,
+                    mentoringScore: score.managerScore || 0,
+                    finalEqualizationScore: score.equalizationScore || 0,
+                    justificativaFinalEqualizacao,
+                });
+            }
+        }
 
         const buffer = await workbook.xlsx.writeBuffer();
         return Buffer.from(buffer);

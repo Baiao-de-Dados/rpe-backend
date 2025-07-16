@@ -9,7 +9,7 @@ import { ApiExportEvaluations } from './swagger/export-evaluations.swagger';
 import { ValidateExportEvaluationsDto } from './dto/validate-export-evaluations.dto';
 import { QueryValidationPipe } from '../../common/pipes/query-validation.pipe';
 import { ApiAuth } from 'src/common/decorators/api-auth.decorator';
-import { RequireEmployer } from 'src/auth/decorators/roles.decorator';
+import { RequireCommittee } from 'src/auth/decorators/roles.decorator';
 
 @ApiAuth()
 @ApiTags('Exportação')
@@ -17,9 +17,7 @@ import { RequireEmployer } from 'src/auth/decorators/roles.decorator';
 export class ExportEvaluationsController {
     constructor(private readonly exportEvaluationsService: ExportEvaluationsService) {}
 
-    //@RequireCommittee()
-    // @UseGuards(JwtAuthGuard, RolesGuard)
-    @RequireEmployer()
+    @RequireCommittee()
     @Get()
     @ApiExportEvaluations()
     async exportEvaluations(
