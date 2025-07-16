@@ -4,12 +4,14 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { remove as removeDiacritics } from 'diacritics';
 import { EvaluationsService } from '../../evaluations/evaluations.service';
 import { CreateEvaluationDto } from '../../evaluations/dto/create-evaluation.dto';
+import { EncryptionService } from 'src/cryptography/encryption.service';
 
 @Injectable()
 export class ImportEvaluationsService {
     constructor(
         private readonly prisma: PrismaService,
         private readonly evaluationsService: EvaluationsService,
+        private readonly encryptionService: EncryptionService,
     ) {}
 
     async importEvaluationsFromExcel(file: Express.Multer.File, filename: string): Promise<string> {
@@ -103,7 +105,7 @@ export class ImportEvaluationsService {
             ] = values.slice(1);
 
             const evaluation: any = {
-                name: typeof name === 'string' ? name.trim() : '',
+                name: typeof name === 'string' ? capitalizeName(name.trim()) : '', // Capitalizar o nome
                 email: typeof email === 'string' ? email.trim() : '',
                 evaluationType: typeof evaluationType === 'string' ? evaluationType.trim() : '',
             };
@@ -114,7 +116,7 @@ export class ImportEvaluationsService {
                 evaluation.justification =
                     typeof justification === 'string' ? justification.trim() : '';
             } else if (evaluationType === 'Avaliação 360') {
-                evaluation.avaliadoName = typeof a360Name === 'string' ? a360Name.trim() : '';
+                evaluation.avaliadoName = typeof a360Name === 'string' ? capitalizeName(a360Name.trim()) : ''; // Capitalizar o nome
                 evaluation.note = typeof nota360 === 'number' ? nota360 : Number(nota360) || 0;
                 evaluation.pontosFortes =
                     typeof pontosFortes === 'string' ? pontosFortes.trim() : '';
@@ -125,7 +127,7 @@ export class ImportEvaluationsService {
                 evaluationType === 'Pesquisa de Referências'
             ) {
                 evaluation.avaliadoName =
-                    typeof referenciaName === 'string' ? referenciaName.trim() : '';
+                    typeof referenciaName === 'string' ? capitalizeName(referenciaName.trim()) : ''; // Capitalizar o nome
                 evaluation.justification =
                     typeof justificativaReferencia === 'string'
                         ? justificativaReferencia.trim()
@@ -136,96 +138,75 @@ export class ImportEvaluationsService {
         });
 
         const tiposUnicos = new Set(evaluations.map((e) => e.evaluationType));
-        console.log('TIPOS DE AVALIAÇÃO ENCONTRADOS NO EXCEL:', Array.from(tiposUnicos));
-        console.log(
-            'DADOS DE 360 NO EXCEL:',
-            evaluations.filter(
-                (e) =>
-                    removeDiacritics((e.evaluationType || '').toLowerCase().trim()) ===
-                    'avaliacao 360',
-            ),
-        );
-        console.log(
-            'DADOS DE REFERÊNCIA NO EXCEL:',
-            evaluations.filter((e) => {
-                const tipoNorm = removeDiacritics((e.evaluationType || '').toLowerCase().trim());
-                return (
-                    tipoNorm === 'pesquisa de referencia' || tipoNorm === 'pesquisa de referencias'
-                );
-            }),
-        );
-
+        
         const criteriosDb = await this.prisma.criterion.findMany();
         const criteriosNameToId = Object.fromEntries(
             criteriosDb.map((c) => [removeDiacritics(c.name.toLowerCase().trim()), c.id]),
         );
         const criteriosIdToPilar = Object.fromEntries(criteriosDb.map((c) => [c.id, c.pillarId]));
-        console.log('CRITÉRIOS NO BANCO:');
-        criteriosDb.forEach((c) => {
-            console.log('-', c.name);
-        });
+        
         const allUsersDb = await this.prisma.user.findMany();
-        console.log('USUÁRIOS NO BANCO:');
-        allUsersDb.forEach((u) => {
-            console.log('-', u.name);
-        });
+        
         const avaliacoesPorUsuario: Record<string, any[]> = {};
         for (const evaluation of evaluations) {
-            if (!evaluation.criterion || evaluation.criterion.trim() === '') {
-                continue;
-            }
             if (!avaliacoesPorUsuario[evaluation.email]) {
                 avaliacoesPorUsuario[evaluation.email] = [];
             }
             avaliacoesPorUsuario[evaluation.email].push(evaluation);
         }
+        
+        // Otimização: buscar todos os usuários uma vez e criar um mapa de emails descriptografados
+        const allUsers = await this.prisma.user.findMany();
+        const emailToUserMap: Record<string, any> = {};
+        
+        for (const dbUser of allUsers) {
+            try {
+                const decryptedEmail = this.encryptionService.safeDecrypt(dbUser.email);
+                emailToUserMap[decryptedEmail] = dbUser;
+            } catch (error) {
+                // Continuar com próximo usuário
+            }
+        }
+
         let importedCount = 0;
         function tipoNorm(tipo: string) {
             return removeDiacritics((tipo || '').toLowerCase().trim());
         }
+        
         for (const email in avaliacoesPorUsuario) {
-            const user = await this.prisma.user.findUnique({ where: { email } });
-            if (!user) continue;
+            // Buscar usuário no mapa otimizado
+            const user = emailToUserMap[email];
+
+            if (!user) {
+                continue;
+            }
+
             const existing = await this.prisma.evaluation.findFirst({
                 where: {
                     evaluatorId: user.id,
                     cycleConfigId: cycleConfigId,
                 },
             });
-            if (existing) continue;
+
+            if (existing) {
+                continue;
+            }
+
             const criteriosPorPilar: Record<number, any[]> = {};
             const avaliacao360: any[] = [];
             const referencias: any[] = [];
-            const linhasAvaliador = evaluations.filter((e) => e.email === email);
-            console.log(`\n--- Linhas do Excel para ${email} ---`);
-            linhasAvaliador.forEach((e) => console.log(e));
+            const linhasAvaliador = avaliacoesPorUsuario[email];
+
             for (const evaluation of linhasAvaliador) {
                 const tipo = tipoNorm(evaluation.evaluationType);
                 if (tipo === 'autoavaliacao') {
+                    if (!evaluation.criterion || evaluation.criterion.trim() === '') {
+                        continue;
+                    }
                     const normalizedName = removeDiacritics(
                         evaluation.criterion?.toLowerCase() || '',
                     );
                     const criterioId = criteriosNameToId[normalizedName];
-                    const criterioDb = criteriosDb.find((c) => c.id === criterioId);
-                    if (!criterioId) {
-                        console.log('Critério Excel NÃO ENCONTRADO:', evaluation.criterion);
-                        const critExcelNorm = normalizedName;
-                        const sugestoes = Object.keys(criteriosNameToId).filter(
-                            (nome) => nome.includes(critExcelNorm) || critExcelNorm.includes(nome),
-                        );
-                        if (sugestoes.length > 0) {
-                            console.log('Sugestões de nomes próximos:', sugestoes);
-                        } else {
-                            console.log('Nenhuma sugestão próxima encontrada.');
-                        }
-                    } else {
-                        console.log(
-                            'Critério Excel ENCONTRADO:',
-                            evaluation.criterion,
-                            '-> nomeBanco:',
-                            criterioDb?.name,
-                        );
-                    }
                     if (!criterioId) {
                         continue;
                     }
@@ -238,99 +219,42 @@ export class ImportEvaluationsService {
                     });
                 } else if (tipo === 'avaliacao 360') {
                     const nomeBusca = evaluation.avaliadoName || '';
-                    const nomeBuscaNorm = removeDiacritics(nomeBusca.toLowerCase());
-                    console.log(
-                        'NOME BUSCADO:',
-                        nomeBuscaNorm,
-                        '| NOMES NO BANCO:',
-                        allUsersDb.map((u) => removeDiacritics(u.name.toLowerCase())),
-                    );
-                    const avaliado = allUsersDb.find(
-                        (u) => removeDiacritics(u.name.toLowerCase()) === nomeBuscaNorm,
-                    );
-                    console.log(
-                        '[DEBUG 360] Avaliando:',
-                        nomeBusca,
-                        '| Normalizado:',
-                        nomeBuscaNorm,
-                        '| Encontrado:',
-                        !!avaliado,
-                    );
-                    if (!avaliado) {
-                        const sugestoes = allUsersDb
-                            .filter(
-                                (u) =>
-                                    removeDiacritics(u.name.toLowerCase()).includes(
-                                        nomeBuscaNorm,
-                                    ) ||
-                                    nomeBuscaNorm.includes(removeDiacritics(u.name.toLowerCase())),
-                            )
-                            .map((u) => u.name);
-                        console.log(
-                            'Usuário avaliado (360) não encontrado:',
-                            nomeBusca,
-                            '| Sugestões:',
-                            sugestoes,
-                        );
-                        continue;
+                    const nomeBuscaCapitalized = capitalizeName(nomeBusca);
+
+                    const avaliado = allUsersDb.find((u) => capitalizeName(u.name) === nomeBuscaCapitalized);
+
+                    if (avaliado) {
+                        avaliacao360.push({
+                            avaliadoId: avaliado.id,
+                            pontosFortes: evaluation.pontosFortes || '',
+                            pontosMelhoria: evaluation.pontosMelhoria || '',
+                            score: evaluation.note || 0,
+                        });
                     }
-                    avaliacao360.push({
-                        avaliadoId: avaliado.id,
-                        pontosFortes: evaluation.pontosFortes || '',
-                        pontosMelhoria: evaluation.pontosMelhoria || '',
-                        score: evaluation.note || 0,
-                    });
                 } else if (
                     tipo === 'pesquisa de referencia' ||
                     tipo === 'pesquisa de referencias'
                 ) {
                     const nomeBusca = evaluation.avaliadoName?.trim() || '';
-                    if (!nomeBusca) {
-                        console.log(
-                            `[DEBUG REFERÊNCIA] Nome do avaliado está vazio para a avaliação de ${evaluation.email}.`
-                        );
-                        continue; // Ignorar se o nome do avaliado estiver vazio
+                    if (nomeBusca) {
+                        const nomeBuscaCapitalized = capitalizeName(nomeBusca);
+                        const colaborador = allUsersDb.find((u) => capitalizeName(u.name) === nomeBuscaCapitalized);
+
+                        if (colaborador) {
+                            referencias.push({
+                                colaboradorId: colaborador.id,
+                                justificativa: evaluation.justification?.trim() || '',
+                            });
+                        }
                     }
-
-                    const nomeBuscaNorm = removeDiacritics(nomeBusca.toLowerCase());
-                    console.log(
-                        `[DEBUG REFERÊNCIA] Buscando colaborador com nome: "${nomeBusca}" (normalizado: "${nomeBuscaNorm}")`
-                    );
-
-                    const colaborador = allUsersDb.find(
-                        (u) => removeDiacritics(u.name.toLowerCase()) === nomeBuscaNorm,
-                    );
-
-                    if (!colaborador) {
-                        const sugestoes = allUsersDb
-                            .filter(
-                                (u) =>
-                                    removeDiacritics(u.name.toLowerCase()).includes(nomeBuscaNorm) ||
-                                    nomeBuscaNorm.includes(removeDiacritics(u.name.toLowerCase())),
-                            )
-                            .map((u) => u.name);
-
-                        console.log(
-                            `[DEBUG REFERÊNCIA] Colaborador não encontrado para o nome: "${nomeBusca}". Sugestões:`,
-                            sugestoes
-                        );
-                        continue; // Ignorar se o colaborador não for encontrado
-                    }
-
-                    console.log(
-                        `[DEBUG REFERÊNCIA] Colaborador encontrado: "${colaborador.name}" para o nome: "${nomeBusca}".`
-                    );
-
-                    referencias.push({
-                        colaboradorId: colaborador.id,
-                        justificativa: evaluation.justification?.trim() || '', // Garantir que a justificativa seja salva
-                    });
                 }
             }
+
             const pilares = Object.entries(criteriosPorPilar).map(([pilarId, criterios]) => ({
                 pilarId: Number(pilarId),
                 criterios,
             }));
+
             const createEvaluationDto: CreateEvaluationDto = {
                 cycleConfigId: cycleConfigId,
                 colaboradorId: user.id,
@@ -342,17 +266,34 @@ export class ImportEvaluationsService {
                 },
                 referencias,
             };
-            console.log('DTO FINAL PARA CRIAÇÃO:', JSON.stringify(createEvaluationDto, null, 2));
-            await this.evaluationsService.createEvaluation(
-                createEvaluationDto,
-                {
-                    id: user.id,
-                    sub: user.id,
-                },
-                true,
-            );
-            importedCount++;
+
+            try {
+                await this.evaluationsService.createEvaluation(
+                    createEvaluationDto,
+                    {
+                        id: user.id,
+                        sub: user.id,
+                    },
+                    true,
+                );
+                
+                importedCount++;
+            } catch (error) {
+                console.error(`[ERROR] Erro ao importar avaliação para usuário ${user.id}:`, {
+                    message: error.message,
+                });
+                // Continuar com próxima avaliação em vez de parar todo o processo
+                continue;
+            }
         }
+
         return `${importedCount} avaliações importadas com sucesso no ciclo ${cycleName}.`;
     }
+}
+
+function capitalizeName(name: string): string {
+    return name
+        .split(' ')
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+        .join(' ');
 }

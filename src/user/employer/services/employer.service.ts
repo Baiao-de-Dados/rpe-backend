@@ -409,7 +409,6 @@ export class EmployerService {
     }
 
     async getAllEvaluationsForUser(userId: number) {
-        // Busca todas as avaliações do usuário
         const evaluations = await this.prisma.evaluation.findMany({
             where: { evaluatorId: userId },
             include: {
@@ -419,7 +418,6 @@ export class EmployerService {
             },
             orderBy: { cycleConfigId: 'asc' },
         });
-        // Busca todas as avaliações de gestor para o usuário
         const managerEvaluations = await this.prisma.managerEvaluation.findMany({
             where: { collaboratorId: userId },
             include: { criterias: true },
@@ -647,6 +645,84 @@ export class EmployerService {
             });
         }
         return { cycles: result };
+    }
+
+    async getCyclesGrades(userId: number) {
+        const evaluations = await this.prisma.evaluation.findMany({
+            where: {
+                evaluatorId: userId,
+                cycleConfig: { done: true },
+            },
+            include: {
+                cycleConfig: true,
+            },
+            orderBy: { cycleConfigId: 'asc' },
+        });
+
+        const managerEvaluations = await this.prisma.managerEvaluation.findMany({
+            where: { collaboratorId: userId },
+            include: { criterias: true },
+        });
+        const managerByCycle = new Map<number, number | null>();
+        for (const m of managerEvaluations) {
+            if (m.criterias?.length) {
+                const scores = m.criterias.map((c) => c.score);
+                managerByCycle.set(
+                    m.cycleId,
+                    Math.round((scores.reduce((sum, s) => sum + s, 0) / scores.length) * 10) / 10,
+                );
+            } else {
+                managerByCycle.set(m.cycleId, null);
+            }
+        }
+        const cycles = await Promise.all(
+            evaluations.map(async (ev) => {
+                let autoEvaluationGrade: number | null = null;
+                const autoEvaluation = await this.prisma.autoEvaluation.findUnique({
+                    where: { evaluationId: ev.id },
+                    include: { assignments: true },
+                });
+                if (autoEvaluation?.assignments?.length) {
+                    const assignments = autoEvaluation.assignments;
+                    autoEvaluationGrade =
+                        Math.round(
+                            (assignments.reduce((sum, a) => sum + a.score, 0) /
+                                assignments.length) *
+                                10,
+                        ) / 10;
+                }
+                // 360
+                let evaluation360Grade: number | null = null;
+                const evaluation360 = await this.prisma.evaluation360.findMany({
+                    where: { evaluationId: ev.id },
+                });
+                if (evaluation360?.length) {
+                    const scores = evaluation360.map((e) => e.score);
+                    evaluation360Grade =
+                        Math.round((scores.reduce((sum, s) => sum + s, 0) / scores.length) * 10) /
+                        10;
+                }
+                // Gestor
+                const managerEvaluation = managerByCycle.get(ev.cycleConfigId) ?? null;
+                // Comitê (equalização)
+                let committeeGrade: number | null = null;
+                const equalization = await this.prisma.equalization.findFirst({
+                    where: { collaboratorId: userId, cycleId: ev.cycleConfigId },
+                });
+                if (equalization?.score !== undefined && equalization?.score !== null) {
+                    committeeGrade = Math.round(equalization.score * 10) / 10;
+                }
+                return {
+                    cycleId: ev.cycleConfig.id,
+                    cycleName: ev.cycleConfig.name,
+                    autoEvaluation: autoEvaluationGrade,
+                    evaluation360: evaluation360Grade,
+                    managerEvaluation: managerEvaluation,
+                    finalEvaluation: committeeGrade,
+                };
+            }),
+        );
+        return { cycles };
     }
 
     private formatAutoEvaluationPilares(assignments: any[]) {

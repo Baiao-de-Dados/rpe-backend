@@ -16,11 +16,13 @@ describe('EmployerService', () => {
                         user: { findUnique: jest.fn() },
                         cycleConfig: { findMany: jest.fn() },
                         evaluation: { findFirst: jest.fn(), findMany: jest.fn() },
-                        managerEvaluation: { findFirst: jest.fn() },
+                        managerEvaluation: { findFirst: jest.fn(), findMany: jest.fn() },
                         criterionTrackCycleConfig: { findFirst: jest.fn() },
                         evaluation360: { findMany: jest.fn() },
                         reference: { findMany: jest.fn() },
                         mentoring: { findFirst: jest.fn() },
+                        autoEvaluation: { findUnique: jest.fn() },
+                        equalization: { findFirst: jest.fn() },
                     },
                 },
             ],
@@ -75,5 +77,60 @@ describe('EmployerService', () => {
         expect(result.cycles[0].evaluation360.evaluation[0].collaratorName).toBe('Fulano');
         expect(result.cycles[0].reference[0].collaratorName).toBe('Beltrano');
         expect(result.cycles[0].mentoring.mentorName).toBe('Mentor');
+    });
+
+    it('deve retornar as notas de cada ciclo no formato esperado', async () => {
+        // Mock dos dados de avaliações
+        prisma.evaluation.findMany.mockResolvedValue([
+            {
+                id: 1,
+                cycleConfigId: 10,
+                cycleConfig: { id: 10, name: '2025.2' },
+            },
+            {
+                id: 2,
+                cycleConfigId: 11,
+                cycleConfig: { id: 11, name: '2025.3' },
+            },
+        ]);
+        // Mock das avaliações de gestor
+        prisma.managerEvaluation.findMany.mockResolvedValue([
+            { cycleId: 10, criterias: [{ score: 5 }, { score: 5 }] },
+            { cycleId: 11, criterias: [{ score: 4 }, { score: 6 }] },
+        ]);
+        // Mock da autoavaliação
+        prisma.autoEvaluation.findUnique
+            .mockResolvedValueOnce({ assignments: [{ score: 5 }, { score: 5 }] })
+            .mockResolvedValueOnce({ assignments: [{ score: 4 }, { score: 6 }] });
+        // Mock da avaliação 360
+        prisma.evaluation360.findMany
+            .mockResolvedValueOnce([{ score: 5 }, { score: 5 }])
+            .mockResolvedValueOnce([{ score: 4 }, { score: 6 }]);
+        // Mock da equalização
+        prisma.equalization.findFirst
+            .mockResolvedValueOnce({ score: 5 })
+            .mockResolvedValueOnce({ score: 6 });
+
+        const result = await service.getCyclesGrades(1);
+        expect(result).toEqual({
+            cycles: [
+                {
+                    cycleId: 10,
+                    cycleName: '2025.2',
+                    autoEvaluation: 5,
+                    evaluation360: 5,
+                    managerEvaluation: 5,
+                    finalEvaluation: 5,
+                },
+                {
+                    cycleId: 11,
+                    cycleName: '2025.3',
+                    autoEvaluation: 5,
+                    evaluation360: 5,
+                    managerEvaluation: 5,
+                    finalEvaluation: 6,
+                },
+            ],
+        });
     });
 });

@@ -115,4 +115,9 @@ export class EmployerController {
     async getCyclesHistory(@CurrentUser('id') userId: number, @Query('cycleId') cycleId?: string) {
         return this.service.getCollaboratorCyclesHistory(userId, Number(cycleId));
     }
+
+    @Get('cycles-grades')
+    async getCyclesGrades(@CurrentUser('id') userId: number) {
+        return this.service.getCyclesGrades(userId);
+    }
 }
