@@ -1,5 +1,5 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Req } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Req, Query } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { OnlyManager } from 'src/auth/decorators/roles.decorator';
 import { ApiAuth } from 'src/common/decorators/api-auth.decorator';
 import { AssignLeaderDto } from '../dto/assign-leader.dto';
@@ -105,5 +105,64 @@ export class ManagerController {
         @CurrentUser('id') managerId: number,
     ) {
         return this.managerService.getUserAutoEvaluation(userId, managerId);
+    }
+
+    @Get('all-collaborators-evaluations')
+    async getAllCollaboratorsEvaluations(@CurrentUser('id') managerId: number) {
+        return this.managerService.getAllCollaboratorsEvaluations(managerId);
+    }
+
+    @Get('collaborator-evaluation-result')
+    async getCollaboratorEvaluationResult(
+        @CurrentUser('id') managerId: number,
+        @Query('collaboratorId', ParseIntPipe) collaboratorId: number,
+        @Query('cycleConfigId', ParseIntPipe) cycleConfigId: number,
+    ) {
+        return this.managerService.getCollaboratorEvaluationResult(managerId, collaboratorId, cycleConfigId);
+    }
+
+    @Get('evaluation/:collaboratorId')
+    @ApiOperation({
+        summary: 'Buscar avaliação do manager para um colaborador específico',
+        description: 'Retorna a avaliação do manager para um colaborador em um ciclo específico. Se não existir avaliação, retorna estrutura vazia.',
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Avaliação do manager encontrada ou estrutura vazia',
+        schema: {
+            example: {
+                id: 1,
+                cycleConfigId: 1,
+                managerId: 10,
+                collaboratorId: 20,
+                autoavaliacao: {
+                    pilares: [
+                        {
+                            pilarId: 1,
+                            criterios: [
+                                {
+                                    criterioId: 1,
+                                    nota: 5,
+                                    justificativa: 'Excelente desempenho em liderança.'
+                                }
+                            ]
+                        }
+                    ]
+                },
+                createdAt: '2024-01-01T00:00:00.000Z',
+                updatedAt: '2024-01-01T00:00:00.000Z'
+            }
+        }
+    })
+    @ApiResponse({
+        status: 404,
+        description: 'Colaborador não pertence a nenhum projeto sob gestão do manager',
+    })
+    async getManagerEvaluation(
+        @Param('collaboratorId', ParseIntPipe) collaboratorId: number,
+        @CurrentUser('id') managerId: number,
+        @Query('cycleConfigId', ParseIntPipe) cycleConfigId: number,
+    ) {
+        return this.managerService.getManagerEvaluation(managerId, collaboratorId, cycleConfigId);
     }
 }

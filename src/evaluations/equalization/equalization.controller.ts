@@ -1,4 +1,4 @@
-import { Controller, Post, Put, Body, UseGuards, BadRequestException } from '@nestjs/common';
+import { Controller, Post, Put, Body, UseGuards, BadRequestException, Get, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { RequireAdmin, RequireCommittee } from '../../auth/decorators/roles.decorator';
 import { EqualizationService } from './equalization.service';
@@ -12,7 +12,7 @@ import { ApiAuth } from 'src/common/decorators/api-auth.decorator';
 export class EqualizationController {
     constructor(private readonly equalizationService: EqualizationService) {}
 
-    @RequireAdmin()
+    @RequireCommittee()
     @Post()
     @ApiSaveEqualization()
     async saveEqualization(@Body() dto: SaveEqualizationDto) {
@@ -34,5 +34,11 @@ export class EqualizationController {
             );
         }
         return this.equalizationService.editEqualization(dto);
+    }
+
+    @RequireCommittee()
+    @Get('all-collaborators')
+    async getAllCollaboratorsForCommittee(@Query('cycleId') cycleId?: number) {
+        return this.equalizationService.getAllCollaboratorsForCommittee(cycleId);
     }
 }

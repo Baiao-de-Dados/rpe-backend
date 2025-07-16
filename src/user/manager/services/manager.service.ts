@@ -475,7 +475,7 @@ export class ManagerService {
     }
 
     async evaluateCollaborator(dto: ManagerEvaluationDto, managerId: number) {
-        const { cycleId, collaboratorId, criterias } = dto;
+        const { cycleConfigId, colaboradorId, autoavaliacao } = dto;
 
         //Validar se o managerId do DTO é o mesmo do usuário autenticado
         if (dto.managerId !== managerId) {
@@ -485,7 +485,7 @@ export class ManagerService {
         //Verificar se o colaborador existe e é membro de um projeto do gestor
         const collaboratorProject = await this.prisma.projectMember.findFirst({
             where: {
-                userId: collaboratorId,
+                userId: colaboradorId,
                 project: {
                     managerId: managerId,
                 },
@@ -504,6 +504,9 @@ export class ManagerService {
             );
         }
 
+        // Extrair todos os critérios dos pilares para validação
+        const allCriterias = autoavaliacao.pilares.flatMap(pilar => pilar.criterios);
+
         // Validar se os critérios pertencem à trilha do colaborador
         const trackId = collaboratorProject.user.trackId;
         const validCriteria = await this.prisma.criterionTrackConfig.findMany({
@@ -511,11 +514,11 @@ export class ManagerService {
             select: { criterionId: true },
         });
         const validCriteriaIds = validCriteria.map((c) => c.criterionId);
-        const invalidCriteria = criterias.filter((c) => !validCriteriaIds.includes(c.criteriaId));
+        const invalidCriteria = allCriterias.filter((c) => !validCriteriaIds.includes(c.criterioId));
         if (invalidCriteria.length > 0) {
             throw new BadRequestException(
                 `Os seguintes critérios não pertencem à trilha do colaborador: ${invalidCriteria
-                    .map((c) => c.criteriaId)
+                    .map((c) => c.criterioId)
                     .join(', ')}`,
             );
         }
@@ -523,9 +526,9 @@ export class ManagerService {
         //Verificar se já existe avaliação para este ciclo/colaborador/gestor
         const existingEvaluation = await this.prisma.managerEvaluation.findFirst({
             where: {
-                cycleId,
+                cycleId: cycleConfigId,
                 managerId,
-                collaboratorId,
+                collaboratorId: colaboradorId,
             },
         });
 
@@ -537,11 +540,11 @@ export class ManagerService {
             });
 
             // Criar novos critérios
-            const criteriaData = criterias.map((criteria) => ({
+            const criteriaData = allCriterias.map((criteria) => ({
                 managerEvaluationId: existingEvaluation.id,
-                criteriaId: criteria.criteriaId,
-                score: criteria.score,
-                justification: criteria.justification,
+                criteriaId: criteria.criterioId,
+                score: criteria.nota,
+                justification: criteria.justificativa,
             }));
 
             await this.prisma.managerEvaluationCriteria.createMany({
@@ -561,14 +564,14 @@ export class ManagerService {
         } else {
             return this.prisma.managerEvaluation.create({
                 data: {
-                    cycleId,
+                    cycleId: cycleConfigId,
                     managerId,
-                    collaboratorId,
+                    collaboratorId: colaboradorId,
                     criterias: {
-                        create: criterias.map((criteria) => ({
-                            criteriaId: criteria.criteriaId,
-                            score: criteria.score,
-                            justification: criteria.justification,
+                        create: allCriterias.map((criteria) => ({
+                            criteriaId: criteria.criterioId,
+                            score: criteria.nota,
+                            justification: criteria.justificativa,
                         })),
                     },
                 },
@@ -919,6 +922,17 @@ export class ManagerService {
                     );
                     autoEvalScore = sum / autoEval.autoEvaluation.assignments.length;
                 }
+                // Substituir leaderEvaluationScore por equalizationScore
+                let equalizationScore: number | null = null;
+                const equalization = await this.prisma.equalization.findFirst({
+                    where: {
+                        collaboratorId: collaborator.id,
+                        cycleId: cycle.id,
+                    },
+                });
+                if (equalization) {
+                    equalizationScore = equalization.score;
+                }
                 const leaderEval = leaderEvalMap.get(`${collaborator.id}-${cycle.id}`);
                 const leaderEvalScore: number | null = leaderEval ? leaderEval.score : null;
                 const managerEval = managerEvalMap.get(`${collaborator.id}-${cycle.id}`);
@@ -941,7 +955,7 @@ export class ManagerService {
                         name: cycle.name,
                     },
                     autoEvaluationScore: autoEvalScore,
-                    leaderEvaluationScore: leaderEvalScore,
+                    equalizationScore: equalizationScore, // Alterado aqui
                     managerEvaluationScore: managerEvalScore,
                     status,
                 });
@@ -1058,5 +1072,354 @@ export class ManagerService {
             }
         }
         return result;
+    }
+
+    /**
+     * Retorna todos os colaboradores sob gestão do manager com notas do ciclo ativo
+     */
+    async getAllCollaboratorsEvaluations(managerId: number) {
+        // Buscar todos os projetos do gestor
+        const projects = await this.prisma.project.findMany({
+            where: { managerId },
+            include: {
+                members: {
+                    include: {
+                        user: {
+                            select: {
+                                id: true,
+                                name: true,
+                                position: true,
+                            },
+                        },
+                    },
+                },
+            },
+        });
+        // Todos os colaboradores dos projetos (excluindo o próprio manager)
+        let collaborators = projects.flatMap((project) =>
+            project.members.map((member) => member.user),
+        );
+        collaborators = collaborators.filter((c) => c.id !== managerId);
+        const collaboratorIds = collaborators.map((c) => c.id);
+        // Buscar ciclo ativo
+        const activeCycle = (await this.prisma.cycleConfig.findMany()).find(
+            (cycle) =>
+                !cycle.done &&
+                cycle.startDate !== null &&
+                cycle.endDate !== null &&
+                new Date() >= cycle.startDate &&
+                new Date() <= cycle.endDate,
+        );
+        if (!activeCycle) {
+            // Retorna todos os colaboradores com notas/ciclo null
+            return collaborators.map((c) => ({
+                cycle: null,
+                collaborator: {
+                    id: c.id,
+                    name: c.name,
+                    position: c.position,
+                },
+                autoEvaluation: null,
+                evaluation360: null,
+                managerEvaluation: null,
+                equalization: null,
+            }));
+        }
+        // Buscar avaliações em lote
+        const evaluations = await this.prisma.evaluation.findMany({
+            where: {
+                evaluatorId: { in: collaboratorIds },
+                cycleConfigId: activeCycle.id,
+            },
+            include: {
+                autoEvaluation: { include: { assignments: true } },
+                evaluation360: true,
+            },
+        });
+
+        // Buscar equalizações separadamente
+        const equalizations = await this.prisma.equalization.findMany({
+            where: {
+                collaboratorId: { in: collaboratorIds },
+                cycleId: activeCycle.id,
+            },
+        });
+
+        // Buscar nota da autoavaliação usando o mesmo método de getUserAutoEvaluation
+        const autoEvaluationScores: Record<number, number | null> = {};
+        for (const c of collaborators) {
+            try {
+                const autoEval = await this.getUserAutoEvaluation(c.id, managerId);
+                // Se houver autoEvaluation, calcula a média das notas dos assignments
+                if (autoEval && autoEval.autoEvaluation && autoEval.autoEvaluation.assignments.length > 0) {
+                    const sum = autoEval.autoEvaluation.assignments.reduce((acc, a) => acc + a.score, 0);
+                    autoEvaluationScores[c.id] = Math.round((sum / autoEval.autoEvaluation.assignments.length) * 10) / 10;
+                } else {
+                    autoEvaluationScores[c.id] = null;
+                }
+            } catch {
+                autoEvaluationScores[c.id] = null;
+            }
+        }
+
+        // Buscar avaliações de gestor
+        const managerEvaluations = await this.prisma.managerEvaluation.findMany({
+            where: {
+                collaboratorId: { in: collaboratorIds },
+                managerId,
+                cycleId: activeCycle.id,
+            },
+            include: { criterias: true },
+        });
+        // Indexa avaliações de gestor por colaborador
+        const managerByCollaborator = new Map<number, number | null>();
+        for (const m of managerEvaluations) {
+            if (m.criterias?.length) {
+                const scores = m.criterias.map((c) => c.score);
+                managerByCollaborator.set(
+                    m.collaboratorId,
+                    Math.round((scores.reduce((sum, s) => sum + s, 0) / scores.length) * 10) / 10,
+                );
+            } else {
+                managerByCollaborator.set(m.collaboratorId, null);
+            }
+        }
+        // Monta resposta
+        return collaborators.map((c) => {
+            const evaluation = evaluations.find((ev) => ev.evaluatorId === c.id);
+            // Autoavaliação: usar nota calculada pelo método getUserAutoEvaluation
+            const autoEvaluationGrade: number | null = autoEvaluationScores[c.id] ?? null;
+            // Avaliação 360
+            let evaluation360Grade: number | null = null;
+            if (evaluation?.evaluation360?.length) {
+                const scores = evaluation.evaluation360.map((e) => e.score);
+                evaluation360Grade =
+                    Math.round((scores.reduce((sum, s) => sum + s, 0) / scores.length) * 10) / 10;
+            }
+            // Equalização
+            let equalizationGrade: number | null = null;
+            const equalization = equalizations.find((eq) => eq.collaboratorId === c.id);
+            if (equalization?.score !== undefined && equalization?.score !== null) {
+                equalizationGrade = Math.round(equalization.score * 10) / 10;
+            }
+            // Gestor
+            const managerGrade = managerByCollaborator.get(c.id) ?? null;
+            return {
+                cycle: {
+                    id: activeCycle.id,
+                    name: activeCycle.name,
+                    startDate: activeCycle.startDate,
+                    endDate: activeCycle.endDate,
+                },
+                collaborator: {
+                    id: c.id,
+                    name: c.name,
+                    position: c.position,
+                },
+                autoEvaluation: autoEvaluationGrade,
+                evaluation360: evaluation360Grade,
+                managerEvaluation: managerGrade,
+                equalization: equalizationGrade,
+            };
+        });
+    }
+
+    /**
+     * Retorna o conteúdo completo da avaliação de um colaborador em um ciclo específico
+     */
+    async getCollaboratorEvaluationResult(managerId: number, collaboratorId: number, cycleConfigId: number) {
+        // Verifica se o colaborador está sob gestão do manager
+        const isMember = await this.prisma.projectMember.findFirst({
+            where: {
+                userId: collaboratorId,
+                project: { managerId },
+            },
+        });
+        if (!isMember) {
+            throw new NotFoundException('Colaborador não pertence a nenhum projeto sob sua gestão.');
+        }
+        // Busca a evaluation do colaborador naquele ciclo
+        const evaluation = await this.prisma.evaluation.findFirst({
+            where: { evaluatorId: collaboratorId, cycleConfigId },
+            include: {
+                evaluator: { select: { id: true, name: true, track: { select: { name: true } } } },
+                autoEvaluation: { include: { assignments: { include: { criterion: true } } } },
+                evaluation360: true,
+                mentoring: true,
+                reference: true,
+            },
+        });
+        if (!evaluation) {
+            throw new NotFoundException('Nenhuma avaliação encontrada para este ciclo.');
+        }
+
+        // Buscar equalização separadamente
+        const equalization = await this.prisma.equalization.findFirst({
+            where: {
+                collaboratorId,
+                cycleId: cycleConfigId,
+            },
+        });
+
+        // Busca a avaliação do gestor
+        const managerEvaluation = await this.prisma.managerEvaluation.findFirst({
+            where: { collaboratorId, cycleId: cycleConfigId, managerId },
+            include: { criterias: { include: { criteria: true } } },
+        });
+        let managerBlock: any = null;
+        let average: number | null = null;
+        if (managerEvaluation) {
+            if (managerEvaluation.criterias?.length) {
+                const scores = managerEvaluation.criterias.map((c) => c.score);
+                average = Math.round((scores.reduce((sum, s) => sum + s, 0) / scores.length) * 10) / 10;
+            }
+            managerBlock = {
+                criterias: managerEvaluation.criterias.map((c) => ({
+                    criteriaId: c.criteriaId,
+                    score: c.score,
+                    justification: c.justification,
+                    criteriaName: c.criteria.name,
+                })),
+                average,
+            };
+        }
+        return {
+            id: evaluation.id,
+            cycleConfigId: evaluation.cycleConfigId,
+            userId: evaluation.evaluatorId,
+            user: evaluation.evaluator
+                ? {
+                      id: evaluation.evaluator.id,
+                      name: evaluation.evaluator.name,
+                      track: evaluation.evaluator.track?.name ?? null,
+                  }
+                : null,
+            autoEvaluation: evaluation.autoEvaluation
+                ? {
+                      pilares: this.formatAutoEvaluationPilares(
+                          evaluation.autoEvaluation.assignments,
+                      ),
+                  }
+                : null,
+            evaluation360: evaluation.evaluation360.map((ev) => ({
+                avaliadoId: ev.evaluatedId,
+                pontosFortes: ev.strengths,
+                pontosMelhoria: ev.improvements,
+                score: ev.score,
+            })),
+            mentoring: evaluation.mentoring
+                ? {
+                      mentorId: evaluation.mentoring.mentorId,
+                      justificativa: evaluation.mentoring.justification,
+                      score: evaluation.mentoring.score,
+                  }
+                : null,
+            reference: evaluation.reference.map((ref) => ({
+                colaboradorId: ref.collaboratorId,
+                justificativa: ref.justification,
+            })),
+            managerEvaluation: managerBlock,
+            equalization: equalization
+                ? {
+                      score: equalization.score,
+                  }
+                : null,
+        };
+    }
+
+    /**
+     * Retorna a avaliação do manager para um colaborador específico em um ciclo
+     */
+    async getManagerEvaluation(managerId: number, collaboratorId: number, cycleConfigId: number) {
+        // Verifica se o colaborador está sob gestão do manager
+        const isMember = await this.prisma.projectMember.findFirst({
+            where: {
+                userId: collaboratorId,
+                project: { managerId },
+            },
+        });
+        if (!isMember) {
+            throw new NotFoundException('Colaborador não pertence a nenhum projeto sob sua gestão.');
+        }
+
+        // Busca a avaliação do manager
+        const managerEvaluation = await this.prisma.managerEvaluation.findFirst({
+            where: { 
+                collaboratorId, 
+                cycleId: cycleConfigId, 
+                managerId 
+            },
+            include: { 
+                criterias: { 
+                    include: { 
+                        criteria: {
+                            include: {
+                                pillar: true
+                            }
+                        } 
+                    } 
+                } 
+            },
+        });
+
+        if (!managerEvaluation) {
+            return {
+                id: null,
+                cycleConfigId,
+                managerId,
+                collaboratorId,
+                autoavaliacao: {
+                    pilares: []
+                },
+                createdAt: null,
+                updatedAt: null
+            };
+        }
+
+        // Agrupar critérios por pilar
+        const pilaresMap = new Map();
+        for (const criteria of managerEvaluation.criterias) {
+            const pilarId = criteria.criteria.pillarId;
+            if (!pilaresMap.has(pilarId)) {
+                pilaresMap.set(pilarId, {
+                    pilarId: pilarId,
+                    criterios: [],
+                });
+            }
+            pilaresMap.get(pilarId).criterios.push({
+                criterioId: criteria.criteriaId,
+                nota: criteria.score,
+                justificativa: criteria.justification,
+            });
+        }
+
+        return {
+            id: managerEvaluation.id,
+            cycleConfigId: managerEvaluation.cycleId,
+            managerId: managerEvaluation.managerId,
+            collaboratorId: managerEvaluation.collaboratorId,
+            autoavaliacao: {
+                pilares: Array.from(pilaresMap.values())
+            },
+            createdAt: managerEvaluation.createdAt,
+            updatedAt: managerEvaluation.updatedAt
+        };
+    }
+
+    // Utilitário para formatar pilares igual ao EmployerService
+    private formatAutoEvaluationPilares(assignments: any[]) {
+        const pilaresMap = new Map<number, any>();
+        for (const a of assignments) {
+            const pilarId = a.criterion.pillarId;
+            if (!pilaresMap.has(pilarId)) {
+                pilaresMap.set(pilarId, { pilarId, criterios: [] });
+            }
+            pilaresMap.get(pilarId).criterios.push({
+                criterioId: a.criterionId,
+                nota: a.score,
+                justificativa: a.justification,
+            });
+        }
+        return Array.from(pilaresMap.values());
     }
 }

@@ -1,31 +1,19 @@
-import { IsInt, IsString, IsArray, Min, Max, ValidateNested } from 'class-validator';
+import { IsNumber, IsArray, ValidateNested, IsDefined } from 'class-validator';
 import { Type } from 'class-transformer';
-
-export class ManagerEvaluationCriteriaDto {
-    @IsInt()
-    criteriaId: number;
-
-    @IsInt()
-    @Min(1)
-    @Max(5)
-    score: number;
-
-    @IsString()
-    justification: string;
-}
+import { AutoAvaliacaoDto } from '../../../evaluations/autoevaluations/dto/autoavaliacao.dto';
 
 export class ManagerEvaluationDto {
-    @IsInt()
-    cycleId: number;
+    @IsNumber()
+    cycleConfigId: number;
 
-    @IsInt()
+    @IsNumber()
     managerId: number;
 
-    @IsInt()
-    collaboratorId: number;
+    @IsNumber()
+    colaboradorId: number;
 
-    @IsArray()
-    @ValidateNested({ each: true })
-    @Type(() => ManagerEvaluationCriteriaDto)
-    criterias: ManagerEvaluationCriteriaDto[];
+    @IsDefined()
+    @ValidateNested()
+    @Type(() => AutoAvaliacaoDto)
+    autoavaliacao: AutoAvaliacaoDto;
 }

@@ -192,6 +192,22 @@ export class SeedService {
             },
         });
 
+        // Usuário Comitê
+        const encryptedEmailCommittee = encrypt('committee@teste.com');
+        const committee = await this.prisma.user.create({
+            data: {
+                email: encryptedEmailCommittee,
+                password: hashedPassword,
+                name: 'Comitê de Avaliação',
+                position: 'Membro do Comitê',
+                mentorId: mentor.id,
+                trackId: trackBackend.id,
+                userRoles: {
+                    create: [{ role: 'COMMITTEE' }],
+                },
+            },
+        });
+
         // Usuário Backend
         const userBackend = await this.prisma.user.findUnique({
             where: { email: encryptedEmailBackend },
