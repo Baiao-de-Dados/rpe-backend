@@ -135,6 +135,29 @@ export class AuthService {
         });
     }
 
+    async getProfile(userId: number): Promise<UserPublic> {
+        const dbUser = await this.prisma.user.findUnique({
+            where: { id: userId },
+            include: {
+                userRoles: {
+                    where: { isActive: true },
+                    select: { role: true },
+                },
+            },
+        });
+        if (!dbUser) throw new UnauthorizedException('User not found');
+        const email = this.encryptionService.decrypt(dbUser.email);
+        const roles = dbUser.userRoles.map((ur) => ur.role);
+        return {
+            id: dbUser.id,
+            email,
+            name: dbUser.name,
+            roles,
+            createdAt: dbUser.createdAt,
+            updatedAt: dbUser.updatedAt,
+        };
+    }
+
     async createUserWithRoles(
         email: string,
         password: string,
