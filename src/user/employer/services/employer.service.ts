@@ -649,7 +649,10 @@ export class EmployerService {
 
     async getCyclesGrades(userId: number) {
         const evaluations = await this.prisma.evaluation.findMany({
-            where: { evaluatorId: userId },
+            where: {
+                evaluatorId: userId,
+                cycleConfig: { done: true },
+            },
             include: {
                 cycleConfig: true,
             },
@@ -660,7 +663,6 @@ export class EmployerService {
             where: { collaboratorId: userId },
             include: { criterias: true },
         });
-        // Indexa avaliações de gestor por ciclo
         const managerByCycle = new Map<number, number | null>();
         for (const m of managerEvaluations) {
             if (m.criterias?.length) {
@@ -673,10 +675,8 @@ export class EmployerService {
                 managerByCycle.set(m.cycleId, null);
             }
         }
-        // Monta resposta
         const cycles = await Promise.all(
             evaluations.map(async (ev) => {
-                // Autoavaliação
                 let autoEvaluationGrade: number | null = null;
                 const autoEvaluation = await this.prisma.autoEvaluation.findUnique({
                     where: { evaluationId: ev.id },
