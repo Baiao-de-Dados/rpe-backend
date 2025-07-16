@@ -25,7 +25,6 @@ export class ImportEvaluationsService {
         }
         const cycleName = cycleNameMatch[1];
 
-        // Função utilitária para gerar datas padrão do ciclo
         function getCycleDates(cycleName: string): { startDate: Date; endDate: Date } {
             const [year, semester] = cycleName.split('.');
             if (semester === '1') {
@@ -39,14 +38,12 @@ export class ImportEvaluationsService {
                     endDate: new Date(`${year}-12-31T23:59:59Z`),
                 };
             }
-            // fallback: datas do ano todo
             return {
                 startDate: new Date(`${year}-01-01T00:00:00Z`),
                 endDate: new Date(`${year}-12-31T23:59:59Z`),
             };
         }
 
-        // Buscar ou criar ciclo dinamicamente
         let cycleConfig = await this.prisma.cycleConfig.findUnique({
             where: { name: cycleName },
         });
@@ -88,26 +85,19 @@ export class ImportEvaluationsService {
         worksheet.eachRow((row, rowNumber) => {
             if (rowNumber === 1) return;
             const values = Array.isArray(row.values) ? row.values : [];
-            // Ordem das colunas conforme informado pelo usuário:
-            // name, email, avaliacao_type, criterio, autoavaliacao_nota, justificativa_autoavaliacao,
-            // a360_name, projeto, periodo, 360_nota, pontos de melhora, pontos fortes, referencia_name, justificativa
             const [
-                name, // 0
-                email, // 1
-                evaluationType, // 2
-                criterion, // 3
-                note, // 4 (autoavaliacao_nota)
-                justification, // 5 (justificativa_autoavaliacao)
-                a360Name, // 6
-                ,
-                ,
-                // projeto (7, ignorado)
-                // periodo (8, ignorado)
-                nota360, // 9 (360_nota)
-                pontosMelhoria, // 10
-                pontosFortes, // 11
-                referenciaName, // 12
-                justificativaReferencia, // 13
+                name,
+                email,
+                evaluationType,
+                criterion,
+                note,
+                justification,
+                a360Name,
+                nota360,
+                pontosMelhoria,
+                pontosFortes,
+                referenciaName,
+                justificativaReferencia,
             ] = values.slice(1);
 
             const evaluation: any = {
@@ -143,10 +133,8 @@ export class ImportEvaluationsService {
             evaluations.push(evaluation);
         });
 
-        // Após popular evaluations:
         const tiposUnicos = new Set(evaluations.map((e) => e.evaluationType));
         console.log('TIPOS DE AVALIAÇÃO ENCONTRADOS NO EXCEL:', Array.from(tiposUnicos));
-        // Logar todos os dados de 360 e referência lidos do Excel
         console.log(
             'DADOS DE 360 NO EXCEL:',
             evaluations.filter(
@@ -175,12 +163,10 @@ export class ImportEvaluationsService {
             criteriosDb.map((c) => [removeDiacritics(c.name.toLowerCase().trim()), c.id]),
         );
         const criteriosIdToPilar = Object.fromEntries(criteriosDb.map((c) => [c.id, c.pillarId]));
-        // Logar todos os critérios do banco para debug
         console.log('CRITÉRIOS NO BANCO:');
         criteriosDb.forEach((c) => {
             console.log('-', c.name);
         });
-        // Logar todos os nomes de usuários do banco para debug
         const allUsersDb = await this.prisma.user.findMany();
         console.log('USUÁRIOS NO BANCO:');
         allUsersDb.forEach((u) => {
@@ -200,7 +186,6 @@ export class ImportEvaluationsService {
             avaliacoesPorUsuario[evaluation.email].push(evaluation);
         }
         let importedCount = 0;
-        // Função utilitária para normalizar o tipo
         function tipoNorm(tipo: string) {
             return removeDiacritics((tipo || '').toLowerCase().trim());
         }
@@ -214,12 +199,9 @@ export class ImportEvaluationsService {
                 },
             });
             if (existing) continue;
-            // Agrupar critérios por pilar para autoavaliação
             const criteriosPorPilar: Record<number, any[]> = {};
-            // Arrays para avaliações 360 e referências
             const avaliacao360: any[] = [];
             const referencias: any[] = [];
-            // Mostrar todas as linhas do Excel desse avaliador
             const linhasAvaliador = evaluations.filter((e) => e.email === email);
             console.log(`\n--- Linhas do Excel para ${email} ---`);
             linhasAvaliador.forEach((e) => console.log(e));
@@ -232,7 +214,6 @@ export class ImportEvaluationsService {
                     const criterioId = criteriosNameToId[normalizedName];
                     const criterioDb = criteriosDb.find((c) => c.id === criterioId);
                     if (!criterioId) {
-                        // Debug detalhado: mostrar o critério do Excel e possíveis matches próximos
                         console.log('Critério Excel NÃO ENCONTRADO:', evaluation.criterion);
                         const critExcelNorm = normalizedName;
                         const sugestoes = Object.keys(criteriosNameToId).filter(
@@ -264,7 +245,6 @@ export class ImportEvaluationsService {
                 } else if (tipo === 'avaliacao 360') {
                     const nomeBusca = evaluation.avaliadoName || '';
                     const nomeBuscaNorm = removeDiacritics(nomeBusca.toLowerCase());
-                    // Logar nomes normalizados
                     console.log(
                         'NOME BUSCADO:',
                         nomeBuscaNorm,
@@ -312,7 +292,6 @@ export class ImportEvaluationsService {
                 ) {
                     const nomeBusca = evaluation.avaliadoName || '';
                     const nomeBuscaNorm = removeDiacritics(nomeBusca.toLowerCase());
-                    // Logar nomes normalizados
                     console.log(
                         'NOME BUSCADO:',
                         nomeBuscaNorm,
@@ -369,7 +348,6 @@ export class ImportEvaluationsService {
                 },
                 referencias,
             };
-            // Logar o DTO final antes de criar a avaliação
             console.log('DTO FINAL PARA CRIAÇÃO:', JSON.stringify(createEvaluationDto, null, 2));
             await this.evaluationsService.createEvaluation(
                 createEvaluationDto,
@@ -378,7 +356,7 @@ export class ImportEvaluationsService {
                     sub: user.id,
                 },
                 true,
-            ); // bypass da validação de projeto
+            );
             importedCount++;
         }
         return `${importedCount} avaliações importadas com sucesso no ciclo ${cycleName}.`;
