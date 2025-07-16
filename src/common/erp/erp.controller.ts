@@ -1,16 +1,20 @@
 import { Body, Controller, Get, Post } from '@nestjs/common';
 import { ErpSyncDto } from './dto/erp-sync.dto';
 import { ErpService } from './erp.service';
-import { OnlyAdmin } from '../../auth/decorators/roles.decorator';
+import { RequireAdmin } from '../../auth/decorators/roles.decorator';
+import { ApiAuth } from '../decorators/api-auth.decorator';
+import { ErpProjectDto } from './dto/erp-project.dto';
 
-@OnlyAdmin()
+@RequireAdmin()
+@ApiAuth()
 @Controller('erp')
 export class ErpController {
     constructor(private readonly erpService: ErpService) {}
 
     @Get('export')
-    export(): Promise<ErpSyncDto> {
-        return this.erpService.buildErpJson();
+    async export(): Promise<{ projects: ErpProjectDto[] }> {
+        const { projects } = await this.erpService.buildErpJson();
+        return { projects };
     }
 
     @Post('synchronize')

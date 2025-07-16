@@ -1,71 +1,71 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ErpSyncDto } from './dto/erp-sync.dto';
-import { ErpUserDto } from './dto/erp-user.dto';
 import { ErpProjectDto } from './dto/erp-project.dto';
 import { ProjectStatus, UserRole } from '@prisma/client';
-import { ErpProjectMemberDto } from './dto/erp-project-member.dto';
 import { AuthService } from '../../auth/auth.service';
-import { getBrazilDate } from 'src/cycles/utils';
+import { EncryptionService } from '../../cryptography/encryption.service';
+import { ErpProjectMemberDto } from './dto/erp-project-member.dto';
 
 @Injectable()
 export class ErpService {
     constructor(
         private readonly prisma: PrismaService,
         private readonly authService: AuthService,
+        private readonly encryptionService: EncryptionService,
     ) {}
 
-    async buildErpJson(): Promise<ErpSyncDto> {
-        const users = await this.prisma.user.findMany({
-            include: {
-                track: true,
-                mentor: true,
-                userRoles: { where: { isActive: true } },
-            },
-        });
-
-        const erpUsers: ErpUserDto[] = users.map((u) => ({
-            email: u.email,
-            name: u.name,
-            track: u.track!.name,
-            primaryRole: this.pickPrimaryRole(u.userRoles.map((r) => r.role)),
-            position: u.position,
-            mentorEmail: u.mentor!.email,
-        }));
-
-        // Projetos e membros com datas
+    async buildErpJson(): Promise<{ projects: ErpProjectDto[] }> {
         const projects = await this.prisma.project.findMany({
             include: {
-                members: { include: { user: true } },
                 manager: true,
                 leaderAssignments: { include: { leader: true } },
+                members: { include: { user: true } },
             },
         });
 
-        const erpProjects: ErpProjectDto[] = projects.map((p) => ({
-            name: p.name,
-            status: p.status,
-            manager: {
-                email: p.manager.email,
-                startDate: new Date(getBrazilDate()).toISOString(),
-                endDate: null,
-            },
-            leaders: p.leaderAssignments.map((la) => ({
-                email: la.leader.email,
-                startDate: new Date(getBrazilDate()).toISOString(),
-                endDate: null,
-            })),
-            collaborators: p.members.map((m) => ({
-                email: m.user.email,
-                startDate: m.startDate.toISOString(),
-                endDate: m.endDate ? m.endDate.toISOString() : null,
-            })),
-        }));
+        const erpProjects: ErpProjectDto[] = projects.map((p) => {
+            const projectMembers: ErpProjectMemberDto[] = [];
 
-        return { users: erpUsers, projects: erpProjects };
+            if (p.manager) {
+                projectMembers.push({
+                    email: this.encryptionService.decrypt(p.manager.email),
+                    position: p.manager.position,
+                    role: 'MANAGER',
+                    startDate: new Date().toISOString(),
+                    endDate: null,
+                });
+            }
+
+            for (const la of p.leaderAssignments) {
+                projectMembers.push({
+                    email: this.encryptionService.decrypt(la.leader.email),
+                    position: la.leader.position,
+                    role: 'LEADER',
+                    startDate: new Date().toISOString(),
+                    endDate: null,
+                });
+            }
+
+            for (const pm of p.members) {
+                projectMembers.push({
+                    email: this.encryptionService.decrypt(pm.user.email),
+                    position: pm.user.position,
+                    role: 'EMPLOYER',
+                    startDate: pm.startDate.toISOString(),
+                    endDate: pm.endDate?.toISOString() ?? null,
+                });
+            }
+            return {
+                name: p.name,
+                status: p.status,
+                projectMembers,
+            };
+        });
+        return { projects: erpProjects };
     }
 
-    async syncWithErp(dto: ErpSyncDto) {
+    async syncWithErp(dto: ErpSyncDto): Promise<void> {
         const trackNames = Array.from(new Set(dto.users.map((u) => u.track)));
         for (const name of trackNames) {
             await this.prisma.track.upsert({
@@ -75,121 +75,127 @@ export class ErpService {
             });
         }
 
-        // Usuários (criação via AuthService para garantir autenticação)
-        const incomingEmails = dto.users.map((u) => u.email);
+        const tracks = await this.prisma.track.findMany();
+        const trackMap = new Map(tracks.map((t) => [t.name, t]));
+        const userMap = new Map<string, number>();
+
         for (const u of dto.users) {
-            const role = (u.primaryRole as UserRole) || UserRole.EMPLOYER;
-            let mentorId: number | undefined = undefined;
-            if (u.mentorEmail) {
-                const mentor = await this.prisma.user.findUnique({
-                    where: { email: u.mentorEmail },
-                });
-                mentorId = mentor?.id;
-            }
+            const track = trackMap.get(u.track);
+            if (!track) throw new Error(`Track not found: ${u.track}`);
+
             try {
-                await this.authService.createUserWithRoles(
+                const created = await this.authService.createUserWithRoles(
                     u.email,
-                    'change_me',
+                    'senha123',
                     u.name,
                     u.position,
-                    [role],
-                    mentorId,
+                    [u.primaryRole as UserRole],
+                    undefined,
                 );
+
+                await this.prisma.user.update({
+                    where: { id: created.id },
+                    data: { trackId: track.id },
+                });
+                userMap.set(u.email, created.id);
             } catch (e) {
                 if (e instanceof ConflictException) {
-                    // Usuário já existe, pode atualizar dados básicos se quiser
+                    const encryptedEmail = this.encryptionService.encrypt(u.email);
+                    const existingUser = await this.prisma.user.findUnique({
+                        where: { email: encryptedEmail },
+                        include: { userRoles: true },
+                    });
+
+                    if (!existingUser) throw e;
                     await this.prisma.user.update({
-                        where: { email: u.email },
+                        where: { id: existingUser.id },
                         data: {
                             name: u.name,
                             position: u.position,
-                            track: { connect: { name: u.track } },
+                            trackId: track.id,
                         },
                     });
+
+                    const currentRoles = existingUser.userRoles.map((r) => r.role);
+                    if (!currentRoles.includes(u.primaryRole as UserRole)) {
+                        await this.prisma.userRoleLink.create({
+                            data: {
+                                userId: existingUser.id,
+                                role: u.primaryRole as UserRole,
+                            },
+                        });
+                    }
+                    userMap.set(u.email, existingUser.id);
                 } else {
                     throw e;
                 }
             }
         }
-        await this.prisma.user.deleteMany({
-            where: { email: { notIn: incomingEmails } },
-        });
 
-        // Mentores
         for (const u of dto.users) {
+            if (!u.mentorEmail) continue;
             await this.prisma.user.update({
-                where: { email: u.email },
-                data: { mentor: { connect: { email: u.mentorEmail } } },
+                where: { id: userMap.get(u.email)! },
+                data: { mentorId: userMap.get(u.mentorEmail)! },
             });
         }
 
-        // Projetos + membros
-        const incomingProjects = dto.projects.map((p) => p.name);
+        const projectMap = new Map<string, number>();
         for (const p of dto.projects) {
-            const managerUser = await this.prisma.user.findUnique({
-                where: { email: p.manager.email },
-            });
-            if (!managerUser) {
-                throw new Error(`Manager user not found for email: ${p.manager.email}`);
-            }
+            const managerMember = p.projectMembers.find((m) => m.role === 'MANAGER');
+            const managerUid = managerMember ? userMap.get(managerMember.email) : null;
 
-            const existingProject = await this.prisma.project.findFirst({
-                where: { name: p.name },
-            });
-
-            let proj;
-            if (existingProject) {
-                proj = await this.prisma.project.update({
-                    where: { id: existingProject.id },
+            const existing = await this.prisma.project.findFirst({ where: { name: p.name } });
+            if (existing) {
+                await this.prisma.project.update({
+                    where: { id: existing.id },
                     data: {
                         status: p.status as ProjectStatus,
-                        managerId: managerUser.id,
+                        manager: managerUid ? { connect: { id: managerUid } } : undefined,
                     },
                 });
+                projectMap.set(p.name, existing.id);
             } else {
-                proj = await this.prisma.project.create({
+                const created = await this.prisma.project.create({
                     data: {
                         name: p.name,
                         status: p.status as ProjectStatus,
-                        managerId: managerUser.id,
+                        manager: { connect: { id: managerUid! } },
                     },
                 });
+                projectMap.set(p.name, created.id);
             }
+        }
 
-            // limpa membros existentes e leader assignments
-            await this.prisma.projectMember.deleteMany({
-                where: { projectId: proj.id },
-            });
+        for (const p of dto.projects) {
+            const projId = projectMap.get(p.name)!;
 
-            await this.prisma.leaderAssignment.deleteMany({
-                where: { projectId: proj.id },
-            });
+            await this.prisma.leaderAssignment.deleteMany({ where: { projectId: projId } });
+            await this.prisma.projectMember.deleteMany({ where: { projectId: projId } });
 
-            // recria colaboradores com datas
-            for (const m of p.collaborators) {
-                await this.createMember(proj.id, m);
-            }
+            for (const member of p.projectMembers) {
+                const uid = userMap.get(member.email);
+                if (!uid) continue;
 
-            // recria leader assignments
-            for (const leader of p.leaders) {
-                const leaderUser = await this.prisma.user.findUnique({
-                    where: { email: leader.email },
-                });
-                if (leaderUser) {
+                if (member.role === 'LEADER') {
                     await this.prisma.leaderAssignment.create({
                         data: {
-                            projectId: proj.id,
-                            leaderId: leaderUser.id,
+                            projectId: projId,
+                            leaderId: uid,
+                        },
+                    });
+                } else if (member.role === 'EMPLOYER') {
+                    await this.prisma.projectMember.create({
+                        data: {
+                            projectId: projId,
+                            userId: uid,
+                            startDate: new Date(member.startDate),
+                            endDate: member.endDate ? new Date(member.endDate) : null,
                         },
                     });
                 }
             }
         }
-
-        // remove projetos ausentes
-        await this.prisma.project.deleteMany({
-            where: { name: { notIn: incomingProjects } },
-        });
     }
 
     private pickPrimaryRole(roles: string[]): string {
@@ -200,22 +206,5 @@ export class ErpService {
         if (roles.includes('RH')) return 'RH';
         if (roles.includes('COMMITTEE')) return 'COMMITTEE';
         return 'EMPLOYER';
-    }
-
-    private async createMember(projectId: number, member: ErpProjectMemberDto) {
-        const user = await this.prisma.user.findUnique({
-            where: { email: member.email },
-        });
-        if (!user) {
-            throw new Error(`User not found for email: ${member.email}`);
-        }
-        return this.prisma.projectMember.create({
-            data: {
-                projectId: projectId,
-                userId: user.id,
-                startDate: new Date(member.startDate),
-                endDate: member.endDate ? new Date(member.endDate) : null,
-            },
-        });
     }
 }
