@@ -1,13 +1,13 @@
-import { ConflictException, Injectable } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
-import { ErpSyncDto } from './dto/erp-sync.dto';
-import { ErpProjectDto } from './dto/erp-project.dto';
-import { ProjectStatus, UserRole } from '@prisma/client';
-import { AuthService } from '../../auth/auth.service';
 import { EncryptionService } from '../../cryptography/encryption.service';
 import { ErpProjectMemberDto } from './dto/erp-project-member.dto';
+import { Injectable } from '@nestjs/common';
+import { PrismaService } from '../../prisma/prisma.service';
+import { ProjectStatus, UserRole } from '@prisma/client';
+import { AuthService } from '../../auth/auth.service';
+import { ErpProjectDto } from './dto/erp-project.dto';
+import { getBrazilDate } from '../../cycles/utils';
+import { ErpSyncDto } from './dto/erp-sync.dto';
 import dbData from '../../db.json';
-import { ErpUserDto } from './dto/erp-user.dto';
 
 @Injectable()
 export class ErpService {
@@ -17,75 +17,19 @@ export class ErpService {
         private readonly encryptionService: EncryptionService,
     ) {}
 
-    private async updateUsers(dtoUsers: ErpUserDto[]): Promise<void> {
-        for (const u of dtoUsers) {
-            const encryptedEmail = this.encryptionService.encrypt(u.email);
-            const user = await this.prisma.user.findUnique({
-                where: { email: encryptedEmail },
-            });
-            if (!user) continue;
+    async buildErpJson(): Promise<{ projects: ErpProjectDto[]; lastSyncDate: string }> {
+        let lastSyncDate = '';
 
-            const data: {
-                name?: string;
-                position?: string;
-                trackId?: number;
-                mentorId?: number;
-            } = { name: u.name, position: u.position };
+        const lastDate = await this.prisma.dateModel.findFirst({
+            orderBy: { date: 'desc' },
+        });
+        lastSyncDate = lastDate?.date.toISOString() ?? '';
 
-            const track = await this.prisma.track.findUnique({
-                where: { name: u.track },
-            });
-            if (track) data.trackId = track.id;
-
-            if (u.mentorEmail) {
-                const mentorEncrypted = this.encryptionService.encrypt(u.mentorEmail);
-                const mentor = await this.prisma.user.findUnique({
-                    where: { email: mentorEncrypted },
-                });
-                if (mentor) data.mentorId = mentor.id;
-            }
-
-            await this.prisma.user.update({
-                where: { id: user.id },
-                data,
-            });
-        }
-    }
-
-    private async updateProjects(dtoProjects: ErpProjectDto[]): Promise<void> {
-        for (const p of dtoProjects) {
-            const project = await this.prisma.project.findFirst({
-                where: { name: p.name },
-            });
-            if (!project) continue;
-
-            const managerMember = p.projectMembers.find((m) => m.role === 'MANAGER');
-            let managerConnect: { connect: { id: number } } | undefined;
-
-            if (managerMember) {
-                const mgrEncrypted = this.encryptionService.encrypt(managerMember.email);
-                const mgr = await this.prisma.user.findUnique({
-                    where: { email: mgrEncrypted },
-                });
-                if (mgr) managerConnect = { connect: { id: mgr.id } };
-            }
-
-            await this.prisma.project.update({
-                where: { id: project.id },
-                data: {
-                    status: p.status as ProjectStatus,
-                    ...(managerConnect && { manager: managerConnect }),
-                },
-            });
-        }
-    }
-
-    async buildErpJson(): Promise<{ projects: ErpProjectDto[] }> {
         const projects = await this.prisma.project.findMany({
             include: {
-                manager: true,
-                leaderAssignments: { include: { leader: true } },
-                members: { include: { user: true } },
+                manager: { include: { track: true } },
+                leaderAssignments: { include: { leader: { include: { track: true } } } },
+                members: { include: { user: { include: { track: true } } } },
             },
         });
 
@@ -95,6 +39,8 @@ export class ErpService {
             if (p.manager) {
                 projectMembers.push({
                     email: this.encryptionService.safeDecrypt(p.manager.email),
+                    name: p.manager.name,
+                    track: p.manager.track?.name ?? null,
                     position: p.manager.position,
                     role: 'MANAGER',
                     startDate: new Date().toISOString(),
@@ -105,6 +51,8 @@ export class ErpService {
             for (const la of p.leaderAssignments) {
                 projectMembers.push({
                     email: this.encryptionService.safeDecrypt(la.leader.email),
+                    name: la.leader.name,
+                    track: la.leader.track?.name ?? null,
                     position: la.leader.position,
                     role: 'LEADER',
                     startDate: new Date().toISOString(),
@@ -115,6 +63,8 @@ export class ErpService {
             for (const pm of p.members) {
                 projectMembers.push({
                     email: this.encryptionService.safeDecrypt(pm.user.email),
+                    name: pm.user.name,
+                    track: pm.user.track?.name ?? null,
                     position: pm.user.position,
                     role: 'EMPLOYER',
                     startDate: pm.startDate.toISOString(),
@@ -127,12 +77,22 @@ export class ErpService {
                 projectMembers,
             };
         });
-        return { projects: erpProjects };
+        return { projects: erpProjects, lastSyncDate };
     }
 
     async syncWithErp(dto: ErpSyncDto): Promise<void> {
-        await this.updateUsers(dto.users);
-        await this.updateProjects(dto.projects);
+        const allUsers = await this.prisma.user.findMany({
+            select: { id: true, email: true },
+        });
+        const emailToId = new Map<string, number>();
+        for (const u of allUsers) {
+            try {
+                const plain = this.encryptionService.decrypt(u.email);
+                emailToId.set(plain, u.id);
+            } catch {
+                // Ignora valores que não conseguirem decifrar
+            }
+        }
 
         const trackNames = Array.from(new Set(dto.users.map((u) => u.track)));
         for (const name of trackNames) {
@@ -142,16 +102,37 @@ export class ErpService {
                 create: { name },
             });
         }
-
         const tracks = await this.prisma.track.findMany();
         const trackMap = new Map(tracks.map((t) => [t.name, t]));
-        const userMap = new Map<string, number>();
 
+        const userMap = new Map<string, number>();
         for (const u of dto.users) {
+            const existingId = emailToId.get(u.email);
             const track = trackMap.get(u.track);
             if (!track) throw new Error(`Track not found: ${u.track}`);
 
-            try {
+            if (existingId) {
+                await this.prisma.user.update({
+                    where: { id: existingId },
+                    data: {
+                        name: u.name,
+                        position: u.position,
+                        trackId: track.id,
+                    },
+                });
+                const roles = await this.prisma.userRoleLink
+                    .findMany({
+                        where: { userId: existingId },
+                        select: { role: true },
+                    })
+                    .then((rs) => rs.map((r) => r.role));
+                if (!roles.includes(u.primaryRole as UserRole)) {
+                    await this.prisma.userRoleLink.create({
+                        data: { userId: existingId, role: u.primaryRole as UserRole },
+                    });
+                }
+                userMap.set(u.email, existingId);
+            } else {
                 const created = await this.authService.createUserWithRoles(
                     u.email,
                     'senha123',
@@ -166,46 +147,19 @@ export class ErpService {
                     data: { trackId: track.id },
                 });
                 userMap.set(u.email, created.id);
-            } catch (e) {
-                if (e instanceof ConflictException) {
-                    const encryptedEmail = this.encryptionService.encrypt(u.email);
-                    const existingUser = await this.prisma.user.findUnique({
-                        where: { email: encryptedEmail },
-                        include: { userRoles: true },
-                    });
-
-                    if (!existingUser) throw e;
-                    await this.prisma.user.update({
-                        where: { id: existingUser.id },
-                        data: {
-                            name: u.name,
-                            position: u.position,
-                            trackId: track.id,
-                        },
-                    });
-
-                    const currentRoles = existingUser.userRoles.map((r) => r.role);
-                    if (!currentRoles.includes(u.primaryRole as UserRole)) {
-                        await this.prisma.userRoleLink.create({
-                            data: {
-                                userId: existingUser.id,
-                                role: u.primaryRole as UserRole,
-                            },
-                        });
-                    }
-                    userMap.set(u.email, existingUser.id);
-                } else {
-                    throw e;
-                }
             }
         }
 
         for (const u of dto.users) {
             if (!u.mentorEmail) continue;
-            await this.prisma.user.update({
-                where: { id: userMap.get(u.email)! },
-                data: { mentorId: userMap.get(u.mentorEmail)! },
-            });
+            const menteeId = userMap.get(u.email)!;
+            const mentorId = userMap.get(u.mentorEmail);
+            if (mentorId) {
+                await this.prisma.user.update({
+                    where: { id: menteeId },
+                    data: { mentorId },
+                });
+            }
         }
 
         const projectMap = new Map<string, number>();
@@ -219,7 +173,7 @@ export class ErpService {
                     where: { id: existing.id },
                     data: {
                         status: p.status as ProjectStatus,
-                        manager: managerUid ? { connect: { id: managerUid } } : undefined,
+                        ...(managerUid && { manager: { connect: { id: managerUid } } }),
                     },
                 });
                 projectMap.set(p.name, existing.id);
@@ -268,5 +222,8 @@ export class ErpService {
 
     async syncWithDbJson(): Promise<void> {
         await this.syncWithErp(dbData as ErpSyncDto);
+        await this.prisma.dateModel.create({
+            data: { date: getBrazilDate() },
+        });
     }
 }

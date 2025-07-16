@@ -386,3 +386,8 @@ enum ProjectStatus {
   COMPLETED
   CANCELLED
 }
+
+model DateModel {
+  id   Int      @id @default(autoincrement())
+  date DateTime
+}

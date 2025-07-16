@@ -12,9 +12,9 @@ export class ErpController {
     constructor(private readonly erpService: ErpService) {}
 
     @Get('export')
-    async export(): Promise<{ projects: ErpProjectDto[] }> {
-        const { projects } = await this.erpService.buildErpJson();
-        return { projects };
+    async export(): Promise<{ projects: ErpProjectDto[]; lastSyncDate: string }> {
+        const { projects, lastSyncDate } = await this.erpService.buildErpJson();
+        return { projects, lastSyncDate };
     }
 
     @Post('synchronize')
