@@ -30,7 +30,7 @@ export class ErpService {
 
             if (p.manager) {
                 projectMembers.push({
-                    email: this.encryptionService.decrypt(p.manager.email),
+                    email: this.encryptionService.safeDecrypt(p.manager.email),
                     position: p.manager.position,
                     role: 'MANAGER',
                     startDate: new Date().toISOString(),
@@ -40,7 +40,7 @@ export class ErpService {
 
             for (const la of p.leaderAssignments) {
                 projectMembers.push({
-                    email: this.encryptionService.decrypt(la.leader.email),
+                    email: this.encryptionService.safeDecrypt(la.leader.email),
                     position: la.leader.position,
                     role: 'LEADER',
                     startDate: new Date().toISOString(),
@@ -50,7 +50,7 @@ export class ErpService {
 
             for (const pm of p.members) {
                 projectMembers.push({
-                    email: this.encryptionService.decrypt(pm.user.email),
+                    email: this.encryptionService.safeDecrypt(pm.user.email),
                     position: pm.user.position,
                     role: 'EMPLOYER',
                     startDate: pm.startDate.toISOString(),
