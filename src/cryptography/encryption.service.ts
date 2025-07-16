@@ -29,6 +29,14 @@ export class EncryptionService {
         const plainText = decipher.update(ciphertext, 'hex', 'utf-8') + decipher.final('utf-8');
         return plainText;
     }
+
+    safeDecrypt(encrypted: string): string {
+        try {
+            return this.decrypt(encrypted);
+        } catch {
+            return encrypted;
+        }
+    }
 }
 
 function getRequiredEnv(key: string): string {
