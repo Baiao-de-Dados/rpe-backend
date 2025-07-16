@@ -6,7 +6,7 @@ import {
     isValidNoIdentificationResponse,
     cleanGeminiResponseText,
 } from './utils';
-import { notesConfig } from './config';
+import { notesConfig, equalizationConfig } from './config';
 import { GeminiNotesResponseDto } from './dto/response/gemini-notes-response.dto';
 import { NotesService } from '../notes/notes.service';
 import { GeminiCollaboratorResponseDto } from './dto/response/gemini-collaborator-response.dto';
@@ -522,13 +522,26 @@ export class AiService {
         cycleId: number,
     ): Promise<GeminiEqualizationResponseDto> {
         const prompt = await this.generateEqualizationData(userId, cycleId);
+        
+        // Debug: log do prompt para verificar os dados
+        console.log('=== DEBUG: Dados enviados para IA ===');
+        console.log('userId:', userId);
+        console.log('cycleId:', cycleId);
+        console.log('prompt length:', prompt.length);
+        console.log('prompt preview:', prompt.substring(0, 500) + '...');
+        
         try {
             const response = await ai.models.generateContent({
                 model: 'gemini-2.5-flash',
                 contents: prompt,
-                config: { systemInstruction: notesConfig.systemInstruction },
+                config: { systemInstruction: equalizationConfig.systemInstruction },
             });
             const resposta = cleanGeminiResponseText(response.text ?? '');
+            
+            // Debug: log da resposta da IA
+            console.log('=== DEBUG: Resposta da IA ===');
+            console.log('resposta:', resposta);
+            
             if (!resposta) {
                 return { code: 'ERROR', error: 'A resposta gerada está vazia ou inválida.' };
             }

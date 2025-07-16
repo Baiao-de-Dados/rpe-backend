@@ -71,4 +71,13 @@ export const exampleAssignLeaderEvaluation = {
     leaderId: 2, // pode ser null ou omitido
 };
 
+export const exampleCommitteeEqualization = {
+    cycleConfigId: 1,
+    collaboratorId: 20,
+    equalization: {
+        score: 4.5,
+        justification: 'Nota final após análise de todas as avaliações do colaborador',
+    },
+};
+
 // Adicione outros exemplos conforme necessário para outros endpoints POST

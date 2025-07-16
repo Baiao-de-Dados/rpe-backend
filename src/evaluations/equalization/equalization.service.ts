@@ -54,6 +54,7 @@ export class EqualizationService {
             data: {
                 collaboratorId,
                 cycleId,
+                committeeId: 1, // TODO: Passar committeeId como parâmetro
                 justification: justification,
                 score: rating,
             },

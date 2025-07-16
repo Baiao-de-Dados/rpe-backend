@@ -40,6 +40,8 @@ model User {
   referencesReceived                Reference[]                  @relation("UserToReference")
   evaluationDrafts                  EvaluationDraft[]
   equalizations                     Equalization[]               @relation("UserToEqualization")
+  committeeEqualizations            Equalization[]               @relation("CommitteeEqualizations")
+  committeeEqualizationHistory      EqualizationHistory[]        @relation("CommitteeEqualizationHistory")
 }
 
 model UserRoleLink {
@@ -270,15 +272,34 @@ model Equalization {
   id             Int      @id @default(autoincrement())
   collaboratorId Int
   cycleId        Int
+  committeeId    Int
   justification  String
   score          Float?
+  aiSummary      Json?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  collaborator User        @relation("UserToEqualization", fields: [collaboratorId], references: [id], onDelete: Cascade)
-  cycle        CycleConfig @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  collaborator User                  @relation("UserToEqualization", fields: [collaboratorId], references: [id], onDelete: Cascade)
+  cycle        CycleConfig           @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  committee    User                  @relation("CommitteeEqualizations", fields: [committeeId], references: [id], onDelete: Cascade)
+  history      EqualizationHistory[]
 
   @@unique([collaboratorId, cycleId])
+}
+
+model EqualizationHistory {
+  id                    Int      @id @default(autoincrement())
+  equalizationId        Int
+  committeeId           Int
+  previousScore         Float?
+  newScore              Float?
+  previousJustification String?
+  newJustification      String
+  changeReason          String?
+  createdAt             DateTime @default(now())
+
+  equalization Equalization @relation(fields: [equalizationId], references: [id], onDelete: Cascade)
+  committee    User         @relation("CommitteeEqualizationHistory", fields: [committeeId], references: [id], onDelete: Cascade)
 }
 
 model Project {
