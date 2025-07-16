@@ -11,6 +11,7 @@ import { memoryStorage } from 'multer';
 import { LogModule } from 'src/log/log.module';
 import { ManagerModule } from './manager/manager.module';
 import { LeaderModule } from './leader/leader.module';
+import { CommitteeModule } from './committee/committee.module';
 @Module({
     imports: [
         PrismaModule,
@@ -20,6 +21,7 @@ import { LeaderModule } from './leader/leader.module';
         EmployerModule,
         ManagerModule,
         LeaderModule,
+        CommitteeModule,
         MulterModule.register({
             storage: memoryStorage(),
             limits: { fileSize: 30 * 1024 * 1024 }, // até 30 MB
