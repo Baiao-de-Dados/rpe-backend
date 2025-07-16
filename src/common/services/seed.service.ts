@@ -1,32 +1,20 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { EncryptionService } from '../../cryptography/encryption.service';
 import * as bcrypt from 'bcrypt';
-import * as crypto from 'crypto';
 
 @Injectable()
 export class SeedService {
-    constructor(private prisma: PrismaService) {}
+    constructor(
+        private prisma: PrismaService,
+        private encryptionService: EncryptionService,
+    ) {}
 
     async runSeed() {
-        const ALGORITHM = 'aes-256-cbc';
-        const IV_LENGTH = 16;
-        const SECRET = process.env.ENCRYPTION_KEY;
-        if (!SECRET) {
-            throw new Error('ENCRYPTION_KEY environment variable is not set');
-        }
-        const KEY = crypto.createHash('sha256').update(SECRET).digest();
-        function encrypt(text: string): string {
-            const iv = crypto.randomBytes(IV_LENGTH);
-            const cipher = crypto.createCipheriv(ALGORITHM, KEY, iv);
-            let encrypted = cipher.update(text, 'utf8', 'hex');
-            encrypted += cipher.final('hex');
-            return iv.toString('hex') + ':' + encrypted;
-        }
-
         const hashedPassword = await bcrypt.hash('senha123', 10);
-        const encryptedEmailBackend = encrypt('backend@teste.com');
-        const encryptedEmailFrontend = encrypt('frontend@teste.com');
-        const encryptedEmailRh = encrypt('rh@teste.com');
+        const encryptedEmailBackend = this.encryptionService.encrypt('backend@teste.com');
+        const encryptedEmailFrontend = this.encryptionService.encrypt('frontend@teste.com');
+        const encryptedEmailRh = this.encryptionService.encrypt('rh@teste.com');
 
         // Trilhas (usar upsert)
         const trackBackend = await this.prisma.track.upsert({
@@ -46,7 +34,7 @@ export class SeedService {
         });
 
         // 1. Criar Mentor Dummy sem mentorId
-        const encryptedEmailDummy = encrypt('dummy@teste.com');
+        const encryptedEmailDummy = this.encryptionService.encrypt('dummy@teste.com');
         const dummyMentor = await this.prisma.user.create({
             data: {
                 email: encryptedEmailDummy,
@@ -60,7 +48,7 @@ export class SeedService {
         });
 
         // 2. Criar Mentor real, apontando para o dummy
-        const encryptedEmailMentor = encrypt('mentor@teste.com');
+        const encryptedEmailMentor = this.encryptionService.encrypt('mentor@teste.com');
         const mentor = await this.prisma.user.create({
             data: {
                 email: encryptedEmailMentor,
@@ -129,7 +117,7 @@ export class SeedService {
         });
 
         // Usuário admin (usar upsert)
-        const encryptedEmailAdmin = encrypt('admin@test.com');
+        const encryptedEmailAdmin = this.encryptionService.encrypt('admin@test.com');
         await this.prisma.user.upsert({
             where: { email: encryptedEmailAdmin },
             update: {},
@@ -145,7 +133,7 @@ export class SeedService {
         });
 
         // Usuário Gestor
-        const encryptedEmailManager = encrypt('manager@teste.com');
+        const encryptedEmailManager = this.encryptionService.encrypt('manager@teste.com');
         const manager = await this.prisma.user.create({
             data: {
                 email: encryptedEmailManager,
@@ -161,7 +149,7 @@ export class SeedService {
         });
 
         // Usuário Líder 1
-        const encryptedEmailLeader1 = encrypt('leader1@teste.com');
+        const encryptedEmailLeader1 = this.encryptionService.encrypt('leader1@teste.com');
         const leader1 = await this.prisma.user.create({
             data: {
                 email: encryptedEmailLeader1,
@@ -177,7 +165,7 @@ export class SeedService {
         });
 
         // Usuário Líder 2
-        const encryptedEmailLeader2 = encrypt('leader2@teste.com');
+        const encryptedEmailLeader2 = this.encryptionService.encrypt('leader2@teste.com');
         const leader2 = await this.prisma.user.create({
             data: {
                 email: encryptedEmailLeader2,
@@ -193,7 +181,7 @@ export class SeedService {
         });
 
         // Usuário Comitê
-        const encryptedEmailCommittee = encrypt('committee@teste.com');
+        const encryptedEmailCommittee = this.encryptionService.encrypt('committee@teste.com');
         const committee = await this.prisma.user.create({
             data: {
                 email: encryptedEmailCommittee,
@@ -457,50 +445,52 @@ export class SeedService {
             }
         }
 
-        // Adicionar usuários para teste de AV360/referência
+        // Adicionar usuários para teste de AV360/referência (com emails criptografados)
+        const testUsers = [
+            {
+                email: this.encryptionService.encrypt('isabel.oliveira@teste.com'),
+                password: hashedPassword,
+                name: 'isabel.oliveira',
+                position: 'Tester',
+                mentorId: mentor.id,
+                trackId: trackBackend.id,
+            },
+            {
+                email: this.encryptionService.encrypt('dr.raul@teste.com'),
+                password: hashedPassword,
+                name: 'dr.raul',
+                position: 'Tester',
+                mentorId: mentor.id,
+                trackId: trackBackend.id,
+            },
+            {
+                email: this.encryptionService.encrypt('isaac.oliveira@teste.com'),
+                password: hashedPassword,
+                name: 'isaac.oliveira',
+                position: 'Tester',
+                mentorId: mentor.id,
+                trackId: trackBackend.id,
+            },
+            {
+                email: this.encryptionService.encrypt('sra.esther@teste.com'),
+                password: hashedPassword,
+                name: 'sra.esther',
+                position: 'Tester',
+                mentorId: mentor.id,
+                trackId: trackBackend.id,
+            },
+            {
+                email: this.encryptionService.encrypt('alicia.ramos@teste.com'),
+                password: hashedPassword,
+                name: 'alícia.ramos',
+                position: 'Tester',
+                mentorId: mentor.id,
+                trackId: trackBackend.id,
+            },
+        ];
+
         await this.prisma.user.createMany({
-            data: [
-                {
-                    email: 'isabel.oliveira@teste.com',
-                    password: hashedPassword,
-                    name: 'isabel.oliveira',
-                    position: 'Tester',
-                    mentorId: mentor.id,
-                    trackId: trackBackend.id,
-                },
-                {
-                    email: 'dr..raul@teste.com',
-                    password: hashedPassword,
-                    name: 'dr..raul',
-                    position: 'Tester',
-                    mentorId: mentor.id,
-                    trackId: trackBackend.id,
-                },
-                {
-                    email: 'isaac.oliveira@teste.com',
-                    password: hashedPassword,
-                    name: 'isaac.oliveira',
-                    position: 'Tester',
-                    mentorId: mentor.id,
-                    trackId: trackBackend.id,
-                },
-                {
-                    email: 'sra..esther@teste.com',
-                    password: hashedPassword,
-                    name: 'sra..esther',
-                    position: 'Tester',
-                    mentorId: mentor.id,
-                    trackId: trackBackend.id,
-                },
-                {
-                    email: 'alicia.ramos@teste.com',
-                    password: hashedPassword,
-                    name: 'alícia.ramos',
-                    position: 'Tester',
-                    mentorId: mentor.id,
-                    trackId: trackBackend.id,
-                },
-            ],
+            data: testUsers,
             skipDuplicates: true,
         });
 

@@ -1,27 +1,10 @@
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
-import * as crypto from 'crypto';
 import { getBrazilDate } from '../src/cycles/utils';
+import { EncryptionService } from '../src/cryptography/encryption.service';
 
 const prisma = new PrismaClient();
-
-// Simular a mesma lógica do EncryptionService
-const ALGORITHM = 'aes-256-cbc';
-const IV_LENGTH = 16;
-
-const SECRET = process.env.ENCRYPTION_KEY;
-if (!SECRET) {
-    throw new Error('ENCRYPTION_KEY environment variable is not set');
-}
-const KEY = crypto.createHash('sha256').update(SECRET).digest();
-
-function encrypt(text: string): string {
-    const iv = crypto.randomBytes(IV_LENGTH);
-    const cipher = crypto.createCipheriv(ALGORITHM, KEY, iv);
-    let encrypted = cipher.update(text, 'utf8', 'hex');
-    encrypted += cipher.final('hex');
-    return iv.toString('hex') + ':' + encrypted;
-}
+const encryptionService = new EncryptionService();
 
 async function main() {
     console.log('🌱 Iniciando seed com reset completo...');
@@ -29,10 +12,10 @@ async function main() {
     // Hash das senhas
     const hashedPassword = await bcrypt.hash('senha123', 10);
 
-    // Emails em texto puro
-    const emailBackend = 'backend@teste.com';
-    const emailFrontend = 'frontend@teste.com';
-    const emailRh = 'rh@teste.com';
+    // Emails criptografados
+    const emailBackend = encryptionService.encrypt('backend@teste.com');
+    const emailFrontend = encryptionService.encrypt('frontend@teste.com');
+    const emailRh = encryptionService.encrypt('rh@teste.com');
 
     console.log('👥 Criando usuários...');
 
@@ -56,7 +39,7 @@ async function main() {
     // Usuário Mentor Dummy
     const dummyMentor = await prisma.user.create({
         data: {
-            email: encrypt('dummy@teste.com'),
+            email: encryptionService.encrypt('dummy@teste.com'),
             password: hashedPassword,
             name: 'Dummy',
             position: 'Mentor',
@@ -68,7 +51,7 @@ async function main() {
     // Usuário Mentor real, apontando para o dummy
     const mentor = await prisma.user.create({
         data: {
-            email: encrypt('mentor@teste.com'),
+            email: encryptionService.encrypt('mentor@teste.com'),
             password: hashedPassword,
             name: 'Mentor Dummy',
             position: 'Mentor',
@@ -131,11 +114,11 @@ async function main() {
     });
 
     // Usuários do payload.json
-    const emailVitor = 'vitor.gabriel@rocketcorp.com';
-    const emailYuri = 'yuri.da@rocketcorp.com';
+    const emailVitor = encryptionService.encrypt('vitor.gabriel@rocketcorp.com');
+    const emailYuri = encryptionService.encrypt('yuri.da@rocketcorp.com');
 
     // Criar ou obter mentor para os dois (Luiza Carvalho)
-    const emailLuiza = 'luiza.carvalho@rocketcorp.com';
+    const emailLuiza = encryptionService.encrypt('luiza.carvalho@rocketcorp.com');
     let mentorLuiza = await prisma.user.findUnique({ where: { email: emailLuiza } });
     if (!mentorLuiza) {
         mentorLuiza = await prisma.user.create({
@@ -187,7 +170,7 @@ async function main() {
     for (const user of extraUsers) {
         await prisma.user.create({
             data: {
-                email: user.email,
+                email: encryptionService.encrypt(user.email),
                 password: hashedPassword,
                 name: user.name,
                 position: 'EMPLOYER',
@@ -201,7 +184,7 @@ async function main() {
     console.log('👨‍💼 Criando gestor...');
 
     // Usuário Gestor
-    const encryptedEmailManager = encrypt('manager@teste.com');
+    const encryptedEmailManager = encryptionService.encrypt('manager@teste.com');
     const manager = await prisma.user.create({
         data: {
             email: encryptedEmailManager,
@@ -219,7 +202,7 @@ async function main() {
     console.log('👨‍💻 Criando líderes...');
 
     // Usuário Líder 1
-    const encryptedEmailLeader1 = encrypt('leader1@teste.com');
+    const encryptedEmailLeader1 = encryptionService.encrypt('leader1@teste.com');
     const leader1 = await prisma.user.create({
         data: {
             email: encryptedEmailLeader1,
@@ -235,7 +218,7 @@ async function main() {
     });
 
     // Usuário Líder 2
-    const encryptedEmailLeader2 = encrypt('leader2@teste.com');
+    const encryptedEmailLeader2 = encryptionService.encrypt('leader2@teste.com');
     const leader2 = await prisma.user.create({
         data: {
             email: encryptedEmailLeader2,
@@ -246,6 +229,24 @@ async function main() {
             trackId: trackFrontend.id,
             userRoles: {
                 create: [{ role: 'LEADER' }],
+            },
+        },
+    });
+
+    console.log('👔 Criando usuário Comitê...');
+
+    // Usuário Comitê
+    const encryptedEmailCommittee = encryptionService.encrypt('committee@teste.com');
+    const committee = await prisma.user.create({
+        data: {
+            email: encryptedEmailCommittee,
+            password: hashedPassword,
+            name: 'Comitê de Avaliação',
+            position: 'Membro do Comitê',
+            mentorId: mentor.id,
+            trackId: trackBackend.id,
+            userRoles: {
+                create: [{ role: 'COMMITTEE' }],
             },
         },
     });
@@ -284,7 +285,8 @@ async function main() {
         'sra.esther@rocketcorp.com',
     ];
     for (const email of extraUserEmails) {
-        const user = await prisma.user.findUnique({ where: { email } });
+        const encryptedEmail = encryptionService.encrypt(email);
+        const user = await prisma.user.findUnique({ where: { email: encryptedEmail } });
         if (user) {
             await prisma.projectMember.create({
                 data: { projectId: project.id, userId: user.id },
@@ -486,6 +488,7 @@ async function main() {
     console.log(`   - Gestor: manager@teste.com (senha: senha123) - ID: ${manager.id}`);
     console.log(`   - Líder 1: leader1@teste.com (senha: senha123) - ID: ${leader1.id}`);
     console.log(`   - Líder 2: leader2@teste.com (senha: senha123) - ID: ${leader2.id}`);
+    console.log(`   - Comitê: committee@teste.com (senha: senha123) - ID: ${committee.id}`);
 
     console.log('\n🏢 Projeto:');
     console.log(`   - Sistema de Avaliações (ID: ${project.id})`);
