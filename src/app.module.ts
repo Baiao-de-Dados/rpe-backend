@@ -16,7 +16,6 @@ import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
 import { TrackModule } from './track/track.module';
-import { ImportUsersModule } from './import-export/import-users/import-users.module';
 import { ImportEvaluationsModule } from './import-export/import-evaluations/import-evaluations.module';
 import { LogModule } from './log/log.module';
 import { NotesModule } from './notes/notes.module';
@@ -51,7 +50,6 @@ import { EqualizationModule } from './evaluations/equalization/equalization.modu
         CycleConfigModule,
         CommonModule,
         TrackModule,
-        ImportUsersModule,
         ImportEvaluationsModule,
         LogModule,
         NotesModule,

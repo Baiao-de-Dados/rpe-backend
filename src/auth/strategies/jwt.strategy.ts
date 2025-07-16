@@ -22,6 +22,7 @@ export interface UserFromJwt {
     name: string | null;
     roles: UserRole[];
     track: string | null;
+    trackId?: number | null;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -86,6 +87,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
                     : user.track && typeof user.track === 'object'
                       ? user.track.name
                       : null,
+            trackId: user.trackId,
             createdAt: user.createdAt,
             updatedAt: user.updatedAt,
         };

@@ -8,6 +8,7 @@ import { ErpProjectDto } from './dto/erp-project.dto';
 @RequireAdmin()
 @ApiAuth()
 @Controller('erp')
+@ApiAuth()
 export class ErpController {
     constructor(private readonly erpService: ErpService) {}
 

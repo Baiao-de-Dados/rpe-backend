@@ -192,6 +192,22 @@ export class SeedService {
             },
         });
 
+        // Usuário Comitê
+        const encryptedEmailCommittee = encrypt('committee@teste.com');
+        const committee = await this.prisma.user.create({
+            data: {
+                email: encryptedEmailCommittee,
+                password: hashedPassword,
+                name: 'Comitê de Avaliação',
+                position: 'Membro do Comitê',
+                mentorId: mentor.id,
+                trackId: trackBackend.id,
+                userRoles: {
+                    create: [{ role: 'COMMITTEE' }],
+                },
+            },
+        });
+
         // Usuário Backend
         const userBackend = await this.prisma.user.findUnique({
             where: { email: encryptedEmailBackend },
@@ -383,31 +399,31 @@ export class SeedService {
                 name: '2024.1',
                 startDate: new Date('2024-01-01'),
                 endDate: new Date('2024-06-30'),
-                done: false,
+                done: true,
             },
             {
                 name: '2024.2',
                 startDate: new Date('2024-07-01'),
                 endDate: new Date('2024-12-31'),
-                done: false,
+                done: true,
             },
             {
                 name: '2024.3',
                 startDate: new Date('2024-09-01'),
                 endDate: new Date('2024-11-30'),
-                done: false,
+                done: true,
             },
             {
                 name: '2024.4',
                 startDate: new Date('2024-10-01'),
                 endDate: new Date('2024-12-15'),
-                done: false,
+                done: true,
             },
             {
                 name: '2025.1',
                 startDate: new Date('2025-01-01'),
                 endDate: new Date('2025-06-30'),
-                done: false,
+                done: true,
             },
         ];
 
@@ -440,6 +456,53 @@ export class SeedService {
                 }
             }
         }
+
+        // Adicionar usuários para teste de AV360/referência
+        await this.prisma.user.createMany({
+            data: [
+                {
+                    email: 'isabel.oliveira@teste.com',
+                    password: hashedPassword,
+                    name: 'isabel.oliveira',
+                    position: 'Tester',
+                    mentorId: mentor.id,
+                    trackId: trackBackend.id,
+                },
+                {
+                    email: 'dr..raul@teste.com',
+                    password: hashedPassword,
+                    name: 'dr..raul',
+                    position: 'Tester',
+                    mentorId: mentor.id,
+                    trackId: trackBackend.id,
+                },
+                {
+                    email: 'isaac.oliveira@teste.com',
+                    password: hashedPassword,
+                    name: 'isaac.oliveira',
+                    position: 'Tester',
+                    mentorId: mentor.id,
+                    trackId: trackBackend.id,
+                },
+                {
+                    email: 'sra..esther@teste.com',
+                    password: hashedPassword,
+                    name: 'sra..esther',
+                    position: 'Tester',
+                    mentorId: mentor.id,
+                    trackId: trackBackend.id,
+                },
+                {
+                    email: 'alicia.ramos@teste.com',
+                    password: hashedPassword,
+                    name: 'alícia.ramos',
+                    position: 'Tester',
+                    mentorId: mentor.id,
+                    trackId: trackBackend.id,
+                },
+            ],
+            skipDuplicates: true,
+        });
 
         return { message: 'Seed executada com sucesso!' };
     }

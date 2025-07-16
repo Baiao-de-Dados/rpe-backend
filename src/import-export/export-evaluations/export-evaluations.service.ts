@@ -6,7 +6,7 @@ import { CollaboratorsService } from '../../evaluations/collaborators/collaborat
 export class ExportEvaluationsService {
     constructor(private readonly collaboratorsService: CollaboratorsService) {}
 
-    async generateExport(): Promise<Buffer> {
+    async generateExport(cycleId: number): Promise<Buffer> {
         const collaborators = await this.collaboratorsService.getCollaborators();
 
         const workbook = new ExcelJS.Workbook();
@@ -26,27 +26,20 @@ export class ExportEvaluationsService {
 
         // Adiciona dados
         collaborators.forEach((collaborator) => {
-            collaborator.evaluations?.forEach((evaluation) => {
-                const autoEvaluationScore =
-                    evaluation.autoEvaluation && evaluation.autoEvaluation.assignments
-                        ? evaluation.autoEvaluation.assignments.reduce(
-                              (sum, a) => sum + a.score,
-                              0,
-                          ) / evaluation.autoEvaluation.assignments.length
-                        : 0;
-
-                worksheet.addRow({
-                    name: collaborator.name,
-                    email: collaborator.email,
-                    position: collaborator.position,
-                    track: collaborator.track,
-                    cycleId: evaluation.cycleConfigId,
-                    autoEvaluationScore: autoEvaluationScore,
-                    evaluation360Score: evaluation.evaluation360?.[0]?.score || 0,
-                    mentoringScore: evaluation.mentoring?.score || 0,
-                    finalEqualizationScore: 0, // Não há mais equalização neste contexto
+            collaborator.scores
+                ?.filter((score) => score.cycleId === cycleId)
+                .forEach((score) => {
+                    worksheet.addRow({
+                        name: collaborator.name,
+                        track: collaborator.track,
+                        position: collaborator.position,
+                        cycle: score.cycleId,
+                        autoEvaluationScore: score.autoEvaluationScore || 0,
+                        evaluation360Score: score.av360Score || 0,
+                        mentoringScore: score.managerScore || 0,
+                        finalEqualizationScore: score.equalizationScore || 0,
+                    });
                 });
-            });
         });
 
         const buffer = await workbook.xlsx.writeBuffer();

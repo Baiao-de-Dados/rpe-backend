@@ -675,7 +675,7 @@ export class CriteriaService {
         // });
 
         // Usar a data atual como data de início do ciclo
-        const startDate = new Date(); // Data de criação
+        const startDate = new Date(getBrazilDate()); // Data de criação
 
         const year = startDate.getFullYear();
         const semester = startDate.getMonth() < 6 ? 1 : 2;

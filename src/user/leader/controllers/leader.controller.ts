@@ -49,4 +49,9 @@ export class LeaderController {
         );
         return evaluation || {};
     }
+
+    @Get('average-equalization-by-cycle')
+    async getAverageEqualizationByCycle(@CurrentUser('id') leaderId: number) {
+        return await this.leaderService.getAverageEqualizationByCycle(leaderId);
+    }
 }

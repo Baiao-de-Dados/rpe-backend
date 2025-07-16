@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
-import { getBrazilDate } from 'src/cycles/utils';
+import { getBrazilDate } from '../src/cycles/utils';
 
 const prisma = new PrismaClient();
 
@@ -29,10 +29,10 @@ async function main() {
     // Hash das senhas
     const hashedPassword = await bcrypt.hash('senha123', 10);
 
-    // Criptografar emails
-    const encryptedEmailBackend = encrypt('backend@teste.com');
-    const encryptedEmailFrontend = encrypt('frontend@teste.com');
-    const encryptedEmailRh = encrypt('rh@teste.com');
+    // Emails em texto puro
+    const emailBackend = 'backend@teste.com';
+    const emailFrontend = 'frontend@teste.com';
+    const emailRh = 'rh@teste.com';
 
     console.log('👥 Criando usuários...');
 
@@ -85,10 +85,10 @@ async function main() {
 
     // Usuário Backend/Desenvolvedor
     const userBackend = await prisma.user.upsert({
-        where: { email: encryptedEmailBackend },
+        where: { email: emailBackend },
         update: {},
         create: {
-            email: encryptedEmailBackend,
+            email: emailBackend,
             password: hashedPassword,
             name: 'João Backend',
             position: 'DEV Backend',
@@ -103,7 +103,7 @@ async function main() {
     // Usuário Frontend/Desenvolvedor
     const userFrontend = await prisma.user.create({
         data: {
-            email: encryptedEmailFrontend,
+            email: emailFrontend,
             password: hashedPassword,
             name: 'Maria Frontend',
             position: 'DEV Frontend',
@@ -118,7 +118,7 @@ async function main() {
     // Usuário RH
     const userRh = await prisma.user.create({
         data: {
-            email: encryptedEmailRh,
+            email: emailRh,
             password: hashedPassword,
             name: 'Ana RH',
             position: 'RH tester',
@@ -129,6 +129,74 @@ async function main() {
             },
         },
     });
+
+    // Usuários do payload.json
+    const emailVitor = 'vitor.gabriel@rocketcorp.com';
+    const emailYuri = 'yuri.da@rocketcorp.com';
+
+    // Criar ou obter mentor para os dois (Luiza Carvalho)
+    const emailLuiza = 'luiza.carvalho@rocketcorp.com';
+    let mentorLuiza = await prisma.user.findUnique({ where: { email: emailLuiza } });
+    if (!mentorLuiza) {
+        mentorLuiza = await prisma.user.create({
+            data: {
+                email: emailLuiza,
+                password: hashedPassword,
+                name: 'Luiza Carvalho',
+                position: 'BUSINESSMAN',
+                trackId: trackBackend.id, // ou outra track se preferir
+                userRoles: { create: [{ role: 'MENTOR' }] },
+            },
+        });
+    }
+
+    // Vitor Gabriel
+    await prisma.user.create({
+        data: {
+            email: emailVitor,
+            password: hashedPassword,
+            name: 'Vitor Gabriel',
+            position: 'BUSINESSMAN',
+            mentorId: mentorLuiza.id,
+            trackId: trackBackend.id,
+            userRoles: { create: [{ role: 'EMPLOYER' }] },
+        },
+    });
+
+    // Yuri Da
+    await prisma.user.create({
+        data: {
+            email: emailYuri,
+            password: hashedPassword,
+            name: 'Yuri Da',
+            position: 'BUSINESSMAN',
+            mentorId: mentorLuiza.id,
+            trackId: trackBackend.id,
+            userRoles: { create: [{ role: 'EMPLOYER' }] },
+        },
+    });
+
+    // Usuários extras para testes de importação de avaliações 360 e referência
+    const extraUsers = [
+        { name: 'isaac oliveira', email: 'isaac.oliveira@rocketcorp.com' },
+        { name: 'dr  raul', email: 'dr.raul@rocketcorp.com' },
+        { name: 'isabel oliveira', email: 'isabel.oliveira@rocketcorp.com' },
+        { name: 'alícia ramos', email: 'alicia.ramos@rocketcorp.com' },
+        { name: 'sra  esther', email: 'sra.esther@rocketcorp.com' },
+    ];
+    for (const user of extraUsers) {
+        await prisma.user.create({
+            data: {
+                email: user.email,
+                password: hashedPassword,
+                name: user.name,
+                position: 'EMPLOYER',
+                mentorId: mentorLuiza.id,
+                trackId: trackBackend.id,
+                userRoles: { create: [{ role: 'EMPLOYER' }] },
+            },
+        });
+    }
 
     console.log('👨‍💼 Criando gestor...');
 
@@ -207,6 +275,23 @@ async function main() {
         ],
     });
 
+    // Adicionar os novos usuários extras ao projeto de Luiza Carvalho
+    const extraUserEmails = [
+        'isaac.oliveira@rocketcorp.com',
+        'dr.raul@rocketcorp.com',
+        'isabel.oliveira@rocketcorp.com',
+        'alicia.ramos@rocketcorp.com',
+        'sra.esther@rocketcorp.com',
+    ];
+    for (const email of extraUserEmails) {
+        const user = await prisma.user.findUnique({ where: { email } });
+        if (user) {
+            await prisma.projectMember.create({
+                data: { projectId: project.id, userId: user.id },
+            });
+        }
+    }
+
     console.log('🔗 Criando assignments de líderes...');
 
     // Assignment de líderes ao projeto
@@ -246,19 +331,19 @@ async function main() {
                 'Demonstra responsabilidade e senso de pertencimento nas tarefas e resultados.',
         },
         {
-            name: 'Resiliência nas Atividades',
+            name: 'Resiliencia nas adversidades',
             description: 'Mantém a calma e persevera diante de desafios e mudanças.',
         },
         {
-            name: 'ORGANIZAÇÃO NO TRABALHO',
+            name: 'Organização no Trabalho',
             description: 'Organiza tarefas, prazos e prioridades de forma eficiente.',
         },
         {
-            name: 'CAPACIDADE DE APRENDER',
+            name: 'Capacidade de aprender',
             description: 'Busca aprendizado contínuo e aplica novos conhecimentos.',
         },
         {
-            name: 'SER TEAM PLAYER',
+            name: 'Ser "team player"',
             description: 'Colabora, compartilha e contribui para o sucesso do time.',
         },
     ];
@@ -281,19 +366,19 @@ async function main() {
     // Critérios do pilar Execução
     const criteriosExecucao = [
         {
-            name: 'ENTREGAR COM QUALIDADE',
+            name: 'Entregar com qualidade',
             description: 'Produz trabalhos com excelência e atenção aos detalhes.',
         },
         {
-            name: 'ATENDER AOS PRAZOS',
+            name: 'Atender aos prazos',
             description: 'Cumpre compromissos e entregas dentro dos prazos estabelecidos.',
         },
         {
-            name: 'FAZER MAIS COM MENOS',
+            name: 'Fazer mais com menos',
             description: 'Otimiza recursos e processos para maximizar resultados.',
         },
         {
-            name: 'PENSAR FORA DA CAIXA',
+            name: 'Pensar fora da caixa',
             description: 'Proporciona soluções criativas e inovadoras para os desafios.',
         },
     ];
@@ -315,13 +400,13 @@ async function main() {
 
     // Critérios do pilar Gestão e Liderança
     const criteriosGestao = [
-        { name: 'GENTE', description: 'Desenvolve e lidera pessoas de forma efetiva.' },
+        { name: 'Gente', description: 'Desenvolve e lidera pessoas de forma efetiva.' },
         {
-            name: 'RESULTADOS',
+            name: 'Resultados',
             description: 'Foca em entregar resultados consistentes e mensuráveis.',
         },
         {
-            name: 'EVOLUÇÃO DA ROCKET CORP',
+            name: 'Evolução da Rocket Cor',
             description: 'Contribui para o crescimento e evolução da empresa.',
         },
     ];

@@ -14,7 +14,9 @@ import { GeminiNotesEndpoint } from './decorators/gemini-notes-endpoint.decorato
 import { GeminiLeaderEndpoint } from './decorators/gemini-leader-endpoint.decorator';
 import { GeminiCollaboratorEndpoint } from './decorators/gemini-collaborator-endpoint.decorator';
 import { GeminiEqualizationEndpoint } from './decorators/gemini-equalization-endpoint.decorator';
+import { ApiAuth } from 'src/common/decorators/api-auth.decorator';
 
+@ApiAuth()
 @ApiTags('Inteligência Artificial')
 @ApiBearerAuth()
 @Controller('ia')

@@ -26,28 +26,40 @@ export class AiService {
         userId: number,
         cycleId: number,
     ): Promise<string> {
-        // Busca os colaboradores do projeto atual do colaborador
+        // Busca os projetos do usuário
+        const projectMemberships = await this.prisma.projectMember.findMany({
+            where: { userId },
+            select: { projectId: true },
+        });
+        const projectIds = projectMemberships.map((pm) => pm.projectId);
+        // Busca apenas membros EMPLOYER dos projetos
         const projectMembers = await this.prisma.projectMember.findMany({
-            where: { userId: userId },
-            include: {
-                project: {
-                    include: {
-                        members: {
-                            include: { user: true },
-                        },
+            where: {
+                projectId: { in: projectIds },
+                user: {
+                    userRoles: {
+                        some: { role: 'EMPLOYER', isActive: true },
                     },
                 },
             },
+            include: {
+                user: true,
+            },
         });
+        const collaborators = projectMembers
+            .filter((pm) => pm.user.id !== userId)
+            .map((pm) => ({
+                id: pm.user.id,
+                name: pm.user.name,
+                email: pm.user.email,
+                position: pm.user.position,
+            }));
 
-        const collaborators = projectMembers.flatMap((member) =>
-            member.project.members.map((m) => ({
-                id: m.user.id,
-                name: m.user.name,
-                email: m.user.email,
-                position: m.user.position,
-            })),
-        );
+        if (collaborators.length === 0) {
+            throw new Error(
+                'Não há colaboradores elegíveis associados ao usuário para gerar o resumo.',
+            );
+        }
 
         // Busca o mentor do colaborador
         const mentor = await this.prisma.user.findUnique({
@@ -155,10 +167,8 @@ export class AiService {
         // Busca a nota final e justificativa do comitê de equalização
         const equalization = await this.prisma.equalization.findFirst({
             where: {
-                evaluation: {
-                    evaluatorId: userId,
-                    cycleConfigId: cycleId,
-                },
+                collaboratorId: userId,
+                cycleId: cycleId,
             },
         });
 
@@ -366,17 +376,15 @@ export class AiService {
         // Busca as avaliações do comitê de equalização
         const equalizations = await this.prisma.equalization.findMany({
             where: {
-                evaluation: {
-                    evaluatorId: {
-                        in: leaderEvaluations.map((evaluation) => evaluation.collaboratorId),
-                    },
-                    cycleConfigId: cycleId,
+                collaboratorId: {
+                    in: leaderEvaluations.map((evaluation) => evaluation.collaboratorId),
                 },
+                cycleId: cycleId,
             },
         });
 
         const equalizationData = equalizations.map((equalization) => ({
-            collaboratorId: equalization.evaluationId,
+            collaboratorId: equalization.collaboratorId,
             score: equalization.score,
             justification: equalization.justification,
         }));
@@ -574,6 +582,40 @@ export class AiService {
                 return { code: 'NO_INSIGHT' };
             }
             if (obj.code === 'SUCCESS') {
+                // Salvar a avaliação no banco de dados
+                const leaderEvaluations = obj.evaluations || [];
+                for (const evaluation of leaderEvaluations) {
+                    await this.prisma.leaderEvaluation.upsert({
+                        where: {
+                            leaderId_collaboratorId_cycleId: {
+                                leaderId: userId,
+                                collaboratorId: evaluation.collaboratorId,
+                                cycleId: cycleId,
+                            },
+                        },
+                        update: {
+                            justification: evaluation.justification,
+                            score: evaluation.score,
+                            strengths: evaluation.strengths,
+                            improvements: evaluation.improvements,
+                            aiGenerated: true, // Indica que a avaliação foi gerada por IA
+                            aiSummary: obj.summary, // Salva o resumo gerado pela IA
+                            updatedAt: new Date(),
+                        },
+                        create: {
+                            leaderId: userId,
+                            collaboratorId: evaluation.collaboratorId,
+                            cycleId: cycleId,
+                            justification: evaluation.justification,
+                            score: evaluation.score,
+                            strengths: evaluation.strengths,
+                            improvements: evaluation.improvements,
+                            aiGenerated: true, // Indica que a avaliação foi gerada por IA
+                            aiSummary: obj.summary, // Salva o resumo gerado pela IA
+                        },
+                    });
+                }
+
                 return {
                     code: 'SUCCESS',
                     summary: obj.summary,

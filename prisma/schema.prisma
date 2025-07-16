@@ -14,7 +14,7 @@ model User {
   name       String
   position   String
   mentorId   Int?
-  mentor     User?     @relation("Mentor", fields: [mentorId], references: [id])
+  mentor     User?    @relation("Mentor", fields: [mentorId], references: [id])
   mentees    User[]   @relation("Mentor")
   trackId    Int
   track      Track?   @relation(fields: [trackId], references: [id])
@@ -22,22 +22,24 @@ model User {
   updatedAt  DateTime @updatedAt
   lastLogged DateTime @updatedAt
 
-  evaluator     Evaluation[]    @relation("Evaluator")
-  userRoles     UserRoleLink[]  @relation("UserRoleUser")
-  assignedRoles UserRoleLink[]  @relation("AssignedByAdmin")
-  projectMember ProjectMember[]
-  leaderAssignments LeaderAssignment[]
-  managedProjects Project[] @relation("UserToManagedProjects")
-  leaderEvaluationAssignments LeaderEvaluationAssignment[] @relation("LeaderEvaluationAssignment")
+  evaluator                         Evaluation[]                 @relation("Evaluator")
+  userRoles                         UserRoleLink[]               @relation("UserRoleUser")
+  assignedRoles                     UserRoleLink[]               @relation("AssignedByAdmin")
+  projectMember                     ProjectMember[]
+  leaderAssignments                 LeaderAssignment[]
+  managedProjects                   Project[]                    @relation("UserToManagedProjects")
+  leaderEvaluationAssignments       LeaderEvaluationAssignment[] @relation("LeaderEvaluationAssignment")
   collaboratorEvaluationAssignments LeaderEvaluationAssignment[] @relation("CollaboratorEvaluationAssignment")
-  managerEvaluations ManagerEvaluation[] @relation("ManagerEvaluations")
-  collaboratorEvaluations ManagerEvaluation[] @relation("CollaboratorEvaluations")
-  notes      Notes[]
-  leaderEvaluations LeaderEvaluation[] @relation("LeaderEvaluations")
-  collaboratorLeaderEvaluations LeaderEvaluation[] @relation("CollaboratorLeaderEvaluations")
-  evaluations360Received Evaluation360[] @relation("UserToEvaluation360")
-  mentoringsReceived     Mentoring[]     @relation("UserToMentoring")
-  referencesReceived     Reference[]     @relation("UserToReference")
+  managerEvaluations                ManagerEvaluation[]          @relation("ManagerEvaluations")
+  collaboratorEvaluations           ManagerEvaluation[]          @relation("CollaboratorEvaluations")
+  notes                             Notes[]
+  leaderEvaluations                 LeaderEvaluation[]           @relation("LeaderEvaluations")
+  collaboratorLeaderEvaluations     LeaderEvaluation[]           @relation("CollaboratorLeaderEvaluations")
+  evaluations360Received            Evaluation360[]              @relation("UserToEvaluation360")
+  mentoringsReceived                Mentoring[]                  @relation("UserToMentoring")
+  referencesReceived                Reference[]                  @relation("UserToReference")
+  evaluationDrafts                  EvaluationDraft[]
+  equalizations                     Equalization[]               @relation("UserToEqualization")
 }
 
 model UserRoleLink {
@@ -71,25 +73,26 @@ model Criterion {
   pillar                     Pillar                      @relation(fields: [pillarId], references: [id], onDelete: Cascade)
   criterionTrackConfigs      CriterionTrackConfig[]
   criterionTrackCycleConfigs CriterionTrackCycleConfig[]
-  autoEvaluationAssignments AutoEvaluationAssignment[]
+  autoEvaluationAssignments  AutoEvaluationAssignment[]
   managerEvaluationCriterias ManagerEvaluationCriteria[]
 }
 
 model CycleConfig {
-  id          Int      @id @default(autoincrement())
+  id          Int       @id @default(autoincrement())
   name        String // ex: "2025.1", "2025.2"
   description String?
   startDate   DateTime?
   endDate     DateTime?
-  done        Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  done        Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  Evaluation Evaluation[]
-  criterionTrackCycleConfigs CriterionTrackCycleConfig[]
+  Evaluation                  Evaluation[]
+  criterionTrackCycleConfigs  CriterionTrackCycleConfig[]
   leaderEvaluationAssignments LeaderEvaluationAssignment[]
-  managerEvaluations ManagerEvaluation[]
-  leaderEvaluations LeaderEvaluation[]
+  managerEvaluations          ManagerEvaluation[]
+  leaderEvaluations           LeaderEvaluation[]
+  equalizations               Equalization[]
 
   @@unique([name])
 }
@@ -135,12 +138,12 @@ model CriterionTrackCycleConfig {
 }
 
 model Evaluation {
-  id            Int              @id @default(autoincrement())
+  id            Int      @id @default(autoincrement())
   evaluatorId   Int
   cycleConfigId Int
   trackId       Int?
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   evaluator   User        @relation("Evaluator", fields: [evaluatorId], references: [id], onDelete: Cascade)
   cycleConfig CycleConfig @relation(fields: [cycleConfigId], references: [id], onDelete: Cascade)
@@ -150,16 +153,15 @@ model Evaluation {
   evaluation360  Evaluation360[]
   mentoring      Mentoring?
   reference      Reference[]
-  equalization Equalization[]
 
   @@unique([evaluatorId, cycleConfigId])
 }
 
 model AutoEvaluation {
-  evaluationId Int        @id
-  evaluation   Evaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
-  rating Float?
-  assignments AutoEvaluationAssignment[]
+  evaluationId Int                        @id
+  evaluation   Evaluation                 @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  rating       Float?
+  assignments  AutoEvaluationAssignment[]
 }
 
 model AutoEvaluationAssignment {
@@ -175,16 +177,16 @@ model AutoEvaluationAssignment {
 }
 
 model Evaluation360 {
-  id            Int        @id @default(autoincrement())
-  evaluationId  Int
-  evaluation    Evaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  id           Int        @id @default(autoincrement())
+  evaluationId Int
+  evaluation   Evaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
 
-  evaluatedId   Int
-  evaluated     User       @relation("UserToEvaluation360", fields: [evaluatedId], references: [id], onDelete: Cascade)
+  evaluatedId Int
+  evaluated   User @relation("UserToEvaluation360", fields: [evaluatedId], references: [id], onDelete: Cascade)
 
-  score         Float
-  strengths     String
-  improvements  String
+  score        Float
+  strengths    String
+  improvements String
 
   @@unique([evaluationId, evaluatedId])
 }
@@ -193,99 +195,109 @@ model Mentoring {
   evaluationId Int        @id
   evaluation   Evaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
 
-  mentorId     Int
-  mentor       User       @relation("UserToMentoring", fields: [mentorId], references: [id], onDelete: Cascade)
+  mentorId Int
+  mentor   User @relation("UserToMentoring", fields: [mentorId], references: [id], onDelete: Cascade)
 
   justification String
   score         Float?
 }
 
 model Reference {
-  id            Int        @id @default(autoincrement())
-  evaluationId  Int
-  evaluation    Evaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  id           Int        @id @default(autoincrement())
+  evaluationId Int
+  evaluation   Evaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
 
   collaboratorId Int
-  collaborator   User     @relation("UserToReference", fields: [collaboratorId], references: [id], onDelete: Cascade)
+  collaborator   User @relation("UserToReference", fields: [collaboratorId], references: [id], onDelete: Cascade)
 
   justification String?
   createdAt     DateTime @default(now())
 
   @@unique([evaluationId, collaboratorId])
 }
+
 // avaliacao de leader
 model LeaderEvaluation {
-  id           Int      @id @default(autoincrement())
-  leaderId     Int
+  id             Int      @id @default(autoincrement())
+  leaderId       Int
   collaboratorId Int
-  cycleId      Int
-  justification String
-  score        Float
-  strengths    String?
-  improvements String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  cycleId        Int
+  justification  String
+  score          Float
+  strengths      String?
+  improvements   String?
+  aiGenerated    Boolean  @default(false) // Indica se a avaliação foi gerada por IA
+  aiSummary      String? // Resumo gerado pela IA
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   cycle        CycleConfig @relation(fields: [cycleId], references: [id], onDelete: Cascade)
   leader       User        @relation("LeaderEvaluations", fields: [leaderId], references: [id], onDelete: Cascade)
   collaborator User        @relation("CollaboratorLeaderEvaluations", fields: [collaboratorId], references: [id], onDelete: Cascade)
+
+  @@unique([leaderId, collaboratorId, cycleId]) // Adiciona uma constraint única
 }
+
 // avaliacao de gestor
 model ManagerEvaluation {
-  id             Int                        @id @default(autoincrement())
+  id             Int      @id @default(autoincrement())
   cycleId        Int
   managerId      Int
   collaboratorId Int
-  createdAt      DateTime                   @default(now())
-  updatedAt      DateTime                   @updatedAt
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  criterias      ManagerEvaluationCriteria[]
+  criterias ManagerEvaluationCriteria[]
 
   // Relacionamentos
-  cycle          CycleConfig                @relation(fields: [cycleId], references: [id], onDelete: Cascade)
-  manager        User                       @relation("ManagerEvaluations", fields: [managerId], references: [id], onDelete: Cascade)
-  collaborator   User                       @relation("CollaboratorEvaluations", fields: [collaboratorId], references: [id], onDelete: Cascade)
+  cycle        CycleConfig @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  manager      User        @relation("ManagerEvaluations", fields: [managerId], references: [id], onDelete: Cascade)
+  collaborator User        @relation("CollaboratorEvaluations", fields: [collaboratorId], references: [id], onDelete: Cascade)
 }
 
 model ManagerEvaluationCriteria {
-  id                  Int               @id @default(autoincrement())
+  id                  Int    @id @default(autoincrement())
   managerEvaluationId Int
   criteriaId          Int
   score               Int
   justification       String
 
-  managerEvaluation   ManagerEvaluation @relation(fields: [managerEvaluationId], references: [id])
-  criteria            Criterion         @relation(fields: [criteriaId], references: [id])
+  managerEvaluation ManagerEvaluation @relation(fields: [managerEvaluationId], references: [id], onDelete: Cascade)
+  criteria          Criterion         @relation(fields: [criteriaId], references: [id])
 }
 
 model Equalization {
-  id            Int      @id @default(autoincrement())
-  evaluationId  Int
-  justification String
-  score         Float?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id             Int      @id @default(autoincrement())
+  collaboratorId Int
+  cycleId        Int
+  justification  String
+  score          Float?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  evaluation Evaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  collaborator User        @relation("UserToEqualization", fields: [collaboratorId], references: [id], onDelete: Cascade)
+  cycle        CycleConfig @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+
+  @@unique([collaboratorId, cycleId])
 }
 
 model Project {
-  id          Int      @id @default(autoincrement())
-  name        String
-  description String?
-  status      ProjectStatus @default(ACTIVE)
-  startDate   DateTime?
-  endDate     DateTime?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  managerId   Int      
-  manager     User     @relation("UserToManagedProjects", fields: [managerId], references: [id])
-  members     ProjectMember[]
+  id                Int                @id @default(autoincrement())
+  name              String
+  description       String?
+  status            ProjectStatus      @default(ACTIVE)
+  startDate         DateTime?
+  endDate           DateTime?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  managerId         Int
+  manager           User               @relation("UserToManagedProjects", fields: [managerId], references: [id])
+  members           ProjectMember[]
   leaderAssignments LeaderAssignment[]
 }
 
 model ProjectMember {
-  id        Int      @id @default(autoincrement())
+  id        Int       @id @default(autoincrement())
   projectId Int
   userId    Int
   startDate DateTime  @default(now())
@@ -295,29 +307,31 @@ model ProjectMember {
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
+
 //serve para dar assigment de lider de um projeto para um usuário
 model LeaderAssignment {
-  id        Int      @id @default(autoincrement())
+  id        Int @id @default(autoincrement())
   projectId Int
   leaderId  Int
 
-  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  leader    User     @relation(fields: [leaderId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  leader  User    @relation(fields: [leaderId], references: [id], onDelete: Cascade)
 
   @@unique([projectId, leaderId])
 }
+
 // serve par armazenar qual lider vai avaliar quem
 model LeaderEvaluationAssignment {
-  id            Int      @id @default(autoincrement())
-  leaderId      Int
+  id             Int      @id @default(autoincrement())
+  leaderId       Int
   collaboratorId Int
-  cycleId       Int
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  cycleId        Int
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  leader      User        @relation("LeaderEvaluationAssignment", fields: [leaderId], references: [id], onDelete: Cascade)
-  collaborator User       @relation("CollaboratorEvaluationAssignment", fields: [collaboratorId], references: [id], onDelete: Cascade)
-  cycle       CycleConfig @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  leader       User        @relation("LeaderEvaluationAssignment", fields: [leaderId], references: [id], onDelete: Cascade)
+  collaborator User        @relation("CollaboratorEvaluationAssignment", fields: [collaboratorId], references: [id], onDelete: Cascade)
+  cycle        CycleConfig @relation(fields: [cycleId], references: [id], onDelete: Cascade)
 
   @@unique([collaboratorId, cycleId])
 }
@@ -337,7 +351,17 @@ model Notes {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model EvaluationDraft {
+  id        Int      @id @default(autoincrement())
+  userId    Int
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cycleId   Int
+  draft     Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 enum EvaluationStatus {

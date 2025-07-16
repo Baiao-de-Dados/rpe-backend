@@ -313,6 +313,7 @@ export class EmployerService {
             id: evaluation.id,
             cycleConfigId: evaluation.cycleConfigId,
             userId: evaluation.evaluatorId,
+            sentDate: evaluation.createdAt,
             user: evaluation.evaluator
                 ? {
                       id: evaluation.evaluator.id,
@@ -362,7 +363,6 @@ export class EmployerService {
             include: {
                 autoEvaluation: { include: { assignments: true } },
                 evaluation360: true,
-                equalization: true,
             },
         });
         // Nota da autoavaliação
@@ -394,12 +394,11 @@ export class EmployerService {
         }
         // Nota do comitê (equalização)
         let committeeGrade: number | null = null;
-        if (evaluation?.equalization?.length) {
-            // Pega a última equalização (caso haja mais de uma)
-            const lastEq = evaluation.equalization[evaluation.equalization.length - 1];
-            if (lastEq?.score !== undefined && lastEq?.score !== null) {
-                committeeGrade = Math.round(lastEq.score * 10) / 10;
-            }
+        const equalization = await this.prisma.equalization.findFirst({
+            where: { collaboratorId: userId, cycleId: cycleConfigId },
+        });
+        if (equalization?.score !== undefined && equalization?.score !== null) {
+            committeeGrade = Math.round(equalization.score * 10) / 10;
         }
         return {
             autoEvaluation: autoEvaluationGrade,
@@ -417,7 +416,6 @@ export class EmployerService {
                 cycleConfig: true,
                 autoEvaluation: { include: { assignments: true } },
                 evaluation360: true,
-                equalization: true,
             },
             orderBy: { cycleConfigId: 'asc' },
         });
@@ -440,47 +438,52 @@ export class EmployerService {
             }
         }
         // Monta resposta
-        return evaluations.map((ev) => {
-            // Autoavaliação
-            let autoEvaluationGrade: number | null = null;
-            if (ev.autoEvaluation?.assignments?.length) {
-                const assignments = ev.autoEvaluation.assignments;
-                autoEvaluationGrade =
-                    Math.round(
-                        (assignments.reduce((sum, a) => sum + a.score, 0) / assignments.length) *
-                            10,
-                    ) / 10;
-            }
-            // 360
-            let evaluation360Grade: number | null = null;
-            if (ev.evaluation360?.length) {
-                const scores = ev.evaluation360.map((e) => e.score);
-                evaluation360Grade =
-                    Math.round((scores.reduce((sum, s) => sum + s, 0) / scores.length) * 10) / 10;
-            }
-            // Comitê
-            let committeeGrade: number | null = null;
-            if (ev.equalization?.length) {
-                const lastEq = ev.equalization[ev.equalization.length - 1];
-                if (lastEq?.score !== undefined && lastEq?.score !== null) {
-                    committeeGrade = Math.round(lastEq.score * 10) / 10;
+        const result = await Promise.all(
+            evaluations.map(async (ev) => {
+                // Autoavaliação
+                let autoEvaluationGrade: number | null = null;
+                if (ev.autoEvaluation?.assignments?.length) {
+                    const assignments = ev.autoEvaluation.assignments;
+                    autoEvaluationGrade =
+                        Math.round(
+                            (assignments.reduce((sum, a) => sum + a.score, 0) /
+                                assignments.length) *
+                                10,
+                        ) / 10;
                 }
-            }
-            // Gestor
-            const managerGrade = managerByCycle.get(ev.cycleConfigId) ?? null;
-            return {
-                cycle: {
-                    id: ev.cycleConfig.id,
-                    name: ev.cycleConfig.name,
-                    startDate: ev.cycleConfig.startDate,
-                    endDate: ev.cycleConfig.endDate,
-                },
-                autoEvaluation: autoEvaluationGrade,
-                evaluation360: evaluation360Grade,
-                manager: managerGrade,
-                committee: committeeGrade,
-            };
-        });
+                // 360
+                let evaluation360Grade: number | null = null;
+                if (ev.evaluation360?.length) {
+                    const scores = ev.evaluation360.map((e) => e.score);
+                    evaluation360Grade =
+                        Math.round((scores.reduce((sum, s) => sum + s, 0) / scores.length) * 10) /
+                        10;
+                }
+                // Comitê
+                let committeeGrade: number | null = null;
+                const equalization = await this.prisma.equalization.findFirst({
+                    where: { collaboratorId: userId, cycleId: ev.cycleConfigId },
+                });
+                if (equalization?.score !== undefined && equalization?.score !== null) {
+                    committeeGrade = Math.round(equalization.score * 10) / 10;
+                }
+                // Gestor
+                const managerGrade = managerByCycle.get(ev.cycleConfigId) ?? null;
+                return {
+                    cycle: {
+                        id: ev.cycleConfig.id,
+                        name: ev.cycleConfig.name,
+                        startDate: ev.cycleConfig.startDate,
+                        endDate: ev.cycleConfig.endDate,
+                    },
+                    autoEvaluation: autoEvaluationGrade,
+                    evaluation360: evaluation360Grade,
+                    manager: managerGrade,
+                    committee: committeeGrade,
+                };
+            }),
+        );
+        return result;
     }
 
     async getUserNetwork(userId: number) {
@@ -498,7 +501,12 @@ export class EmployerService {
             new Set(projectMembers.map((pm) => pm.userId)),
         ).filter((id) => id !== userId);
         const sameProjectUsers = await this.prisma.user.findMany({
-            where: { id: { in: sameProjectUserIds } },
+            where: {
+                id: { in: sameProjectUserIds },
+                userRoles: {
+                    some: { role: 'EMPLOYER' },
+                },
+            },
             select: { id: true, name: true, email: true, position: true },
         });
 
@@ -512,22 +520,133 @@ export class EmployerService {
             });
         }
 
-        // 3. Buscar pessoas indicadas como referência pelo usuário
-        const references = await this.prisma.reference.findMany({
-            where: { evaluation: { evaluatorId: userId } },
-            select: { collaboratorId: true },
-        });
-        const referenceIds = references.map((r) => r.collaboratorId);
-        const referencedUsers = await this.prisma.user.findMany({
-            where: { id: { in: referenceIds } },
-            select: { id: true, name: true, email: true, position: true },
-        });
-
         return {
             sameProjectUsers,
             mentor,
-            referencedUsers,
         };
+    }
+
+    async getCollaboratorCyclesHistory(collaboratorId: number, cycleId?: number) {
+        // Buscar todos os ciclos (ou só o ciclo filtrado)
+        const cycles = cycleId
+            ? await this.prisma.cycleConfig.findMany({
+                  where: { id: cycleId },
+                  orderBy: { startDate: 'asc' },
+              })
+            : await this.prisma.cycleConfig.findMany({ orderBy: { startDate: 'asc' } });
+        const result: Array<{
+            cycleName: string;
+            selfAssessment: any;
+            evaluation360: any;
+            reference: any;
+            mentoring: any;
+        }> = [];
+
+        const user = await this.prisma.user.findUnique({ where: { id: collaboratorId } });
+        const trackId = user?.trackId;
+        for (const cycle of cycles) {
+            const evaluation = await this.prisma.evaluation.findFirst({
+                where: { evaluatorId: collaboratorId, cycleConfigId: cycle.id },
+                include: {
+                    autoEvaluation: {
+                        include: {
+                            assignments: { include: { criterion: { include: { pillar: true } } } },
+                        },
+                    },
+                },
+            });
+
+            const pillarsMap = new Map();
+            if (evaluation?.autoEvaluation?.assignments) {
+                for (const assignment of evaluation.autoEvaluation.assignments) {
+                    const pillarName = assignment.criterion.pillar.name;
+                    if (!pillarsMap.has(pillarName)) {
+                        pillarsMap.set(pillarName, []);
+                    }
+
+                    const managerEval = await this.prisma.managerEvaluation.findFirst({
+                        where: { collaboratorId, cycleId: cycle.id },
+                        include: { criterias: { where: { criteriaId: assignment.criterionId } } },
+                    });
+                    const managerRating = managerEval?.criterias?.[0]?.score ?? null;
+
+                    let weight = 1;
+                    if (trackId) {
+                        const weightObj = await this.prisma.criterionTrackCycleConfig.findFirst({
+                            where: {
+                                cycleId: cycle.id,
+                                criterionId: assignment.criterionId,
+                                trackId: trackId,
+                            },
+                        });
+                        weight = weightObj?.weight ?? 1;
+                    }
+                    pillarsMap.get(pillarName).push({
+                        criteriaName: assignment.criterion.name,
+                        rating: assignment.score,
+                        weight,
+                        managerRating,
+                        justification: assignment.justification,
+                    });
+                }
+            }
+            const selfAssessment = {
+                pillars: Array.from(pillarsMap.entries()).map(([pillarName, criteria]) => ({
+                    pillarName,
+                    criteria,
+                })),
+            };
+
+            const evaluations = await this.prisma.evaluation.findMany({
+                where: { cycleConfigId: cycle.id },
+                select: { id: true, evaluatorId: true },
+            });
+            const evaluationIds = evaluations.map((e) => e.id);
+            const av360 = await this.prisma.evaluation360.findMany({
+                where: { evaluatedId: collaboratorId, evaluationId: { in: evaluationIds } },
+                include: { evaluation: { include: { evaluator: true } } },
+            });
+            const evaluation360 = {
+                evaluation: av360.map((a) => ({
+                    collaratorName: a.evaluation.evaluator.name,
+                    collaboratorPosition: a.evaluation.evaluator.position,
+                    rating: a.score,
+                    improvements: a.improvements,
+                    strengths: a.strengths,
+                })),
+            };
+
+            const references = await this.prisma.reference.findMany({
+                where: { collaboratorId, evaluation: { cycleConfigId: cycle.id } },
+                include: { evaluation: { include: { evaluator: true } } },
+            });
+            const reference = references.map((r) => ({
+                collaratorName: r.evaluation.evaluator.name,
+                collaboratorPosition: r.evaluation.evaluator.position,
+                justification: r.justification,
+            }));
+
+            const mentoring = await this.prisma.mentoring.findFirst({
+                where: { evaluation: { cycleConfigId: cycle.id, evaluatorId: collaboratorId } },
+                include: { evaluation: { include: { evaluator: true } } },
+            });
+            const mentoringObj = mentoring
+                ? {
+                      mentorName: mentoring.evaluation.evaluator.name || 'Desconhecido',
+                      rating: mentoring.score,
+                      justification: mentoring.justification,
+                  }
+                : null;
+
+            result.push({
+                cycleName: cycle.name,
+                selfAssessment,
+                evaluation360,
+                reference,
+                mentoring: mentoringObj,
+            });
+        }
+        return { cycles: result };
     }
 
     private formatAutoEvaluationPilares(assignments: any[]) {

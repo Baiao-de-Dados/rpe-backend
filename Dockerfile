@@ -50,3 +50,8 @@ EXPOSE 3000
 
 # 4. comando de start otimizado
 CMD ["/bin/sh", "./scripts/start.sh"]
+
+# pnpm db:build
+# pnpm db:run
+# docker-compose exec app npx prisma migrate reset
+# docker-compose exec app npx prisma migrate dev --name add_tag_table

@@ -6,7 +6,8 @@ export function ApiGetCollaboratorsScores() {
         ApiTags('Colaboradores'),
         ApiOperation({
             summary: 'Obter as notas de todos os colaboradores',
-            description: 'Retorna as notas de todos os colaboradores, incluindo avaliações e trilhas.',
+            description:
+                'Retorna as notas de todos os colaboradores, incluindo avaliações e trilhas.',
         }),
         ApiQuery({
             name: 'cycleId',
@@ -33,8 +34,14 @@ export function ApiGetCollaboratorsScores() {
                                 properties: {
                                     id: { type: 'number', example: 1 },
                                     cycleConfigId: { type: 'number', example: 1 },
-                                    createdAt: { type: 'string', example: '2023-01-01T00:00:00.000Z' },
-                                    updatedAt: { type: 'string', example: '2023-01-02T00:00:00.000Z' },
+                                    createdAt: {
+                                        type: 'string',
+                                        example: '2023-01-01T00:00:00.000Z',
+                                    },
+                                    updatedAt: {
+                                        type: 'string',
+                                        example: '2023-01-02T00:00:00.000Z',
+                                    },
                                     autoEvaluation: { type: 'object', example: null },
                                     evaluation360: { type: 'array', example: [] },
                                     mentoring: { type: 'object', example: null },

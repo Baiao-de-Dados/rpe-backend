@@ -1,6 +1,15 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 
+type CollaboratorScore = {
+    cycleId: number;
+    cycleName: string;
+    av360Score: number | null;
+    autoEvaluationScore: number | null;
+    managerScore: number | null;
+    equalizationScore: number | null;
+};
+
 @Injectable()
 export class CollaboratorsService {
     constructor(private readonly prisma: PrismaService) {}
@@ -9,44 +18,93 @@ export class CollaboratorsService {
         const collaborators = await this.prisma.user.findMany({
             include: {
                 track: true,
-                evaluator: {
-                    include: {
-                        autoEvaluation: {
-                            include: { assignments: true },
-                        },
-                        evaluation360: true,
-                        mentoring: true,
-                        reference: true,
-                        cycleConfig: true,
-                    },
-                },
+                userRoles: true,
             },
         });
 
-        return collaborators.map((collaborator) => {
-            const evaluations = collaborator.evaluator.map((evaluation) => {
-                return {
-                    id: evaluation.id,
-                    cycleConfigId: evaluation.cycleConfigId,
-                    createdAt: evaluation.createdAt,
-                    updatedAt: evaluation.updatedAt,
-                    autoEvaluation: evaluation.autoEvaluation,
-                    evaluation360: evaluation.evaluation360,
-                    mentoring: evaluation.mentoring,
-                    reference: evaluation.reference,
-                    cycleConfig: evaluation.cycleConfig,
-                };
-            });
+        // Filtrar apenas EMPLOYER
+        const onlyEmployers = collaborators.filter((user) =>
+            user.userRoles.some((role) => role.role === 'EMPLOYER' && role.isActive),
+        );
 
-            return {
-                id: collaborator.id,
-                name: collaborator.name,
-                email: collaborator.email,
-                position: collaborator.position,
-                track: collaborator.track?.name || 'Não informado',
-                evaluations,
-            };
-        });
+        const cycles = await this.prisma.cycleConfig.findMany({ orderBy: { startDate: 'asc' } });
+
+        const results = await Promise.all(
+            onlyEmployers.map(async (collaborator) => {
+                const scores: CollaboratorScore[] = [];
+                for (const cycle of cycles) {
+                    // Buscar todos os Evaluation do ciclo
+                    const evaluations = await this.prisma.evaluation.findMany({
+                        where: {
+                            cycleConfigId: cycle.id,
+                        },
+                        select: { id: true },
+                    });
+                    const evaluationIds = evaluations.map((e) => e.id);
+
+                    // AV360 recebida
+                    const av360 = await this.prisma.evaluation360.findMany({
+                        where: {
+                            evaluatedId: collaborator.id,
+                            evaluationId: { in: evaluationIds },
+                        },
+                    });
+                    const av360Score = av360.length
+                        ? av360.reduce((sum, a) => sum + (a.score ?? 0), 0) / av360.length
+                        : null;
+
+                    // Autoavaliação
+                    const autoEval = await this.prisma.evaluation.findFirst({
+                        where: {
+                            evaluatorId: collaborator.id,
+                            cycleConfigId: cycle.id,
+                        },
+                        include: { autoEvaluation: true },
+                    });
+                    const autoEvaluationScore = autoEval?.autoEvaluation?.rating ?? null;
+
+                    // Manager
+                    const managerEval = await this.prisma.managerEvaluation.findFirst({
+                        where: {
+                            collaboratorId: collaborator.id,
+                            cycleId: cycle.id,
+                        },
+                        include: { criterias: true },
+                    });
+                    const managerScore = managerEval?.criterias?.length
+                        ? managerEval.criterias.reduce((sum, a) => sum + (a.score ?? 0), 0) /
+                          managerEval.criterias.length
+                        : null;
+
+                    // Equalização
+                    const equalization = await this.prisma.equalization.findFirst({
+                        where: {
+                            collaboratorId: collaborator.id,
+                            cycleId: cycle.id,
+                        },
+                    });
+                    const equalizationScore = equalization?.score ?? null;
+
+                    scores.push({
+                        cycleId: cycle.id,
+                        cycleName: cycle.name,
+                        av360Score,
+                        autoEvaluationScore,
+                        managerScore,
+                        equalizationScore,
+                    });
+                }
+                return {
+                    id: collaborator.id,
+                    name: collaborator.name,
+                    email: collaborator.email,
+                    position: collaborator.position,
+                    track: collaborator.track?.name || null,
+                    scores,
+                };
+            }),
+        );
+        return results;
     }
 
     async getCollaboratorEvaluations(collaboratorId: number) {
@@ -60,7 +118,6 @@ export class CollaboratorsService {
                 },
                 evaluation360: true,
                 mentoring: true,
-                reference: true,
                 cycleConfig: true,
             },
         });
@@ -69,49 +126,28 @@ export class CollaboratorsService {
             throw new NotFoundException('Nenhuma avaliação encontrada para este colaborador');
         }
 
-        return {
-            collaborator: {
-                id: collaboratorId,
-            },
-            selfAssessment: evaluations[0].autoEvaluation
-                ? {
-                      rating:
-                          evaluations[0].autoEvaluation.assignments.reduce(
-                              (sum, a) => sum + a.score,
-                              0,
-                          ) / evaluations[0].autoEvaluation.assignments.length,
-                      pillars: evaluations[0].autoEvaluation.assignments.map((assignment) => ({
-                          id: assignment.criterionId,
-                          score: assignment.score,
-                          justification: assignment.justification,
-                      })),
-                  }
-                : null,
-            evaluation360:
-                evaluations[0].evaluation360 && evaluations[0].evaluation360.length > 0
-                    ? {
-                          rating: evaluations[0].evaluation360[0].score,
-                          strengths: evaluations[0].evaluation360[0].strengths,
-                          improvements: evaluations[0].evaluation360[0].improvements,
-                      }
-                    : null,
-            reference:
-                evaluations[0].reference && evaluations[0].reference.length > 0
-                    ? {
-                          justification: evaluations[0].reference[0].justification,
-                      }
-                    : null,
-            mentoring: evaluations[0].mentoring
-                ? {
-                      rating: evaluations[0].mentoring.score,
-                      pillars: evaluations[0].autoEvaluation?.assignments.map((assignment) => ({
-                          id: assignment.criterionId,
-                          score: assignment.score,
-                          justification: assignment.justification,
-                      })),
-                  }
-                : null,
-        };
+        return evaluations.map((evaluation) => {
+            const autoEvaluationScore =
+                evaluation.autoEvaluation?.assignments &&
+                evaluation.autoEvaluation.assignments.length > 0
+                    ? evaluation.autoEvaluation.assignments.reduce(
+                          (sum, assignment) => sum + assignment.score,
+                          0,
+                      ) / evaluation.autoEvaluation.assignments.length
+                    : 0;
+
+            const evaluation360Score =
+                evaluation.evaluation360?.length > 0
+                    ? evaluation.evaluation360.reduce((sum, eval360) => sum + eval360.score, 0) /
+                      evaluation.evaluation360.length
+                    : 0;
+
+            return {
+                cycleName: evaluation.cycleConfig.name,
+                autoEvaluationScore,
+                evaluation360Score,
+            };
+        });
     }
 
     async getCollaboratorEvaluationHistory(collaboratorId: number) {
@@ -131,43 +167,31 @@ export class CollaboratorsService {
         });
 
         return evaluations.map((evaluation) => {
+            const autoEvaluationScore =
+                evaluation.autoEvaluation?.assignments &&
+                evaluation.autoEvaluation.assignments.length > 0
+                    ? evaluation.autoEvaluation.assignments.reduce(
+                          (sum, assignment) => sum + assignment.score,
+                          0,
+                      ) / evaluation.autoEvaluation.assignments.length
+                    : 0;
+
+            const evaluation360Score =
+                evaluation.evaluation360?.length > 0
+                    ? evaluation.evaluation360.reduce((sum, eval360) => sum + eval360.score, 0) /
+                      evaluation.evaluation360.length
+                    : 0;
+
             return {
                 id: evaluation.id,
                 cycleName: evaluation.cycleConfig.name,
-                selfAssessment: evaluation.autoEvaluation
-                    ? {
-                          rating:
-                              evaluation.autoEvaluation.assignments.reduce(
-                                  (sum, a) => sum + a.score,
-                                  0,
-                              ) / evaluation.autoEvaluation.assignments.length,
-                          pillars: evaluation.autoEvaluation.assignments.map((assignment) => ({
-                              id: assignment.criterionId,
-                              score: assignment.score,
-                              justification: assignment.justification,
-                          })),
-                      }
-                    : null,
-                evaluation360:
-                    evaluation.evaluation360 && evaluation.evaluation360.length > 0
-                        ? {
-                              rating: evaluation.evaluation360[0].score,
-                              strengths: evaluation.evaluation360[0].strengths,
-                              improvements: evaluation.evaluation360[0].improvements,
-                          }
-                        : null,
-                reference:
-                    evaluation.reference && evaluation.reference.length > 0
-                        ? {
-                              justification: evaluation.reference[0].justification,
-                          }
-                        : null,
-                mentoring: evaluation.mentoring
-                    ? {
-                          rating: evaluation.mentoring.score,
-                          justification: evaluation.mentoring.justification,
-                      }
-                    : null,
+                autoEvaluationScore,
+                evaluation360Score,
+                mentoringScore: evaluation.mentoring?.score || 0,
+                // Remover finalEqualizationScore pois evaluation.equalization não existe nesse contexto
+                reference: evaluation.reference?.map((ref) => ({
+                    justification: ref.justification,
+                })),
             };
         });
     }

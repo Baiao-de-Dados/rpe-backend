@@ -20,24 +20,44 @@ export const exampleLeaderEvaluation = {
 };
 
 export const exampleManagerEvaluation = {
-    managerId: 1,
-    collaboratorId: 3,
-    cycleId: 1,
-    trackId: 1,
-    criteria: [
-        { criterionId: 1, score: 4.7 },
-        { criterionId: 2, score: 4.0 },
-    ],
+    cycleConfigId: 1,
+    managerId: 10,
+    colaboradorId: 20,
+    autoavaliacao: {
+        pilares: [
+            {
+                pilarId: 1,
+                criterios: [
+                    { criterioId: 1, nota: 5, justificativa: 'Excelente desempenho em liderança.' },
+                    { criterioId: 2, nota: 4, justificativa: 'Boa comunicação, mas pode melhorar.' },
+                ],
+            },
+            {
+                pilarId: 2,
+                criterios: [
+                    { criterioId: 3, nota: 4, justificativa: 'Bom trabalho em equipe.' },
+                    { criterioId: 4, nota: 3, justificativa: 'Precisa melhorar organização.' },
+                ],
+            },
+        ],
+    },
 };
 
 export const exampleManagerEvaluationFull = {
-    cycleId: 1,
+    cycleConfigId: 1,
     managerId: 10,
-    collaboratorId: 20,
-    criterias: [
-        { criteriaId: 1, score: 5, justification: 'Excelente desempenho em liderança.' },
-        { criteriaId: 2, score: 4, justification: 'Boa comunicação, mas pode melhorar.' },
-    ],
+    colaboradorId: 20,
+    autoavaliacao: {
+        pilares: [
+            {
+                pilarId: 1,
+                criterios: [
+                    { criterioId: 1, nota: 5, justificativa: 'Excelente desempenho em liderança.' },
+                    { criterioId: 2, nota: 4, justificativa: 'Boa comunicação, mas pode melhorar.' },
+                ],
+            },
+        ],
+    },
 };
 
 export const exampleAssignLeader = {

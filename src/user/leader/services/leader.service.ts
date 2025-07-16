@@ -16,8 +16,6 @@ export class LeaderService {
             strengths,
             improvements,
         } = dto;
-
-        //Verificar se existe assignment para esse líder/colaborador/ciclo
         const assignment = await this.prisma.leaderEvaluationAssignment.findFirst({
             where: {
                 cycleId,
@@ -30,8 +28,6 @@ export class LeaderService {
                 'Você não tem permissão para avaliar este colaborador neste ciclo.',
             );
         }
-
-        //Verificar se já existe avaliação
         const existing = await this.prisma.leaderEvaluation.findFirst({
             where: {
                 cycleId,
@@ -41,7 +37,6 @@ export class LeaderService {
         });
 
         if (existing) {
-            // Atualizar avaliação existente
             return this.prisma.leaderEvaluation.update({
                 where: { id: existing.id },
                 data: {
@@ -52,7 +47,6 @@ export class LeaderService {
                 },
             });
         } else {
-            // Criar nova avaliação
             return this.prisma.leaderEvaluation.create({
                 data: {
                     cycleId,
@@ -68,7 +62,6 @@ export class LeaderService {
     }
 
     async getDashboardSummary(leaderId: number) {
-        // Buscar todos os assignments do líder
         const assignments = await this.prisma.leaderEvaluationAssignment.findMany({
             where: { leaderId },
             include: {
@@ -91,18 +84,15 @@ export class LeaderService {
         const collaboratorIds = assignments.map((a) => a.collaboratorId);
         const cycleIds = assignments.map((a) => a.cycleId);
 
-        // Buscar avaliações já feitas pelo líder
         const evaluations = await this.prisma.leaderEvaluation.findMany({
             where: { leaderId },
         });
 
-        // Média das notas dadas pelo líder
         const averageScoreGiven =
             evaluations.length > 0
                 ? evaluations.reduce((sum, e) => sum + (e.score || 0), 0) / evaluations.length
                 : null;
 
-        // Buscar avaliações do gestor para os liderados deste líder
         let averageManagerScoreForMyTeam: number | null = null;
         if (collaboratorIds.length > 0) {
             const managerEvaluations = await this.prisma.managerEvaluation.findMany({
@@ -189,7 +179,6 @@ export class LeaderService {
             },
         });
 
-        // Mapear autoavaliações por colaborador e ciclo
         const autoEvalMap = new Map();
         for (const ev of evaluations) {
             if (ev.autoEvaluation) {
@@ -200,8 +189,6 @@ export class LeaderService {
                 }
             }
         }
-
-        // Mapear avaliações 360 por colaborador e ciclo
         const eval360Map = new Map();
         for (const ev of evaluations) {
             if (ev.evaluation360) {
@@ -213,7 +200,6 @@ export class LeaderService {
             }
         }
 
-        // Buscar avaliações do gestor para os colaboradores
         const managerEvaluations = await this.prisma.managerEvaluation.findMany({
             where: {
                 collaboratorId: { in: collaboratorIds },
@@ -232,7 +218,6 @@ export class LeaderService {
             }
         }
 
-        // Montar resposta
         const result: any[] = [];
         for (const assignment of assignments) {
             const autoEval = autoEvalMap.get(`${assignment.collaboratorId}-${assignment.cycleId}`);
@@ -261,10 +246,17 @@ export class LeaderService {
                 managerEvalScore = sum / managerEval.criterias.length;
             }
 
-            // TODO: Implementar avaliação final (comitê)
+            const leaderEvaluation = await this.prisma.leaderEvaluation.findFirst({
+                where: {
+                    collaboratorId: assignment.collaboratorId,
+                    cycleId: assignment.cycleId,
+                    leaderId: leaderId,
+                },
+            });
+            const leaderEvaluationScore: number | null = leaderEvaluation?.score ?? null;
+
             const finalEvaluationScore: number | null = null;
 
-            // Verificar se todas as avaliações estão concluídas
             const hasAutoEvaluation = autoEvalScore !== null;
             const hasEvaluation360 = eval360Score !== null;
             const hasManagerEvaluation = managerEvalScore !== null;
@@ -285,6 +277,7 @@ export class LeaderService {
                 autoEvaluationScore: autoEvalScore,
                 evaluation360Score: eval360Score,
                 managerEvaluationScore: managerEvalScore,
+                leaderEvaluationScore: leaderEvaluationScore,
                 finalEvaluationScore: finalEvaluationScore,
                 status,
             });
@@ -294,7 +287,6 @@ export class LeaderService {
     }
 
     async getBrutalfacts(leaderId: number) {
-        // Buscar todos os assignments do líder
         const assignments = await this.prisma.leaderEvaluationAssignment.findMany({
             where: { leaderId },
         });
@@ -307,30 +299,24 @@ export class LeaderService {
             };
         }
 
-        // Buscar avaliações já feitas pelo líder
         const evaluations = await this.prisma.leaderEvaluation.findMany({
             where: { leaderId },
         });
 
-        // Total de liderados avaliados
         const totalLideradosAvaliados = evaluations.length;
 
-        // Calcular média geral (por enquanto sem equalização)
         let mediaGeralPosEqualizacao: number | null = null;
         if (evaluations.length > 0) {
             const totalScore = evaluations.reduce((sum, e) => sum + (e.score || 0), 0);
             mediaGeralPosEqualizacao = totalScore / evaluations.length;
         }
 
-        // Calcular melhoria em relação ao ciclo anterior
         let melhoriaCicloAnterior: number | null = null;
         if (evaluations.length >= 2) {
-            // Ordenar avaliações por data de criação (mais recente primeiro)
             const sortedEvaluations = evaluations.sort(
                 (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
             );
 
-            // Pegar o ciclo mais recente e o anterior
             const currentCycle = sortedEvaluations[0].cycleId;
             const previousCycle = sortedEvaluations.find((e) => e.cycleId !== currentCycle);
 
@@ -358,6 +344,52 @@ export class LeaderService {
             mediaGeralPosEqualizacao,
             melhoriaCicloAnterior,
         };
+    }
+
+    async getAverageEqualizationByCycle(leaderId: number) {
+        // Buscar todos os assignments do líder
+        const assignments = await this.prisma.leaderEvaluationAssignment.findMany({
+            where: { leaderId },
+            include: { cycle: true },
+        });
+        // Agrupar assignments por ciclo
+        const assignmentsByCycle = new Map<
+            number,
+            { cycleName: string; collaboratorIds: number[] }
+        >();
+        for (const a of assignments) {
+            if (!assignmentsByCycle.has(a.cycleId)) {
+                assignmentsByCycle.set(a.cycleId, { cycleName: a.cycle.name, collaboratorIds: [] });
+            }
+            assignmentsByCycle.get(a.cycleId)!.collaboratorIds.push(a.collaboratorId);
+        }
+        const result: Array<{
+            cycleId: number;
+            cycleName: string;
+            averageEqualizationScore: number | null;
+        }> = [];
+        for (const [cycleId, { cycleName, collaboratorIds }] of assignmentsByCycle.entries()) {
+            if (collaboratorIds.length === 0) {
+                result.push({ cycleId, cycleName, averageEqualizationScore: null });
+                continue;
+            }
+            // Buscar equalizações dos colaboradores desse ciclo
+            const equalizations = await this.prisma.equalization.findMany({
+                where: {
+                    cycleId,
+                    collaboratorId: { in: collaboratorIds },
+                },
+            });
+            const scores = equalizations
+                .map((eq) => eq.score)
+                .filter((s) => s !== null && s !== undefined);
+            const averageEqualizationScore =
+                scores.length > 0 ? scores.reduce((sum, s) => sum + s, 0) / scores.length : null;
+            result.push({ cycleId, cycleName, averageEqualizationScore });
+        }
+        // Ordenar por ciclo (opcional)
+        result.sort((a, b) => a.cycleId - b.cycleId);
+        return result;
     }
 
     async getEvaluation(cycleId: number, collaboratorId: number, leaderId: number) {

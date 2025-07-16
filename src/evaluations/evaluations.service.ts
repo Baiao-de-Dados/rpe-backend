@@ -28,7 +28,11 @@ export class EvaluationsService {
         private readonly cycleConfigService: CycleConfigService,
     ) {}
 
-    async createEvaluation(createEvaluationDto: CreateEvaluationDto, user: any) {
+    async createEvaluation(
+        createEvaluationDto: CreateEvaluationDto,
+        user: any,
+        skipProjectValidation = false,
+    ) {
         const {
             cycleConfigId,
             colaboradorId,
@@ -47,7 +51,10 @@ export class EvaluationsService {
         const userTrackId = user.trackId ?? user.track?.id;
 
         // VALIDAÇÕES PRÉVIAS - Usando o service de validação
-        await this.validationService.validateEvaluationData(createEvaluationDto);
+        await this.validationService.validateEvaluationData(
+            createEvaluationDto,
+            skipProjectValidation,
+        );
 
         // Buscar o usuário para obter o trackId
         const userDb = await this.prisma.user.findUnique({
