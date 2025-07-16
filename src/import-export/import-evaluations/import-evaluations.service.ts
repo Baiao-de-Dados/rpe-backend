@@ -86,18 +86,20 @@ export class ImportEvaluationsService {
             if (rowNumber === 1) return;
             const values = Array.isArray(row.values) ? row.values : [];
             const [
-                name,
-                email,
-                evaluationType,
-                criterion,
-                note,
-                justification,
-                a360Name,
-                nota360,
-                pontosMelhoria,
-                pontosFortes,
-                referenciaName,
-                justificativaReferencia,
+                name, // 0
+                email, // 1
+                evaluationType, // 2
+                criterion, // 3
+                note, // 4 (autoavaliacao_nota)
+                justification, // 5 (justificativa_autoavaliacao)
+                a360Name, // 6
+                ,
+                ,
+                nota360, // 9 (360_nota)
+                pontosMelhoria, // 10
+                pontosFortes, // 11
+                referenciaName, // 12
+                justificativaReferencia, // 13
             ] = values.slice(1);
 
             const evaluation: any = {
@@ -282,46 +284,46 @@ export class ImportEvaluationsService {
                     tipo === 'pesquisa de referencia' ||
                     tipo === 'pesquisa de referencias'
                 ) {
-                    const nomeBusca = evaluation.avaliadoName || '';
+                    const nomeBusca = evaluation.avaliadoName?.trim() || '';
+                    if (!nomeBusca) {
+                        console.log(
+                            `[DEBUG REFERÊNCIA] Nome do avaliado está vazio para a avaliação de ${evaluation.email}.`
+                        );
+                        continue; // Ignorar se o nome do avaliado estiver vazio
+                    }
+
                     const nomeBuscaNorm = removeDiacritics(nomeBusca.toLowerCase());
                     console.log(
-                        'NOME BUSCADO:',
-                        nomeBuscaNorm,
-                        '| NOMES NO BANCO:',
-                        allUsersDb.map((u) => removeDiacritics(u.name.toLowerCase())),
+                        `[DEBUG REFERÊNCIA] Buscando colaborador com nome: "${nomeBusca}" (normalizado: "${nomeBuscaNorm}")`
                     );
+
                     const colaborador = allUsersDb.find(
                         (u) => removeDiacritics(u.name.toLowerCase()) === nomeBuscaNorm,
                     );
-                    console.log(
-                        '[DEBUG REFERÊNCIA] Referenciando:',
-                        nomeBusca,
-                        '| Normalizado:',
-                        nomeBuscaNorm,
-                        '| Encontrado:',
-                        !!colaborador,
-                    );
+
                     if (!colaborador) {
                         const sugestoes = allUsersDb
                             .filter(
                                 (u) =>
-                                    removeDiacritics(u.name.toLowerCase()).includes(
-                                        nomeBuscaNorm,
-                                    ) ||
+                                    removeDiacritics(u.name.toLowerCase()).includes(nomeBuscaNorm) ||
                                     nomeBuscaNorm.includes(removeDiacritics(u.name.toLowerCase())),
                             )
                             .map((u) => u.name);
+
                         console.log(
-                            'Colaborador de referência não encontrado:',
-                            nomeBusca,
-                            '| Sugestões:',
-                            sugestoes,
+                            `[DEBUG REFERÊNCIA] Colaborador não encontrado para o nome: "${nomeBusca}". Sugestões:`,
+                            sugestoes
                         );
-                        continue;
+                        continue; // Ignorar se o colaborador não for encontrado
                     }
+
+                    console.log(
+                        `[DEBUG REFERÊNCIA] Colaborador encontrado: "${colaborador.name}" para o nome: "${nomeBusca}".`
+                    );
+
                     referencias.push({
                         colaboradorId: colaborador.id,
-                        justificativa: evaluation.justification || '',
+                        justificativa: evaluation.justification?.trim() || '', // Garantir que a justificativa seja salva
                     });
                 }
             }
