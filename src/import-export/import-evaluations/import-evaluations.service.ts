@@ -153,11 +153,6 @@ export class ImportEvaluationsService {
             }),
         );
 
-        const allowedEmails = [
-            'luiza.carvalho@rocketcorp.com',
-            'vitor.gabriel@rocketcorp.com',
-            'yuri.da@rocketcorp.com',
-        ];
         const criteriosDb = await this.prisma.criterion.findMany();
         const criteriosNameToId = Object.fromEntries(
             criteriosDb.map((c) => [removeDiacritics(c.name.toLowerCase().trim()), c.id]),
@@ -175,9 +170,6 @@ export class ImportEvaluationsService {
         const avaliacoesPorUsuario: Record<string, any[]> = {};
         for (const evaluation of evaluations) {
             if (!evaluation.criterion || evaluation.criterion.trim() === '') {
-                continue;
-            }
-            if (!allowedEmails.includes(evaluation.email)) {
                 continue;
             }
             if (!avaliacoesPorUsuario[evaluation.email]) {
