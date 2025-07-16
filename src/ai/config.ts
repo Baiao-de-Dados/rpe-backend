@@ -209,21 +209,33 @@ export const equalizationConfig = {
         Se nenhuma informação útil for encontrada nas avaliações, responda com: {"code": "NO_INSIGHT"}
 
         Se for possível gerar um resumo detalhado com as informações passadas, responda com um JSON exatamente neste formato: {"code":"SUCCESS", "rating": number, "detailedAnalysis": text, "summary": text, "discrepancies": text}
-        • O campo rating é a sua nota sugerida de 1 a 5 para o colaborador, considerando todas as avaliações e justificativas.
-        • O campo detailedAnalysis é um texto detalhado [200-500 caracteres] que analisa o desempenho geral do colaborador explicando Principais convergências e divergências identificadas, Justificativa técnica para a nota sugerida, Considerações sobre discrepâncias relevantes, Como os feedbacks dos colaboradores que trabalharam com ele influenciaram a decisão.
-        • O campo summary é um resumo [50-200 caracteres] que sintetiza detalhadamente o desempenho do colaborador.
-        • O campo discrepancies é um texto [100-300 caracteres] que aponta discrepâncias significativas entre as avaliações que a pessoa recebeu e as que ela mesma fez, explicando o porquê de serem discrepâncias significativas.
+        • O campo rating é a sua nota sugerida de 1 a 5 para o colaborador, considerando todas as avaliações e justificativas. SEMPRE inicie a análise com a nota sugerida.
+        • O campo detailedAnalysis é um texto detalhado [400-800 caracteres] que analisa o desempenho geral do colaborador, incluindo:
+          - Principais pontos fortes identificados nas avaliações
+          - Áreas de melhoria e desenvolvimento
+          - Justificativa técnica para a nota sugerida
+          - Como os feedbacks dos colegas influenciaram a decisão
+          - Análise das convergências e divergências entre avaliadores
+        • O campo summary é um resumo [100-250 caracteres] que sintetiza o desempenho do colaborador de forma clara e objetiva.
+        • O campo discrepancies é um texto [150-400 caracteres] que aponta discrepâncias significativas entre as avaliações que a pessoa recebeu e as que ela mesma fez, explicando o impacto dessas diferenças.
+        • O campo recommendations é um texto [200-500 caracteres] com recomendações específicas e acionáveis para o desenvolvimento do colaborador, incluindo sugestões de melhoria e próximos passos.
 
-        Exemplo de resposta completa (é um exemplo simples, sua resposta precisa ser bem mais detalhada):
-        {"code":"SUCCESS",""rating":4,"detailedAnalysis":"O colaborador demonstrou forte desempenho em gestão e liderança, com notas altas em autoavaliação e feedbacks positivos de colegas. No entanto, houve discrepâncias significativas na autoavaliação, onde ele se avaliou 5 em 'Sentimento de dono', enquanto a média das avaliações 360 foi 3. Isso indica uma percepção distorcida de seu próprio desempenho.","summary":"Colaborador com bom desempenho geral, mas com percepção distorcida de seu próprio 'Sentimento de dono'.","discrepancies":"A discrepância mais significativa foi entre a autoavaliação do colaborador (5) e a média das avaliações 360 (3), indicando uma superestimação de sua performance."}
+        Exemplo de resposta completa:
+        {"code":"SUCCESS","rating":4,"detailedAnalysis":"O colaborador demonstrou excelente desempenho em comunicação e liderança, com notas consistentes entre autoavaliação (4.2) e feedbacks de colegas (4.1). Destaca-se sua capacidade de gestão de projetos e mentoria de novos membros da equipe. As avaliações 360 confirmam sua habilidade de inspirar e coordenar equipes, com destaque para 'Gestão de Conflitos' e 'Desenvolvimento de Talentos'. No entanto, há oportunidades de melhoria em gestão de tempo e priorização de tarefas, conforme apontado por múltiplos avaliadores. A nota 4 reflete seu sólido desempenho geral com potencial para evolução nas áreas identificadas.","summary":"Colaborador com forte liderança e comunicação, excelente em gestão de equipes, com oportunidades de melhoria em organização e priorização.","discrepancies":"Identificou-se discrepância moderada na autoavaliação do critério 'Gestão de Tempo', onde o colaborador se avaliou com nota 4, enquanto colegas e gestor atribuíram média de 2.8. Esta diferença sugere necessidade de maior autoconhecimento sobre suas limitações organizacionais.","recommendations":"Recomenda-se implementar técnicas de gestão de tempo como método Pomodoro e ferramentas de priorização. Estabelecer mentorias focadas em organização pessoal e profissional. Desenvolver habilidades de delegação para otimizar tempo em atividades estratégicas. Considerar treinamento em metodologias ágeis para melhor estruturação de projetos."}
 
         [DIRETRIZES IMPORTANTES]
+        • SEMPRE inicie a análise com a nota sugerida (rating) para dar contexto imediato
         • Seja imparcial e baseie-se apenas nas evidências fornecidas
+        • Use linguagem clara, objetiva e fácil de entender
+        • Forneça recomendações específicas e acionáveis
         • Considere o contexto humano por trás dos números
         • Explique seu raciocínio de forma clara e objetiva
         • Mantenha foco na justiça e equidade do processo
         • Use linguagem profissional, humana e construtiva
         • Não invente informações não fornecidas nos dados
+        • Priorize análises baseadas em evidências concretas
+        • Destaque tanto pontos fortes quanto oportunidades de melhoria
+        • Forneça insights que apoiem o desenvolvimento profissional
     `.trim(),
     temperature: 0.5,
     topP: 0.9,
