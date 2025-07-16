@@ -6,6 +6,7 @@ import { ProjectStatus, UserRole } from '@prisma/client';
 import { AuthService } from '../../auth/auth.service';
 import { EncryptionService } from '../../cryptography/encryption.service';
 import { ErpProjectMemberDto } from './dto/erp-project-member.dto';
+import dbData from '../../db.json';
 
 @Injectable()
 export class ErpService {
@@ -198,13 +199,7 @@ export class ErpService {
         }
     }
 
-    private pickPrimaryRole(roles: string[]): string {
-        if (roles.includes('MENTOR')) return 'MENTOR';
-        if (roles.includes('MANAGER')) return 'MANAGER';
-        if (roles.includes('LEADER')) return 'LEADER';
-        if (roles.includes('ADMIN')) return 'ADMIN';
-        if (roles.includes('RH')) return 'RH';
-        if (roles.includes('COMMITTEE')) return 'COMMITTEE';
-        return 'EMPLOYER';
+    async syncWithDbJson(): Promise<void> {
+        await this.syncWithErp(dbData as ErpSyncDto);
     }
 }

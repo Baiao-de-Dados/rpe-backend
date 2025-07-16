@@ -1,5 +1,4 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
-import { ErpSyncDto } from './dto/erp-sync.dto';
+import { Controller, Get, Post } from '@nestjs/common';
 import { ErpService } from './erp.service';
 import { RequireAdmin } from '../../auth/decorators/roles.decorator';
 import { ApiAuth } from '../decorators/api-auth.decorator';
@@ -19,7 +18,8 @@ export class ErpController {
     }
 
     @Post('synchronize')
-    synchronize(@Body() data: ErpSyncDto) {
-        return this.erpService.syncWithErp(data).then(() => ({ success: true }));
+    async synchronize(): Promise<{ success: true }> {
+        await this.erpService.syncWithDbJson();
+        return { success: true };
     }
 }
