@@ -110,4 +110,9 @@ export class EmployerController {
     async getUserNetwork(@CurrentUser('id') userId: number) {
         return this.service.getUserNetwork(userId);
     }
+
+    @Get('cycles-history')
+    async getCyclesHistory(@CurrentUser('id') userId: number, @Query('cycleId') cycleId?: string) {
+        return this.service.getCollaboratorCyclesHistory(userId, Number(cycleId));
+    }
 }
