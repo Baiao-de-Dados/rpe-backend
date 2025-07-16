@@ -7,6 +7,7 @@ import { AuthService } from '../../auth/auth.service';
 import { EncryptionService } from '../../cryptography/encryption.service';
 import { ErpProjectMemberDto } from './dto/erp-project-member.dto';
 import dbData from '../../db.json';
+import { getBrazilDate } from '../../cycles/utils';
 
 @Injectable()
 export class ErpService {
@@ -16,14 +17,19 @@ export class ErpService {
         private readonly encryptionService: EncryptionService,
     ) {}
 
-    async buildErpJson(): Promise<{ projects: ErpProjectDto[] }> {
+    async buildErpJson(): Promise<{ projects: ErpProjectDto[]; lastSyncDate: string }> {
         const projects = await this.prisma.project.findMany({
             include: {
-                manager: true,
-                leaderAssignments: { include: { leader: true } },
-                members: { include: { user: true } },
+                manager: { include: { track: true } },
+                leaderAssignments: { include: { leader: { include: { track: true } } } },
+                members: { include: { user: { include: { track: true } } } },
             },
         });
+
+        const lastDate = await this.prisma.dateModel.findFirst({
+            orderBy: { date: 'desc' },
+        });
+        const lastSyncDate = lastDate ? lastDate.date.toISOString() : '';
 
         const erpProjects: ErpProjectDto[] = projects.map((p) => {
             const projectMembers: ErpProjectMemberDto[] = [];
@@ -31,6 +37,8 @@ export class ErpService {
             if (p.manager) {
                 projectMembers.push({
                     email: this.encryptionService.safeDecrypt(p.manager.email),
+                    name: p.manager.name,
+                    track: p.manager.track?.name ?? null,
                     position: p.manager.position,
                     role: 'MANAGER',
                     startDate: new Date().toISOString(),
@@ -41,6 +49,8 @@ export class ErpService {
             for (const la of p.leaderAssignments) {
                 projectMembers.push({
                     email: this.encryptionService.safeDecrypt(la.leader.email),
+                    name: la.leader.name,
+                    track: la.leader.track?.name ?? null,
                     position: la.leader.position,
                     role: 'LEADER',
                     startDate: new Date().toISOString(),
@@ -51,6 +61,8 @@ export class ErpService {
             for (const pm of p.members) {
                 projectMembers.push({
                     email: this.encryptionService.safeDecrypt(pm.user.email),
+                    name: pm.user.name,
+                    track: pm.user.track?.name ?? null,
                     position: pm.user.position,
                     role: 'EMPLOYER',
                     startDate: pm.startDate.toISOString(),
@@ -63,7 +75,7 @@ export class ErpService {
                 projectMembers,
             };
         });
-        return { projects: erpProjects };
+        return { projects: erpProjects, lastSyncDate };
     }
 
     async syncWithErp(dto: ErpSyncDto): Promise<void> {
@@ -201,5 +213,8 @@ export class ErpService {
 
     async syncWithDbJson(): Promise<void> {
         await this.syncWithErp(dbData as ErpSyncDto);
+        await this.prisma.dateModel.create({
+            data: { date: getBrazilDate() },
+        });
     }
 }
