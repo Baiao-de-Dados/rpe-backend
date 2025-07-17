@@ -380,6 +380,66 @@ export class RhPanelService {
         };
     }
 
+    async getDashboardSimpleEmployers(): Promise<{
+        completionPercentage: number;
+        pendingEvaluations: number;
+    }> {
+        // Buscar ciclo ativo
+        const cycleConfig = (
+            await this.prisma.cycleConfig.findMany({
+                select: { id: true, name: true, startDate: true, endDate: true, done: true },
+            })
+        ).find(
+            (cycle) =>
+                !cycle.done &&
+                cycle.startDate !== null &&
+                cycle.endDate !== null &&
+                new Date(getBrazilDate()) >= cycle.startDate &&
+                new Date(getBrazilDate()) <= cycle.endDate,
+        );
+        if (!cycleConfig) {
+            return { completionPercentage: 0, pendingEvaluations: 0 };
+        }
+
+        // Buscar todos os usuários com role EMPLOYER ativa
+        const allEmployers = await this.prisma.user.findMany({
+            include: {
+                userRoles: {
+                    where: { isActive: true },
+                    select: { role: true },
+                },
+            },
+        });
+        const employers = allEmployers.filter((user) =>
+            user.userRoles.some((ur) => ur.role === 'EMPLOYER'),
+        );
+        const totalEmployers = employers.length;
+        const employerIds = employers.map((e) => e.id);
+
+        // Buscar todas as avaliações do ciclo atual para os EMPLOYERS
+        const evaluations = await this.prisma.evaluation.findMany({
+            where: {
+                evaluatorId: { in: employerIds },
+                cycleConfigId: cycleConfig.id,
+            },
+            include: {
+                autoEvaluation: true,
+                evaluation360: true,
+                mentoring: true,
+                reference: true,
+            },
+        });
+        // Considera completa se pelo menos um dos relacionamentos existe
+        const completedEvaluations = evaluations.filter((ev) => ev.autoEvaluation).length;
+        const pendingEvaluations = totalEmployers - completedEvaluations;
+        const completionPercentage =
+            totalEmployers > 0 ? Math.round((completedEvaluations / totalEmployers) * 100) : 0;
+        return {
+            completionPercentage,
+            pendingEvaluations,
+        };
+    }
+
     private getCycleEndDate(cycle: string): string {
         try {
             const [year, month] = cycle.split('-');
