@@ -129,13 +129,17 @@ pnpm install
 cp .env.example .env
 ```
 
-Edite o arquivo `.env` com suas configurações ou olhe o `env.example`:
+Edite o arquivo `.env` com suas configurações:
 ```env
 # Database
 DATABASE_URL="postgresql://username:password@localhost:5432/rpe_dev"
 
 # JWT
 JWT_SECRET="your-super-secret-jwt-key"
+
+# CRYPTOGRAPHY
+ENCRYPTION_KEY="your_32_bytes_encryption_key_;)"
+ENCRYPTION_PEPPER="your_16_bytes_encryption_pepper_"
 
 # AI Integration
 GOOGLE_AI_API_KEY="your-google-ai-api-key"
