@@ -6,14 +6,13 @@ import {
     isValidNoIdentificationResponse,
     cleanGeminiResponseText,
 } from './utils';
-import { notesConfig, equalizationConfig } from './config';
+import { notesConfig, equalizationConfig, leaderConfig } from './config';
 import { GeminiNotesResponseDto } from './dto/response/gemini-notes-response.dto';
 import { NotesService } from '../notes/notes.service';
 import { GeminiCollaboratorResponseDto } from './dto/response/gemini-collaborator-response.dto';
 import { GeminiEqualizationResponseDto } from './dto/response/gemini-equalization-response.dto';
 import { GeminiLeaderResponseDto } from './dto/response/gemini-leader-response.dto';
 import { PrismaService } from '../prisma/prisma.service';
-
 @Injectable()
 export class AiService {
     constructor(
@@ -298,7 +297,6 @@ export class AiService {
     }
 
     private async generateLeaderData(userId: number, cycleId: number): Promise<string> {
-        // Busca as autoavaliações dos colaboradores liderados
         const autoEvaluations = await this.prisma.autoEvaluation.findMany({
             where: {
                 evaluation: {
@@ -522,14 +520,14 @@ export class AiService {
         cycleId: number,
     ): Promise<GeminiEqualizationResponseDto> {
         const prompt = await this.generateEqualizationData(userId, cycleId);
-        
+
         // Debug: log do prompt para verificar os dados
         console.log('=== DEBUG: Dados enviados para IA ===');
         console.log('userId:', userId);
         console.log('cycleId:', cycleId);
         console.log('prompt length:', prompt.length);
         console.log('prompt preview:', prompt.substring(0, 500) + '...');
-        
+
         try {
             const response = await ai.models.generateContent({
                 model: 'gemini-2.5-flash',
@@ -537,11 +535,11 @@ export class AiService {
                 config: { systemInstruction: equalizationConfig.systemInstruction },
             });
             const resposta = cleanGeminiResponseText(response.text ?? '');
-            
+
             // Debug: log da resposta da IA
             console.log('=== DEBUG: Resposta da IA ===');
             console.log('resposta:', resposta);
-            
+
             if (!resposta) {
                 return { code: 'ERROR', error: 'A resposta gerada está vazia ou inválida.' };
             }
@@ -574,12 +572,27 @@ export class AiService {
     }
 
     async gerarResumoLeader(userId: number, cycleId: number): Promise<GeminiLeaderResponseDto> {
+        const existing = await this.prisma.leaderCycleSummary.findUnique({
+            where: {
+                cycleId_leaderId: {
+                    cycleId,
+                    leaderId: userId,
+                },
+            },
+        });
+        if (existing) {
+            return {
+                code: 'SUCCESS',
+                summary: existing.summary,
+            };
+        }
+
         const prompt = await this.generateLeaderData(userId, cycleId);
         try {
             const response = await ai.models.generateContent({
                 model: 'gemini-2.5-flash',
                 contents: prompt,
-                config: { systemInstruction: notesConfig.systemInstruction },
+                config: { systemInstruction: leaderConfig.systemInstruction },
             });
             const resposta = cleanGeminiResponseText(response.text ?? '');
             if (!resposta) {
@@ -595,40 +608,13 @@ export class AiService {
                 return { code: 'NO_INSIGHT' };
             }
             if (obj.code === 'SUCCESS') {
-                // Salvar a avaliação no banco de dados
-                const leaderEvaluations = obj.evaluations || [];
-                for (const evaluation of leaderEvaluations) {
-                    await this.prisma.leaderEvaluation.upsert({
-                        where: {
-                            leaderId_collaboratorId_cycleId: {
-                                leaderId: userId,
-                                collaboratorId: evaluation.collaboratorId,
-                                cycleId: cycleId,
-                            },
-                        },
-                        update: {
-                            justification: evaluation.justification,
-                            score: evaluation.score,
-                            strengths: evaluation.strengths,
-                            improvements: evaluation.improvements,
-                            aiGenerated: true, // Indica que a avaliação foi gerada por IA
-                            aiSummary: obj.summary, // Salva o resumo gerado pela IA
-                            updatedAt: new Date(),
-                        },
-                        create: {
-                            leaderId: userId,
-                            collaboratorId: evaluation.collaboratorId,
-                            cycleId: cycleId,
-                            justification: evaluation.justification,
-                            score: evaluation.score,
-                            strengths: evaluation.strengths,
-                            improvements: evaluation.improvements,
-                            aiGenerated: true, // Indica que a avaliação foi gerada por IA
-                            aiSummary: obj.summary, // Salva o resumo gerado pela IA
-                        },
-                    });
-                }
-
+                await this.prisma.leaderCycleSummary.create({
+                    data: {
+                        cycleId,
+                        leaderId: userId,
+                        summary: obj.summary,
+                    },
+                });
                 return {
                     code: 'SUCCESS',
                     summary: obj.summary,

@@ -42,6 +42,7 @@ model User {
   equalizations                     Equalization[]               @relation("UserToEqualization")
   committeeEqualizations            Equalization[]               @relation("CommitteeEqualizations")
   committeeEqualizationHistory      EqualizationHistory[]        @relation("CommitteeEqualizationHistory")
+  cycleSummaries                    LeaderCycleSummary[]
 }
 
 model UserRoleLink {
@@ -95,6 +96,7 @@ model CycleConfig {
   managerEvaluations          ManagerEvaluation[]
   leaderEvaluations           LeaderEvaluation[]
   equalizations               Equalization[]
+  leaderCycleSummaries        LeaderCycleSummary[]
 
   @@unique([name])
 }
@@ -218,7 +220,6 @@ model Reference {
   @@unique([evaluationId, collaboratorId])
 }
 
-// avaliacao de leader
 model LeaderEvaluation {
   id             Int      @id @default(autoincrement())
   leaderId       Int
@@ -228,8 +229,6 @@ model LeaderEvaluation {
   score          Float
   strengths      String?
   improvements   String?
-  aiGenerated    Boolean  @default(false) // Indica se a avaliação foi gerada por IA
-  aiSummary      String? // Resumo gerado pela IA
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -411,4 +410,18 @@ enum ProjectStatus {
 model DateModel {
   id   Int      @id @default(autoincrement())
   date DateTime
+}
+
+model LeaderCycleSummary {
+  id        Int      @id @default(autoincrement())
+  cycleId   Int
+  leaderId  Int
+  summary   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cycle     CycleConfig @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  leader    User        @relation(fields: [leaderId], references: [id], onDelete: Cascade)
+
+  @@unique([cycleId, leaderId])
 }
