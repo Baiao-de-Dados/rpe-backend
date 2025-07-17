@@ -23,6 +23,12 @@ export class RhPanelController {
     }
 
     @RequireRH()
+    @Get('dashboard-simple')
+    async getDashboardSimpleEmployers() {
+        return this.rhPanelService.getDashboardSimpleEmployers();
+    }
+
+    @RequireRH()
     @Get('collaborators/status')
     @ApiGet('status')
     getCollaboratorsStatus(): Promise<CollaboratorsStatusDto> {
