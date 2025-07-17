@@ -3,7 +3,7 @@ import { UserController } from './user.controller';
 import { UserService } from './user.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { CryptoModule } from 'src/cryptography/crypto.module';
-import { EncryptionInterceptor } from 'src/common/interceptors/encryption.interceptor';
+import { EncryptionInterceptor } from 'src/cryptography/interceptor/encryption.interceptor';
 import { RhModule } from './rh/rh.module';
 import { EmployerModule } from './employer/employer.module';
 import { MulterModule } from '@nestjs/platform-express';

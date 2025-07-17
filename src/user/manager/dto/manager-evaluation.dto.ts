@@ -1,4 +1,4 @@
-import { IsNumber, IsArray, ValidateNested, IsDefined } from 'class-validator';
+import { IsNumber, ValidateNested, IsDefined } from 'class-validator';
 import { Type } from 'class-transformer';
 import { AutoAvaliacaoDto } from '../../../evaluations/autoevaluations/dto/autoavaliacao.dto';
 
