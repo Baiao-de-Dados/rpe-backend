@@ -29,4 +29,4 @@ export class SaveEqualizationDto {
     @ValidateNested()
     @Type(() => EqualizationDto)
     equalization: EqualizationDto;
-} 
+}
