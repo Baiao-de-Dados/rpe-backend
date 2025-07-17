@@ -1,4 +1,4 @@
-import { Controller, Get, Param, ParseIntPipe, Post, Body, Query } from '@nestjs/common';
+import { Controller, Get, Param, ParseIntPipe, Post, Body, Query, NotFoundException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { OnlyCommittee } from 'src/auth/decorators/roles.decorator';
 import { ApiAuth } from 'src/common/decorators/api-auth.decorator';
@@ -6,13 +6,17 @@ import { CommitteeService } from './committee.service';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { SaveEqualizationDto } from './dto/save-equalization.dto';
 import { CommitteeDashboardMetrics, CommitteeCollaboratorsSummary, CommitteeCollaboratorDetails } from './swagger/committee.swagger';
+import { CycleConfigService } from 'src/cycles/cycle-config.service';
 
 @ApiTags('Comitê')
 @ApiAuth()
-@OnlyCommittee()
+
 @Controller('committee')
 export class CommitteeController {
-    constructor(private readonly committeeService: CommitteeService) {}
+    constructor(
+        private readonly committeeService: CommitteeService,
+        private readonly cycleConfigService: CycleConfigService,
+    ) {}
 
     @Get('dashboard/metrics')
     @ApiOperation({
@@ -24,6 +28,7 @@ export class CommitteeController {
         description: 'Métricas do dashboard',
         type: CommitteeDashboardMetrics,
     })
+    @OnlyCommittee()
     async getDashboardMetrics(@CurrentUser('id') committeeId: number) {
         return this.committeeService.getDashboardMetrics(committeeId);
     }
@@ -47,6 +52,7 @@ export class CommitteeController {
         summary: 'Buscar detalhes completos da avaliação de um colaborador',
         description: 'Retorna todos os dados de avaliação de um colaborador específico',
     })
+    
     @ApiResponse({
         status: 200,
         description: 'Detalhes da avaliação do colaborador',
@@ -94,6 +100,7 @@ export class CommitteeController {
         status: 404,
         description: 'Equalização não encontrada',
     })
+    @OnlyCommittee()
     async getEqualization(
         @Param('collaboratorId', ParseIntPipe) collaboratorId: number,
         @CurrentUser('id') committeeId: number,
@@ -131,6 +138,7 @@ export class CommitteeController {
             ]
         }
     })
+    @OnlyCommittee()
     async getEqualizationHistory(
         @Param('collaboratorId', ParseIntPipe) collaboratorId: number,
         @CurrentUser('id') committeeId: number,
@@ -187,6 +195,7 @@ export class CommitteeController {
             }
         }
     })
+    @OnlyCommittee()
     async saveEqualization(
         @Body() dto: SaveEqualizationDto,
         @CurrentUser('id') committeeId: number,
@@ -226,6 +235,7 @@ export class CommitteeController {
         status: 404,
         description: 'Colaborador ou ciclo não encontrado',
     })
+    @OnlyCommittee()
     async generateAiSummary(
         @Param('collaboratorId', ParseIntPipe) collaboratorId: number,
         @CurrentUser('id') committeeId: number,
@@ -265,11 +275,52 @@ export class CommitteeController {
         status: 404,
         description: 'Resumo da IA não encontrado',
     })
+    @OnlyCommittee()
     async getAiSummary(
         @Param('collaboratorId', ParseIntPipe) collaboratorId: number,
         @CurrentUser('id') committeeId: number,
         @Query('cycleConfigId', ParseIntPipe) cycleConfigId: number,
     ) {
         return this.committeeService.getAiSummary(committeeId, collaboratorId, cycleConfigId);
+    }
+
+    @Post('finish-equalization')
+    @ApiOperation({
+        summary: 'Finalizar equalização do ciclo',
+        description: 'Seta o status do ciclo atual como "done", finalizando o processo de equalização,',
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Ciclo finalizado com sucesso',
+        schema: {
+            example: {
+                id: 1,
+                name: '2025.1',
+                description: 'Ciclo de avaliação 2025.1',
+                startDate: 2025011,
+                endDate: 2025060,
+                done: true,
+                isActive: false,
+                createdAt: 2025011,
+                updatedAt: 2025011,
+                criteriaPillars: []
+            }
+        }
+    })
+    @ApiResponse({
+        status: 404,
+        description: 'Ciclo ativo não encontrado',
+    })
+    @OnlyCommittee()
+    async finishEqualization(@CurrentUser('id') committeeId: number) {
+        // Buscar ciclo ativo
+        const activeCycle = await this.committeeService.getActiveCycle();
+        
+        if (!activeCycle) {
+            throw new NotFoundException('Nenhum ciclo ativo encontrado');
+        }
+
+        // Finalizar o ciclo
+        return this.cycleConfigService.finalizeCycle(activeCycle.id);
     }
 } 

@@ -708,4 +708,17 @@ export class CommitteeService {
             generatedAt: equalization.updatedAt,
         };
     }
+
+    async getActiveCycle() {
+        // Buscar ciclo ativo
+        const activeCycle = await this.prisma.cycleConfig.findFirst({
+            where: {
+                done: false,
+                startDate: { lte: new Date(getBrazilDate()) },
+                endDate: { gte: new Date(getBrazilDate()) },
+            },
+        });
+
+        return activeCycle;
+    }
 } 
