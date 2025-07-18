@@ -606,14 +606,28 @@ export class SeedService {
 
             // --- AUTOAVALIAÇÃO ---
             for (const evaluation of [evaluationJoao, evaluationMaria]) {
+                // Opções variadas para autoavaliação
+                const autoScores = [4.5, 4.0, 3.5, 5.0, 3.0];
+                // Seleciona score e justification baseados no ciclo
+                const autoScore = autoScores[(ciclo.id - 1) % autoScores.length];
+
                 // Criar AutoEvaluation
                 await this.prisma.autoEvaluation.upsert({
                     where: { evaluationId: evaluation.id },
-                    update: { rating: 4.5 },
-                    create: { evaluationId: evaluation.id, rating: 4.5 },
+                    update: { rating: autoScore },
+                    create: { evaluationId: evaluation.id, rating: autoScore },
                 });
-                // Criar AutoEvaluationAssignment para todos os critérios
+                // Opções variadas para assignment
+                const assignmentScores = [4.5, 4.0, 3.5, 5.0, 3.0];
+                const assignmentJustifications = [
+                    'Fui consistente nesse critério.',
+                    'Preciso evoluir mais nesse aspecto.',
+                    'Tive boa performance, mas há pontos a melhorar.',
+                    'Me destaquei nesse critério durante o ciclo.',
+                    'Enfrentei dificuldades, mas busquei superar.',
+                ];
                 for (const criterio of criterios) {
+                    const idx = (ciclo.id + criterio.id) % assignmentScores.length;
                     await this.prisma.autoEvaluationAssignment.upsert({
                         where: {
                             evaluationId_criterionId: {
@@ -621,18 +635,38 @@ export class SeedService {
                                 criterionId: criterio.id,
                             },
                         },
-                        update: { score: 4.5, justification: 'Mandei muito bem nesse critério' },
+                        update: {
+                            score: assignmentScores[idx],
+                            justification: assignmentJustifications[idx],
+                        },
                         create: {
                             evaluationId: evaluation.id,
                             criterionId: criterio.id,
-                            score: 4.5,
-                            justification: 'Mandei muito bem nesse critério',
+                            score: assignmentScores[idx],
+                            justification: assignmentJustifications[idx],
                         },
                     });
                 }
             }
 
             // --- AVALIAÇÃO 360 (um avaliando o outro) ---
+            // Opções variadas para avaliação 360
+            const av360Scores = [4.2, 4.5, 4.0, 3.8, 4.7];
+            const av360Strengths = [
+                'Boa comunicação',
+                'Ótima lógica e raciocínio',
+                'Colaboração exemplar',
+                'Grande capacidade de adaptação',
+                'Referência em boas práticas',
+            ];
+            const av360Improvements = [
+                'Aprimorar testes',
+                'Melhorar documentação',
+                'Desenvolver mais autonomia',
+                'Aprimorar gestão do tempo',
+                'Buscar mais feedbacks',
+            ];
+            const av360Idx = (ciclo.id - 1) % av360Scores.length;
             // João avalia Maria
             await this.prisma.evaluation360.upsert({
                 where: {
@@ -642,19 +676,19 @@ export class SeedService {
                     },
                 },
                 update: {
-                    score: 4.2,
-                    strengths: 'Boa comunicação',
-                    improvements: 'Aprimorar testes',
+                    score: av360Scores[av360Idx],
+                    strengths: av360Strengths[av360Idx],
+                    improvements: av360Improvements[av360Idx],
                 },
                 create: {
                     evaluationId: evaluationJoao.id,
                     evaluatedId: maria.id,
-                    score: 4.2,
-                    strengths: 'Boa comunicação',
-                    improvements: 'Aprimorar testes',
+                    score: av360Scores[av360Idx],
+                    strengths: av360Strengths[av360Idx],
+                    improvements: av360Improvements[av360Idx],
                 },
             });
-            // Maria avalia João
+            // Maria avalia João (mesmos valores do ciclo)
             await this.prisma.evaluation360.upsert({
                 where: {
                     evaluationId_evaluatedId: {
@@ -663,38 +697,67 @@ export class SeedService {
                     },
                 },
                 update: {
-                    score: 4.3,
-                    strengths: 'Ótima lógica',
-                    improvements: 'Melhorar documentação',
+                    score: av360Scores[av360Idx],
+                    strengths: av360Strengths[av360Idx],
+                    improvements: av360Improvements[av360Idx],
                 },
                 create: {
                     evaluationId: evaluationMaria.id,
                     evaluatedId: joao.id,
-                    score: 4.3,
-                    strengths: 'Ótima lógica',
-                    improvements: 'Melhorar documentação',
+                    score: av360Scores[av360Idx],
+                    strengths: av360Strengths[av360Idx],
+                    improvements: av360Improvements[av360Idx],
                 },
             });
 
             // --- MENTORING (avaliando o mentor deles) ---
-            for (const evaluation of [evaluationJoao, evaluationMaria]) {
+            // Diversificar justificativas de mentoring
+            const mentoringFeedbacks = [
+                { justification: 'Mentoria positiva', score: 4.7 },
+                { justification: 'Acompanhamento próximo e construtivo', score: 4.5 },
+                { justification: 'Sempre disponível para ajudar e orientar', score: 4.9 },
+                { justification: 'Contribuiu muito para meu desenvolvimento', score: 5.0 },
+                { justification: 'Mentor(a) engajado(a) e inspirador(a)', score: 4.8 },
+                { justification: 'Feedbacks claros e apoio constante', score: 4.6 },
+                { justification: 'Excelente comunicação e suporte', score: 4.3 },
+                { justification: 'Poderia ser mais presente nas reuniões', score: 3.5 },
+                {
+                    justification: 'Faltou acompanhamento em alguns momentos importantes',
+                    score: 3.2,
+                },
+                { justification: 'Mentoria deixou a desejar em alguns aspectos', score: 2.0 },
+            ];
+            for (const [idx, evaluation] of [evaluationJoao, evaluationMaria].entries()) {
+                // Escolhe um feedback diferente para cada ciclo/usuário
+                const feedback = mentoringFeedbacks[(ciclo.id + idx) % mentoringFeedbacks.length];
                 await this.prisma.mentoring.upsert({
                     where: { evaluationId: evaluation.id },
                     update: {
                         mentorId: mentorReal.id,
-                        justification: 'Mentoria positiva',
-                        score: 4.7,
+                        justification: feedback.justification,
+                        score: feedback.score,
                     },
                     create: {
                         evaluationId: evaluation.id,
                         mentorId: mentorReal.id,
-                        justification: 'Mentoria positiva',
-                        score: 4.7,
+                        justification: feedback.justification,
+                        score: feedback.score,
                     },
                 });
             }
 
             // --- REFERÊNCIAS (um referencia o outro) ---
+            // Justificativas diferentes por ciclo, mas iguais para João e Maria
+            const referenciasJustificativas = [
+                'Referência técnica no time, sempre compartilhando conhecimento.',
+                'Exemplo de postura e valores, referência cultural para todos.',
+                'Demonstra excelência técnica e inspira confiança nos colegas.',
+                'Promove ambiente colaborativo e boas práticas no time.',
+                'Comprometimento e influência positiva no grupo.',
+            ];
+            const justificativaReferencia =
+                referenciasJustificativas[(ciclo.id - 1) % referenciasJustificativas.length];
+
             // João referencia Maria
             await this.prisma.reference.upsert({
                 where: {
@@ -703,11 +766,13 @@ export class SeedService {
                         collaboratorId: maria.id,
                     },
                 },
-                update: { justification: 'Ótima parceira de equipe' },
+                update: {
+                    justification: justificativaReferencia,
+                },
                 create: {
                     evaluationId: evaluationJoao.id,
                     collaboratorId: maria.id,
-                    justification: 'Ótima parceira de equipe',
+                    justification: justificativaReferencia,
                 },
             });
             // Maria referencia João
@@ -718,11 +783,13 @@ export class SeedService {
                         collaboratorId: joao.id,
                     },
                 },
-                update: { justification: 'Sempre disposto a ajudar' },
+                update: {
+                    justification: justificativaReferencia,
+                },
                 create: {
                     evaluationId: evaluationMaria.id,
                     collaboratorId: joao.id,
-                    justification: 'Sempre disposto a ajudar',
+                    justification: justificativaReferencia,
                 },
             });
 
@@ -735,14 +802,23 @@ export class SeedService {
                         collaboratorId: user.id,
                     },
                 });
+                // Opções variadas para avaliação do gestor
+                const managerScores = [5, 4.5, 4, 3.5, 3];
+                const managerJustifications = [
+                    'Excelente desempenho neste critério.',
+                    'Atendeu bem às expectativas.',
+                    'Pode evoluir mais neste aspecto.',
+                    'Teve dificuldades, mas buscou melhorar.',
+                    'Superou desafios e entregou bons resultados.',
+                ];
                 for (const criterio of criterios) {
+                    const idx = (ciclo.id + criterio.id) % managerScores.length;
                     await this.prisma.managerEvaluationCriteria.create({
                         data: {
                             managerEvaluationId: managerEval.id,
                             criteriaId: criterio.id,
-                            score: 5,
-                            justification:
-                                'Concordo com tudo que foi preenchido, mandaram muito bem',
+                            score: managerScores[idx],
+                            justification: managerJustifications[idx],
                         },
                     });
                 }
@@ -750,13 +826,23 @@ export class SeedService {
 
             // --- NOTA DO COMITÊ DE EQUALIZAÇÃO ---
             for (const user of [joao, maria]) {
+                // Opções variadas para equalização
+                const equalizationScores = [4.8, 4.5, 4.2, 4.0, 3.7];
+                const equalizationJustifications = [
+                    'Destaque técnico e postura exemplar.',
+                    'Contribuição relevante para o time.',
+                    'Atuação consistente e colaborativa.',
+                    'Evolução notável durante o ciclo.',
+                    'Participação positiva e engajamento.',
+                ];
+                const eqIdx = (ciclo.id - 1) % equalizationScores.length;
                 await this.prisma.equalization.create({
                     data: {
                         collaboratorId: user.id,
                         cycleId: ciclo.id,
                         committeeId: comite.id,
-                        justification: 'Muito competente e dedicado, excelente profissional',
-                        score: 4.8,
+                        justification: equalizationJustifications[eqIdx],
+                        score: equalizationScores[eqIdx],
                     },
                 });
             }
