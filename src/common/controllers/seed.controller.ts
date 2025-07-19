@@ -11,4 +11,10 @@ export class SeedController {
     async runSeed() {
         return this.seedService.runSeed();
     }
+
+    @Public()
+    @Post('evaluations-2025-2')
+    async runEvaluationsSeed() {
+        return this.seedService.runEvaluationsSeed();
+    }
 }

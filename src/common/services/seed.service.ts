@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EncryptionService } from '../../cryptography/encryption.service';
 import * as bcrypt from 'bcrypt';
+import { UserRole } from '@prisma/client';
 
 @Injectable()
 export class SeedService {
@@ -565,7 +566,20 @@ export class SeedService {
         // Buscar todos os critérios
         const criterios = await this.prisma.criterion.findMany();
 
-        for (const ciclo of ciclos) {
+        // Perfis de score variados para os ciclos
+        const cicloScores = [4.8, 0.7, 3.5, 4.2, 3.0]; // alta, extremamente baixa, média, alta, média-baixa
+        const cicloJustificativas = [
+            'Excelente desempenho.',
+            'Precisa melhorar bastante.',
+            'Desempenho regular, pode evoluir.',
+            'Bom desempenho, acima da média.',
+            'Desempenho abaixo do esperado.',
+        ];
+
+        for (let i = 0; i < ciclos.length; i++) {
+            const ciclo = ciclos[i];
+            const score = cicloScores[i % cicloScores.length];
+            const justification = cicloJustificativas[i % cicloJustificativas.length];
             // --- EVALUATION ÚNICO POR USUÁRIO/CICLO ---
             // João
             let evaluationJoao = await this.prisma.evaluation.findUnique({
@@ -606,28 +620,13 @@ export class SeedService {
 
             // --- AUTOAVALIAÇÃO ---
             for (const evaluation of [evaluationJoao, evaluationMaria]) {
-                // Opções variadas para autoavaliação
-                const autoScores = [4.5, 4.0, 3.5, 5.0, 3.0];
-                // Seleciona score e justification baseados no ciclo
-                const autoScore = autoScores[(ciclo.id - 1) % autoScores.length];
-
-                // Criar AutoEvaluation
+                // Score e justification variando por ciclo
                 await this.prisma.autoEvaluation.upsert({
                     where: { evaluationId: evaluation.id },
-                    update: { rating: autoScore },
-                    create: { evaluationId: evaluation.id, rating: autoScore },
+                    update: { rating: score },
+                    create: { evaluationId: evaluation.id, rating: score },
                 });
-                // Opções variadas para assignment
-                const assignmentScores = [4.5, 4.0, 3.5, 5.0, 3.0];
-                const assignmentJustifications = [
-                    'Fui consistente nesse critério.',
-                    'Preciso evoluir mais nesse aspecto.',
-                    'Tive boa performance, mas há pontos a melhorar.',
-                    'Me destaquei nesse critério durante o ciclo.',
-                    'Enfrentei dificuldades, mas busquei superar.',
-                ];
                 for (const criterio of criterios) {
-                    const idx = (ciclo.id + criterio.id) % assignmentScores.length;
                     await this.prisma.autoEvaluationAssignment.upsert({
                         where: {
                             evaluationId_criterionId: {
@@ -636,38 +635,20 @@ export class SeedService {
                             },
                         },
                         update: {
-                            score: assignmentScores[idx],
-                            justification: assignmentJustifications[idx],
+                            score: score,
+                            justification: justification,
                         },
                         create: {
                             evaluationId: evaluation.id,
                             criterionId: criterio.id,
-                            score: assignmentScores[idx],
-                            justification: assignmentJustifications[idx],
+                            score: score,
+                            justification: justification,
                         },
                     });
                 }
             }
 
             // --- AVALIAÇÃO 360 (um avaliando o outro) ---
-            // Opções variadas para avaliação 360
-            const av360Scores = [4.2, 4.5, 4.0, 3.8, 4.7];
-            const av360Strengths = [
-                'Boa comunicação',
-                'Ótima lógica e raciocínio',
-                'Colaboração exemplar',
-                'Grande capacidade de adaptação',
-                'Referência em boas práticas',
-            ];
-            const av360Improvements = [
-                'Aprimorar testes',
-                'Melhorar documentação',
-                'Desenvolver mais autonomia',
-                'Aprimorar gestão do tempo',
-                'Buscar mais feedbacks',
-            ];
-            const av360Idx = (ciclo.id - 1) % av360Scores.length;
-            // João avalia Maria
             await this.prisma.evaluation360.upsert({
                 where: {
                     evaluationId_evaluatedId: {
@@ -676,19 +657,18 @@ export class SeedService {
                     },
                 },
                 update: {
-                    score: av360Scores[av360Idx],
-                    strengths: av360Strengths[av360Idx],
-                    improvements: av360Improvements[av360Idx],
+                    score: score,
+                    strengths: justification,
+                    improvements: 'Buscar mais feedbacks.',
                 },
                 create: {
                     evaluationId: evaluationJoao.id,
                     evaluatedId: maria.id,
-                    score: av360Scores[av360Idx],
-                    strengths: av360Strengths[av360Idx],
-                    improvements: av360Improvements[av360Idx],
+                    score: score,
+                    strengths: justification,
+                    improvements: 'Buscar mais feedbacks.',
                 },
             });
-            // Maria avalia João (mesmos valores do ciclo)
             await this.prisma.evaluation360.upsert({
                 where: {
                     evaluationId_evaluatedId: {
@@ -697,68 +677,50 @@ export class SeedService {
                     },
                 },
                 update: {
-                    score: av360Scores[av360Idx],
-                    strengths: av360Strengths[av360Idx],
-                    improvements: av360Improvements[av360Idx],
+                    score: score,
+                    strengths: justification,
+                    improvements: 'Buscar mais feedbacks.',
                 },
                 create: {
                     evaluationId: evaluationMaria.id,
                     evaluatedId: joao.id,
-                    score: av360Scores[av360Idx],
-                    strengths: av360Strengths[av360Idx],
-                    improvements: av360Improvements[av360Idx],
+                    score: score,
+                    strengths: justification,
+                    improvements: 'Buscar mais feedbacks.',
                 },
             });
 
-            // --- MENTORING (avaliando o mentor deles) ---
-            // Diversificar justificativas de mentoring
-            const mentoringFeedbacks = [
-                { justification: 'Mentoria positiva', score: 4.7 },
-                { justification: 'Acompanhamento próximo e construtivo', score: 4.5 },
-                { justification: 'Sempre disponível para ajudar e orientar', score: 4.9 },
-                { justification: 'Contribuiu muito para meu desenvolvimento', score: 5.0 },
-                { justification: 'Mentor(a) engajado(a) e inspirador(a)', score: 4.8 },
-                { justification: 'Feedbacks claros e apoio constante', score: 4.6 },
-                { justification: 'Excelente comunicação e suporte', score: 4.3 },
-                { justification: 'Poderia ser mais presente nas reuniões', score: 3.5 },
-                {
-                    justification: 'Faltou acompanhamento em alguns momentos importantes',
-                    score: 3.2,
+            // --- MENTORING ---
+            await this.prisma.mentoring.upsert({
+                where: { evaluationId: evaluationJoao.id },
+                update: {
+                    mentorId: mentorReal.id,
+                    justification: justification,
+                    score: score,
                 },
-                { justification: 'Mentoria deixou a desejar em alguns aspectos', score: 2.0 },
-            ];
-            for (const [idx, evaluation] of [evaluationJoao, evaluationMaria].entries()) {
-                // Escolhe um feedback diferente para cada ciclo/usuário
-                const feedback = mentoringFeedbacks[(ciclo.id + idx) % mentoringFeedbacks.length];
-                await this.prisma.mentoring.upsert({
-                    where: { evaluationId: evaluation.id },
-                    update: {
-                        mentorId: mentorReal.id,
-                        justification: feedback.justification,
-                        score: feedback.score,
-                    },
-                    create: {
-                        evaluationId: evaluation.id,
-                        mentorId: mentorReal.id,
-                        justification: feedback.justification,
-                        score: feedback.score,
-                    },
-                });
-            }
+                create: {
+                    evaluationId: evaluationJoao.id,
+                    mentorId: mentorReal.id,
+                    justification: justification,
+                    score: score,
+                },
+            });
+            await this.prisma.mentoring.upsert({
+                where: { evaluationId: evaluationMaria.id },
+                update: {
+                    mentorId: mentorReal.id,
+                    justification: justification,
+                    score: score,
+                },
+                create: {
+                    evaluationId: evaluationMaria.id,
+                    mentorId: mentorReal.id,
+                    justification: justification,
+                    score: score,
+                },
+            });
 
-            // --- REFERÊNCIAS (um referencia o outro) ---
-            // Justificativas diferentes por ciclo, mas iguais para João e Maria
-            const referenciasJustificativas = [
-                'Referência técnica no time, sempre compartilhando conhecimento.',
-                'Exemplo de postura e valores, referência cultural para todos.',
-                'Demonstra excelência técnica e inspira confiança nos colegas.',
-                'Promove ambiente colaborativo e boas práticas no time.',
-                'Comprometimento e influência positiva no grupo.',
-            ];
-            const justificativaReferencia =
-                referenciasJustificativas[(ciclo.id - 1) % referenciasJustificativas.length];
-
-            // João referencia Maria
+            // --- REFERÊNCIAS ---
             await this.prisma.reference.upsert({
                 where: {
                     evaluationId_collaboratorId: {
@@ -766,16 +728,13 @@ export class SeedService {
                         collaboratorId: maria.id,
                     },
                 },
-                update: {
-                    justification: justificativaReferencia,
-                },
+                update: { justification: justification },
                 create: {
                     evaluationId: evaluationJoao.id,
                     collaboratorId: maria.id,
-                    justification: justificativaReferencia,
+                    justification: justification,
                 },
             });
-            // Maria referencia João
             await this.prisma.reference.upsert({
                 where: {
                     evaluationId_collaboratorId: {
@@ -783,13 +742,11 @@ export class SeedService {
                         collaboratorId: joao.id,
                     },
                 },
-                update: {
-                    justification: justificativaReferencia,
-                },
+                update: { justification: justification },
                 create: {
                     evaluationId: evaluationMaria.id,
                     collaboratorId: joao.id,
-                    justification: justificativaReferencia,
+                    justification: justification,
                 },
             });
 
@@ -802,52 +759,337 @@ export class SeedService {
                         collaboratorId: user.id,
                     },
                 });
-                // Opções variadas para avaliação do gestor
-                const managerScores = [5, 4.5, 4, 3.5, 3];
-                const managerJustifications = [
-                    'Excelente desempenho neste critério.',
-                    'Atendeu bem às expectativas.',
-                    'Pode evoluir mais neste aspecto.',
-                    'Teve dificuldades, mas buscou melhorar.',
-                    'Superou desafios e entregou bons resultados.',
-                ];
-                for (const criterio of criterios) {
-                    const idx = (ciclo.id + criterio.id) % managerScores.length;
-                    await this.prisma.managerEvaluationCriteria.create({
-                        data: {
-                            managerEvaluationId: managerEval.id,
-                            criteriaId: criterio.id,
-                            score: managerScores[idx],
-                            justification: managerJustifications[idx],
-                        },
-                    });
-                }
+                await this.prisma.managerEvaluationCriteria.create({
+                    data: {
+                        managerEvaluationId: managerEval.id,
+                        criteriaId: criterios[0].id,
+                        score: score,
+                        justification: justification,
+                    },
+                });
             }
 
             // --- NOTA DO COMITÊ DE EQUALIZAÇÃO ---
             for (const user of [joao, maria]) {
-                // Opções variadas para equalização
-                const equalizationScores = [4.8, 4.5, 4.2, 4.0, 3.7];
-                const equalizationJustifications = [
-                    'Destaque técnico e postura exemplar.',
-                    'Contribuição relevante para o time.',
-                    'Atuação consistente e colaborativa.',
-                    'Evolução notável durante o ciclo.',
-                    'Participação positiva e engajamento.',
-                ];
-                const eqIdx = (ciclo.id - 1) % equalizationScores.length;
                 await this.prisma.equalization.create({
                     data: {
                         collaboratorId: user.id,
                         cycleId: ciclo.id,
                         committeeId: comite.id,
-                        justification: equalizationJustifications[eqIdx],
-                        score: equalizationScores[eqIdx],
+                        justification: justification,
+                        score: score,
                     },
                 });
             }
         }
 
         return { message: 'Seed executada com sucesso!' };
+    }
+
+    async runEvaluationsSeed() {
+        console.log('Iniciando seed de avaliações para ciclo 2025.2...');
+
+        // 1. Buscar ou criar ciclo 2025.2
+        let cycle = await this.prisma.cycleConfig.findFirst({
+            where: { name: '2025.2' },
+        });
+        if (!cycle) {
+            cycle = await this.prisma.cycleConfig.create({
+                data: {
+                    name: '2025.2',
+                    description: 'Ciclo de avaliações 2025.2',
+                    startDate: new Date('2025-07-01'),
+                    endDate: new Date('2025-12-31'),
+                    done: false,
+                },
+            });
+            console.log('Ciclo 2025.2 criado com ID:', cycle.id);
+        } else {
+            console.log('Ciclo 2025.2 encontrado com ID:', cycle.id);
+        }
+
+        // 2. Buscar usuários EMPLOYER ativos que são membros de projeto (ERP)
+        const projectMembers = await this.prisma.projectMember.findMany({
+            include: {
+                user: {
+                    include: {
+                        userRoles: true,
+                        track: true,
+                    },
+                },
+            },
+        });
+        const erpUsers = projectMembers
+            .map((pm) => pm.user)
+            .filter((user) =>
+                user.userRoles.some((ur) => ur.role === UserRole.EMPLOYER && ur.isActive),
+            );
+
+        console.log(`Encontrados ${erpUsers.length} usuários EMPLOYER membros de projeto`);
+
+        // 3. Buscar critérios ativos por trilha/ciclo
+        let allTrackCycleCriteria = await this.prisma.criterionTrackCycleConfig.findMany({
+            where: { cycleId: cycle.id },
+            include: { criterion: true, track: true },
+        });
+
+        console.log(
+            `Encontrados ${allTrackCycleCriteria.length} critérios para o ciclo ${cycle.id}`,
+        );
+
+        // Se não existem critérios para o ciclo, criar os padrões
+        if (allTrackCycleCriteria.length === 0) {
+            console.log('Criando critérios padrão para o ciclo 2025.2...');
+
+            // Buscar todos os critérios existentes
+            const allCriteria = await this.prisma.criterion.findMany();
+
+            // Buscar todas as trilhas
+            const allTracks = await this.prisma.track.findMany();
+
+            // Criar CriterionTrackCycleConfig para cada combinação de trilha e critério
+            for (const track of allTracks) {
+                for (const criterion of allCriteria) {
+                    await this.prisma.criterionTrackCycleConfig.create({
+                        data: {
+                            cycleId: cycle.id,
+                            trackId: track.id,
+                            criterionId: criterion.id,
+                            weight: 1, // Peso padrão
+                        },
+                    });
+                }
+            }
+
+            console.log(
+                `Criados ${allCriteria.length * allTracks.length} critérios para o ciclo ${cycle.id}`,
+            );
+
+            // Buscar novamente os critérios criados
+            allTrackCycleCriteria = await this.prisma.criterionTrackCycleConfig.findMany({
+                where: { cycleId: cycle.id },
+                include: { criterion: true, track: true },
+            });
+
+            console.log(
+                `Agora temos ${allTrackCycleCriteria.length} critérios para o ciclo ${cycle.id}`,
+            );
+        }
+
+        // 4. Buscar avaliadores (manager, líder e comitê)
+        const manager = await this.prisma.user.findFirst({
+            where: { userRoles: { some: { role: UserRole.MANAGER, isActive: true } } },
+        });
+        const leader = await this.prisma.user.findFirst({
+            where: { userRoles: { some: { role: UserRole.LEADER, isActive: true } } },
+        });
+        const committee = await this.prisma.user.findFirst({
+            where: { userRoles: { some: { role: UserRole.COMMITTEE, isActive: true } } },
+        });
+        if (!manager || !leader || !committee) {
+            throw new Error('Precisa de pelo menos um manager, líder e comitê cadastrados!');
+        }
+
+        console.log(
+            `Avaliadores encontrados - Manager: ${manager.name}, Leader: ${leader.name}, Committee: ${committee.name}`,
+        );
+
+        // 5. Selecionar usuários específicos por role
+        const employers = erpUsers.filter((user) =>
+            user.userRoles.some((ur) => ur.role === UserRole.EMPLOYER && ur.isActive),
+        );
+        const leaders = await this.prisma.user.findMany({
+            where: { userRoles: { some: { role: UserRole.LEADER, isActive: true } } },
+            include: { userRoles: true, track: true },
+        });
+        const managers = await this.prisma.user.findMany({
+            where: { userRoles: { some: { role: UserRole.MANAGER, isActive: true } } },
+            include: { userRoles: true, track: true },
+        });
+        const committees = await this.prisma.user.findMany({
+            where: { userRoles: { some: { role: UserRole.COMMITTEE, isActive: true } } },
+            include: { userRoles: true, track: true },
+        });
+
+        // Selecionar quantidade específica de cada role
+        const selectedEmployers = employers.slice(0, 4);
+        const selectedLeaders = leaders.slice(0, 2);
+        const selectedManagers = managers.slice(0, 2);
+        const selectedCommittees = committees.slice(0, 2);
+
+        const usersToSeed = [
+            ...selectedEmployers,
+            ...selectedLeaders,
+            ...selectedManagers,
+            ...selectedCommittees,
+        ];
+
+        console.log(`Total de usuários para seed: ${usersToSeed.length}`);
+        console.log(`- EMPLOYER: ${selectedEmployers.length}`);
+        console.log(`- LEADER: ${selectedLeaders.length}`);
+        console.log(`- MANAGER: ${selectedManagers.length}`);
+        console.log(`- COMMITTEE: ${selectedCommittees.length}`);
+
+        let createdCount = 0;
+
+        // 6. Para cada usuário, criar avaliações baseadas no role
+        const scoreProfiles = [
+            { score: 2.0, justification: 'Precisa melhorar bastante.' }, // baixa
+            { score: 3.0, justification: 'Desempenho regular, pode evoluir.' }, // média-baixa
+            { score: 3.5, justification: 'Desempenho consistente.' }, // média
+            { score: 4.0, justification: 'Bom desempenho, acima da média.' }, // média-alta
+            { score: 4.5, justification: 'Ótimo resultado, quase excelente.' }, // alta
+            { score: 5.0, justification: 'Excelente, superou todas as expectativas!' }, // máxima
+        ];
+        let userIdx = 0;
+        for (const user of usersToSeed) {
+            // Verificar se já existe avaliação para este usuário no ciclo
+            const existingEvaluation = await this.prisma.evaluation.findFirst({
+                where: {
+                    evaluatorId: user.id,
+                    cycleConfigId: cycle.id,
+                },
+            });
+
+            if (existingEvaluation) {
+                console.log(`Pulando ${user.name} - já possui avaliação no ciclo ${cycle.name}`);
+                continue;
+            }
+
+            const userRole = user.userRoles.find((ur) => ur.isActive)?.role;
+            const userTrackId = user.trackId;
+            const userCriteria = allTrackCycleCriteria.filter((c) => c.trackId === userTrackId);
+
+            // Escolher perfil de score para este usuário
+            const profile = scoreProfiles[userIdx % scoreProfiles.length];
+            userIdx++;
+
+            console.log(
+                `Criando avaliações para ${user.name} (${userRole}) - Score base: ${profile.score}`,
+            );
+
+            // 1. Criar Evaluation
+            const evaluation = await this.prisma.evaluation.create({
+                data: {
+                    evaluatorId: user.id,
+                    cycleConfigId: cycle.id,
+                    trackId: userTrackId,
+                },
+            });
+
+            // 2. Criar AutoEvaluation
+            await this.prisma.autoEvaluation.create({
+                data: {
+                    evaluationId: evaluation.id,
+                },
+            });
+
+            // 3. Criar AutoEvaluationAssignment para cada critério
+            let totalScore = 0;
+            let totalWeight = 0;
+            let critIdx = 0;
+            for (const c of userCriteria) {
+                // Alternar score por critério para dar mais variedade
+                const critProfile = scoreProfiles[(userIdx + critIdx) % scoreProfiles.length];
+                await this.prisma.autoEvaluationAssignment.create({
+                    data: {
+                        evaluationId: evaluation.id,
+                        criterionId: c.criterionId,
+                        score: critProfile.score,
+                        justification: critProfile.justification,
+                    },
+                });
+                const weight = c.weight || 1;
+                totalScore += critProfile.score * weight;
+                totalWeight += weight;
+                critIdx++;
+            }
+            // Atualizar o rating da AutoEvaluation
+            const rating = totalWeight > 0 ? totalScore / totalWeight : 0;
+            await this.prisma.autoEvaluation.update({
+                where: { evaluationId: evaluation.id },
+                data: { rating },
+            });
+
+            // 4. Criar Evaluation360 (auto 360, só para seed)
+            const eval360Profile = scoreProfiles[(userIdx + 1) % scoreProfiles.length];
+            await this.prisma.evaluation360.create({
+                data: {
+                    evaluationId: evaluation.id,
+                    evaluatedId: user.id,
+                    score: eval360Profile.score,
+                    strengths: eval360Profile.justification,
+                    improvements: 'Pode buscar mais feedbacks.',
+                },
+            });
+
+            // 5. Criar ManagerEvaluation (apenas para EMPLOYER)
+            if (userRole === UserRole.EMPLOYER) {
+                const managerEval = await this.prisma.managerEvaluation.create({
+                    data: {
+                        cycleId: cycle.id,
+                        managerId: manager.id,
+                        collaboratorId: user.id,
+                    },
+                });
+                let mIdx = 0;
+                for (const c of userCriteria) {
+                    const mProfile = scoreProfiles[(userIdx + mIdx + 2) % scoreProfiles.length];
+                    await this.prisma.managerEvaluationCriteria.create({
+                        data: {
+                            managerEvaluationId: managerEval.id,
+                            criteriaId: c.criterionId,
+                            score: mProfile.score,
+                            justification: mProfile.justification,
+                        },
+                    });
+                    mIdx++;
+                }
+            }
+
+            // 6. Criar LeaderEvaluation (apenas para EMPLOYER)
+            if (userRole === UserRole.EMPLOYER) {
+                const leaderProfile = scoreProfiles[(userIdx + 3) % scoreProfiles.length];
+                await this.prisma.leaderEvaluation.create({
+                    data: {
+                        leaderId: leader.id,
+                        collaboratorId: user.id,
+                        cycleId: cycle.id,
+                        justification: leaderProfile.justification,
+                        score: leaderProfile.score,
+                        strengths: 'Destaque em colaboração.',
+                        improvements: 'Pode melhorar a comunicação.',
+                    },
+                });
+            }
+
+            // 7. Criar Equalization (apenas para EMPLOYER)
+            if (userRole === UserRole.EMPLOYER) {
+                const eqProfile = scoreProfiles[(userIdx + 4) % scoreProfiles.length];
+                await this.prisma.equalization.create({
+                    data: {
+                        collaboratorId: user.id,
+                        cycleId: cycle.id,
+                        committeeId: committee.id,
+                        justification: eqProfile.justification,
+                        score: eqProfile.score,
+                        aiSummary: {
+                            rating: eqProfile.score,
+                            summary: eqProfile.justification,
+                            discrepancies: [],
+                            detailedAnalysis: 'Análise detalhada IA do seed',
+                        },
+                    },
+                });
+            }
+
+            createdCount++;
+        }
+
+        return {
+            message: `Seed de avaliações para 2025.2 concluído! Criadas ${createdCount} avaliações.`,
+            createdCount,
+            cycle: cycle.name,
+        };
     }
 }
