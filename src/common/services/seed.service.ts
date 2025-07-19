@@ -142,11 +142,7 @@ export class SeedService {
                 trackId: trackRH.id,
                 userRoles: {
                     create: [
-                        { role: 'RH' },
-                        { role: 'EMPLOYER' },
-                        { role: 'ADMIN' },
-                        { role: 'MANAGER' },
-                        { role: 'LEADER' },
+                        { role: 'RH' }
                     ],
                 },
             },
