@@ -141,9 +141,7 @@ export class SeedService {
                 mentorId: mentor.id,
                 trackId: trackRH.id,
                 userRoles: {
-                    create: [
-                        { role: 'RH' }
-                    ],
+                    create: [{ role: 'RH' }],
                 },
             },
         });
@@ -1018,66 +1016,6 @@ export class SeedService {
                     improvements: 'Pode buscar mais feedbacks.',
                 },
             });
-
-            // 5. Criar ManagerEvaluation (apenas para EMPLOYER)
-            if (userRole === UserRole.EMPLOYER) {
-                const managerEval = await this.prisma.managerEvaluation.create({
-                    data: {
-                        cycleId: cycle.id,
-                        managerId: manager.id,
-                        collaboratorId: user.id,
-                    },
-                });
-                let mIdx = 0;
-                for (const c of userCriteria) {
-                    const mProfile = scoreProfiles[(userIdx + mIdx + 2) % scoreProfiles.length];
-                    await this.prisma.managerEvaluationCriteria.create({
-                        data: {
-                            managerEvaluationId: managerEval.id,
-                            criteriaId: c.criterionId,
-                            score: mProfile.score,
-                            justification: mProfile.justification,
-                        },
-                    });
-                    mIdx++;
-                }
-            }
-
-            // 6. Criar LeaderEvaluation (apenas para EMPLOYER)
-            if (userRole === UserRole.EMPLOYER) {
-                const leaderProfile = scoreProfiles[(userIdx + 3) % scoreProfiles.length];
-                await this.prisma.leaderEvaluation.create({
-                    data: {
-                        leaderId: leader.id,
-                        collaboratorId: user.id,
-                        cycleId: cycle.id,
-                        justification: leaderProfile.justification,
-                        score: leaderProfile.score,
-                        strengths: 'Destaque em colaboração.',
-                        improvements: 'Pode melhorar a comunicação.',
-                    },
-                });
-            }
-
-            // 7. Criar Equalization (apenas para EMPLOYER)
-            if (userRole === UserRole.EMPLOYER) {
-                const eqProfile = scoreProfiles[(userIdx + 4) % scoreProfiles.length];
-                await this.prisma.equalization.create({
-                    data: {
-                        collaboratorId: user.id,
-                        cycleId: cycle.id,
-                        committeeId: committee.id,
-                        justification: eqProfile.justification,
-                        score: eqProfile.score,
-                        aiSummary: {
-                            rating: eqProfile.score,
-                            summary: eqProfile.justification,
-                            discrepancies: [],
-                            detailedAnalysis: 'Análise detalhada IA do seed',
-                        },
-                    },
-                });
-            }
 
             createdCount++;
         }
